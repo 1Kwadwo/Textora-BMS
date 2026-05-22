@@ -1,0 +1,4 @@
+.env
+sender-ids.json
+pending-sender-id-sessions.json
+node_modules/
