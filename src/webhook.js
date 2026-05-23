@@ -11,9 +11,16 @@ function startPaystackWebhookServer({ paystackWebhookPath, processPaystackPaymen
     const requestPath =
       req.url.split('?')[0]
 
-    if (req.method === 'GET' && (requestPath === '/' || requestPath === '/health')) {
+    if (
+      (req.method === 'GET' || req.method === 'HEAD') &&
+      (requestPath === '/' || requestPath === '/health')
+    ) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ ok: true, service: 'textora-bot' }))
+      res.end(
+        req.method === 'HEAD'
+          ? undefined
+          : JSON.stringify({ ok: true, service: 'textora-bot' })
+      )
       return
     }
 
