@@ -22,7 +22,9 @@ function validateRuntimeConfig() {
       'BOT_TOKEN',
       'ARKESEL_API_KEY',
       'PAYSTACK_SECRET_KEY',
-      'GENERIC_SENDER_ID'
+      'GENERIC_SENDER_ID',
+      'COST_PER_SMS',
+      'SELLING_PRICE_PER_SMS'
     ]
 
   const missingEnvNames =
@@ -47,6 +49,30 @@ function validateRuntimeConfig() {
       genericSenderValidation.message
     )
   }
+
+  const numericEnvNames =
+    [
+      'CUSTOM_SENDER_ID_FEE_GHS',
+      'COST_PER_SMS',
+      'SELLING_PRICE_PER_SMS'
+    ]
+
+  const invalidNumericEnvNames =
+    numericEnvNames.filter(name => {
+      const value =
+        readEnv(name)
+
+      return value && !Number.isFinite(Number(value))
+    })
+
+  if (invalidNumericEnvNames.length > 0) {
+    throw new Error(
+      'Invalid numeric environment variable' +
+      (invalidNumericEnvNames.length === 1 ? '' : 's') +
+      ': ' +
+      invalidNumericEnvNames.join(', ')
+    )
+  }
 }
 
 const genericSenderId =
@@ -56,10 +82,10 @@ const customSenderIdFeeGHS =
   Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 1)
 
 const COST_PER_SMS =
-  Number(process.env.COST_PER_SMS || 0.0276)
+  Number(readEnv('COST_PER_SMS'))
 
 const SELLING_PRICE_PER_SMS =
-  Number(process.env.SELLING_PRICE_PER_SMS || 0.0589)
+  Number(readEnv('SELLING_PRICE_PER_SMS'))
 
 const senderIdStorePath =
   path.join(rootDir, 'sender-ids.json')

@@ -2,6 +2,8 @@ const assert = require('node:assert/strict')
 const test = require('node:test')
 
 function loadPricing() {
+  process.env.COST_PER_SMS ||= '0.0276'
+  process.env.SELLING_PRICE_PER_SMS ||= '0.0589'
   delete require.cache[require.resolve('../src/config')]
   delete require.cache[require.resolve('../src/pricing')]
   return require('../src/pricing')
@@ -251,7 +253,9 @@ test('Test 16: runtime config requires an explicit generic sender ID', () => {
     'BOT_TOKEN',
     'ARKESEL_API_KEY',
     'PAYSTACK_SECRET_KEY',
-    'GENERIC_SENDER_ID'
+    'GENERIC_SENDER_ID',
+    'COST_PER_SMS',
+    'SELLING_PRICE_PER_SMS'
   ]
   const originalEnv =
     Object.fromEntries(envNames.map(name => [name, process.env[name]]))
@@ -260,6 +264,8 @@ test('Test 16: runtime config requires an explicit generic sender ID', () => {
     process.env.BOT_TOKEN = 'bot-token'
     process.env.ARKESEL_API_KEY = 'arkesel-key'
     process.env.PAYSTACK_SECRET_KEY = 'paystack-secret'
+    process.env.COST_PER_SMS = '0.0276'
+    process.env.SELLING_PRICE_PER_SMS = '0.0589'
     delete process.env.GENERIC_SENDER_ID
 
     delete require.cache[require.resolve('../src/config')]
@@ -269,6 +275,45 @@ test('Test 16: runtime config requires an explicit generic sender ID', () => {
     assert.throws(
       () => validateRuntimeConfig(),
       /GENERIC_SENDER_ID/
+    )
+  } finally {
+    envNames.forEach(name => {
+      if (originalEnv[name] === undefined) {
+        delete process.env[name]
+      } else {
+        process.env[name] = originalEnv[name]
+      }
+    })
+    delete require.cache[require.resolve('../src/config')]
+  }
+})
+
+test('Test 20: runtime config requires pricing environment variables', () => {
+  const envNames = [
+    'BOT_TOKEN',
+    'ARKESEL_API_KEY',
+    'PAYSTACK_SECRET_KEY',
+    'GENERIC_SENDER_ID',
+    'COST_PER_SMS',
+    'SELLING_PRICE_PER_SMS'
+  ]
+  const originalEnv =
+    Object.fromEntries(envNames.map(name => [name, process.env[name]]))
+
+  try {
+    process.env.BOT_TOKEN = 'bot-token'
+    process.env.ARKESEL_API_KEY = 'arkesel-key'
+    process.env.PAYSTACK_SECRET_KEY = 'paystack-secret'
+    process.env.GENERIC_SENDER_ID = 'ApprovedID'
+    process.env.COST_PER_SMS = '0.0276'
+    delete process.env.SELLING_PRICE_PER_SMS
+
+    delete require.cache[require.resolve('../src/config')]
+    const { validateRuntimeConfig } = require('../src/config')
+
+    assert.throws(
+      () => validateRuntimeConfig(),
+      /SELLING_PRICE_PER_SMS/
     )
   } finally {
     envNames.forEach(name => {
