@@ -52,7 +52,7 @@ function createFlow(overrides = {}) {
       },
       userSessions,
       verifyPayment: async () => ({
-        amount: 6990,
+        amount: 5890,
         currency: 'GHS',
         status: 'success'
       }),
@@ -76,7 +76,7 @@ function addPaymentSession(context, overrides = {}) {
     contacts: Array.from({ length: 100 }, (_, i) => `23320${i}`),
     message: 'hello',
     paymentPurpose: 'textora_bulk_sms',
-    price: '69.90',
+    price: '58.90',
     senderId: 'ApprovedID',
     senderIdType: 'generic',
     smsUnits: 1,
@@ -112,7 +112,7 @@ test('Test 4: bulk send calculates 1000 recipients as 1000 SMS units', () => {
 test('Test 5: charge calculation uses selling price', () => {
   const { calculateSMSPrice } = loadPricing()
 
-  assert.equal(calculateSMSPrice(1000, 1), '69.90')
+  assert.equal(calculateSMSPrice(1000, 1), '58.90')
 })
 
 test('Test 6: cost calculation uses provider cost', () => {
@@ -124,7 +124,7 @@ test('Test 6: cost calculation uses provider cost', () => {
 test('Test 7: profit calculation uses selling minus cost', () => {
   const { calculateSMSProfit } = loadPricing()
 
-  assert.equal(calculateSMSProfit(1000, 1), '42.30')
+  assert.equal(calculateSMSProfit(1000, 1), '31.30')
 })
 
 test('Test 8: successful delivery records 100 billed SMS and 0 failed SMS', async () => {
@@ -138,7 +138,7 @@ test('Test 8: successful delivery records 100 billed SMS and 0 failed SMS', asyn
     billedSMS: 100,
     deliveredContacts: 100,
     failedContacts: 0,
-    profit: '4.23'
+    profit: '3.13'
   })
   assert.equal(context.paymentSessions.ref_1, undefined)
 })
@@ -162,7 +162,7 @@ test('Test 9: partial failure records 90 billed SMS and 10 failed SMS', async ()
     billedSMS: 90,
     deliveredContacts: 90,
     failedContacts: 10,
-    profit: '3.81'
+    profit: '2.82'
   })
   assert.equal(context.paymentSessions.ref_1, undefined)
 })
@@ -229,7 +229,7 @@ test('Test 14: pricing does not use a fixed 1 GHS SMS charge', () => {
   const { calculateSMSPrice } = loadPricing()
 
   assert.notEqual(calculateSMSPrice(1, 1), '1.00')
-  assert.equal(calculateSMSPrice(1, 1), '0.07')
+  assert.equal(calculateSMSPrice(1, 1), '0.06')
 })
 
 test('Test 15: pricing changes through config without code changes', () => {
@@ -355,7 +355,7 @@ test('Test 19: full system flow passes splitting, billing, wallet, delivery, pro
   const queue = createJobQueue()
 
   assert.equal(wallet.debit(Number(price)).ok, true)
-  assert.equal(calculateSMSProfit(contacts.length, smsUnits), '0.17')
+  assert.equal(calculateSMSProfit(contacts.length, smsUnits), '0.13')
 
   queue.enqueue({ id: 'bulk-1' })
   assert.equal((await queue.processNext(async () => {})).status, 'completed')

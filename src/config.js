@@ -59,7 +59,7 @@ const COST_PER_SMS =
   Number(process.env.COST_PER_SMS || 0.0276)
 
 const SELLING_PRICE_PER_SMS =
-  Number(process.env.SELLING_PRICE_PER_SMS || 0.0699)
+  Number(process.env.SELLING_PRICE_PER_SMS || 0.0589)
 
 const senderIdStorePath =
   path.join(rootDir, 'sender-ids.json')
