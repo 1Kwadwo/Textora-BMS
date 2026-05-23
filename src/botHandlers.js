@@ -32,6 +32,19 @@ function registerBotHandlers({
     })
   }
 
+  function clearCustomSenderIdDetails(session) {
+
+    delete session.senderId
+    delete session.senderIdType
+    delete session.senderIdFee
+    delete session.senderIdFeePaid
+    delete session.paymentPurpose
+    delete session.senderVerificationStatus
+    delete session.senderVerificationRequestId
+    delete session.senderIdContactNumber
+    delete session.senderIdUseCase
+  }
+
   async function acceptContacts(ctx, session, contactResult) {
 
     if (contactResult.contacts.length === 0) {
@@ -288,13 +301,7 @@ Creating your final checkout now...`
     forgetPendingSenderIdSession(requestId)
 
     session.step = 'waiting_for_sender_choice'
-    delete session.senderId
-    delete session.senderIdType
-    delete session.senderIdFee
-    delete session.senderIdFeePaid
-    delete session.paymentPurpose
-    delete session.senderVerificationStatus
-    delete session.senderVerificationRequestId
+    clearCustomSenderIdDetails(session)
     userSessions[session.userId] = session
 
     await ctx.reply('Rejected sender ID request. The customer has been notified.')
@@ -327,6 +334,8 @@ Please choose the free ${genericSenderId} sender ID or try another custom sender
 
     return ctx.reply(`
 Custom sender ID costs ₵${customSenderIdFeeGHS.toFixed(2)} once and can be used forever after manual verification.
+
+Manual Arkesel verification can take some time. After paying the sender ID fee, you can come back later and check this chat for the approval update.
 
 The free ${genericSenderId} sender ID has no sender ID fee.
 
@@ -368,11 +377,7 @@ Rules:
     if (!session) return
 
     session.step = 'waiting_for_sender_choice'
-    delete session.senderId
-    delete session.senderIdType
-    delete session.senderIdFee
-    delete session.senderIdFeePaid
-    delete session.paymentPurpose
+    clearCustomSenderIdDetails(session)
 
     return ctx.reply(
       'Choose a sender ID option.',
@@ -458,18 +463,87 @@ Send another sender ID or choose the free ${genericSenderId} option from /start.
         return createCheckout(ctx, userId, session)
       }
 
-      session.step = 'confirming_custom_sender_id'
+      session.step = 'waiting_for_sender_id_contact_number'
 
       return ctx.reply(`
-Please confirm this custom sender ID.
+Sender ID received:
+${session.senderId}
+
+Now send the phone number Textora should contact about this sender ID request.
+
+Accepted formats:
+233541234567
+0541234567
++233541234567
+      `)
+    }
+
+    if (session.step === 'waiting_for_sender_id_contact_number') {
+
+      const contactResult =
+        validateContactsFromText(ctx.message.text)
+
+      if (contactResult.contacts.length !== 1 || contactResult.totalCandidates !== 1) {
+        return ctx.reply(`
+❌ Send one valid Ghana phone number for this sender ID request.
+
+Accepted formats:
+233541234567
+0541234567
++233541234567
+        `)
+      }
+
+      session.senderIdContactNumber =
+        contactResult.contacts[0]
+
+      session.step =
+        'waiting_for_sender_id_use_case'
+
+      return ctx.reply(`
+Phone number received:
+${session.senderIdContactNumber}
+
+Now type the kind of messages you will use this sender ID to send.
+
+Example:
+Promotions, payment reminders, school announcements, church updates, delivery alerts, OTP/verification messages.
+      `)
+    }
+
+    if (session.step === 'waiting_for_sender_id_use_case') {
+
+      const useCase =
+        ctx.message.text.trim()
+
+      if (useCase.length < 5) {
+        return ctx.reply('Please describe the message type/use case in a little more detail.')
+      }
+
+      session.senderIdUseCase =
+        useCase
+
+      session.step =
+        'confirming_custom_sender_id'
+
+      return ctx.reply(`
+Please confirm this custom sender ID request.
 
 Sender ID:
 ${session.senderId}
+
+Contact number:
+${session.senderIdContactNumber}
+
+Message type/use case:
+${session.senderIdUseCase}
 
 Fee:
 ₵${customSenderIdFeeGHS.toFixed(2)}
 
 You will pay this one-time fee now. Textora admin receives the Arkesel approval request only after the fee is confirmed.
+
+Approval can take some time. You can come back later and check this chat for the approval update.
     `,
         {
           reply_markup: {
@@ -496,12 +570,20 @@ You will pay this one-time fee now. Textora admin receives the Arkesel approval 
       return ctx.reply('Choose a sender ID option using the buttons above.')
     }
 
+    if (session.step === 'waiting_for_sender_id_contact_number') {
+      return ctx.reply('Send one valid Ghana phone number for this sender ID request.')
+    }
+
+    if (session.step === 'waiting_for_sender_id_use_case') {
+      return ctx.reply('Type the kind of messages you will use this sender ID to send.')
+    }
+
     if (session.step === 'confirming_custom_sender_id') {
       return ctx.reply('Use the confirmation buttons above to pay the sender ID fee or cancel.')
     }
 
     if (session.step === 'waiting_for_sender_verification') {
-      return ctx.reply('Your custom sender ID is still pending manual Arkesel verification. Textora will continue when it is approved.')
+      return ctx.reply('Your custom sender ID is still pending manual Arkesel verification. This can take some time. Textora will continue here when it is approved, so you can come back and check later.')
     }
 
     if (session.step === 'waiting_for_sender_id_fee_payment') {

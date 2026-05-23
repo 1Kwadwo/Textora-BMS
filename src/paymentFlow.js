@@ -87,7 +87,9 @@ ${reference}`
 Sender ID:
 ${session.senderId}
 
-Textora admin will now create/verify it in Arkesel. Your final SMS checkout will be created after approval.`
+Textora admin will now create/verify it in Arkesel. This can take some time.
+
+You can come back later and check this chat. Your final SMS checkout will be created here after approval.`
     )
 
     const result =
