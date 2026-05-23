@@ -9,9 +9,15 @@ function createPaymentFlow({
   bot,
   checkArkeselBalance,
   customSenderIdFeeGHS,
+  forgetPaymentSession = reference => {
+    delete paymentSessions[reference]
+  },
   initializePayment,
   paymentSessions,
   recordDeliveryResult = async () => {},
+  rememberPaymentSession = (reference, session) => {
+    paymentSessions[reference] = session
+  },
   requestManualSenderIdApproval,
   rememberPendingSenderIdSession,
   sendSMS,
@@ -56,7 +62,7 @@ ${reference}`
   async function requestSenderIdApprovalAfterFee(reference, session) {
 
     fulfilledPayments.add(reference)
-    delete paymentSessions[reference]
+    forgetPaymentSession(reference)
 
     session.senderIdFeePaid = true
     session.senderVerificationStatus = 'pending'
@@ -265,7 +271,7 @@ Textora support has been notified. The remaining paid messages will continue aft
     fulfilledPayments.add(reference)
     await recordDeliveryResult(session)
     delete userSessions[session.userId]
-    delete paymentSessions[reference]
+    forgetPaymentSession(reference)
 
     await bot.telegram.sendMessage(
       session.chatId,
@@ -396,10 +402,10 @@ SMS Cost:
       session.paymentReference =
         payment.reference
 
-      paymentSessions[payment.reference] = {
+      rememberPaymentSession(payment.reference, {
         ...session,
         paymentReference: payment.reference
-      }
+      })
 
       return ctx.reply(
         'Paystack checkout is ready.\n\n' +
@@ -478,10 +484,10 @@ This checkout is only for the one-time sender ID fee. The SMS checkout will be c
       session.senderIdFeePaymentReference =
         payment.reference
 
-      paymentSessions[payment.reference] = {
+      rememberPaymentSession(payment.reference, {
         ...session,
         senderIdFeePaymentReference: payment.reference
-      }
+      })
 
       return ctx.reply(
         'Sender ID fee checkout is ready.\n\n' +

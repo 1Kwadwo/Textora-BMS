@@ -8,6 +8,7 @@ const {
   customSenderIdFeeGHS,
   genericSenderId,
   paystackWebhookPath,
+  paymentSessionStorePath,
   pendingSenderIdStorePath,
   senderIdStorePath
 } = require('./src/config')
@@ -15,6 +16,7 @@ const { createPaymentFlow } = require('./src/paymentFlow')
 const { createArkeselService } = require('./src/services/arkesel')
 const { createDeveloperService } = require('./src/services/developer')
 const { createPaystackService } = require('./src/services/paystack')
+const { createPaymentSessionStore } = require('./src/stores/paymentSessions')
 const { createSenderIdStore } = require('./src/stores/senderIds')
 const { startPaystackWebhookServer } = require('./src/webhook')
 
@@ -22,12 +24,16 @@ const bot =
   new Telegraf(process.env.BOT_TOKEN)
 
 const userSessions = {}
-const paymentSessions = {}
 
 const senderIdStore =
   createSenderIdStore({
     pendingSenderIdStorePath,
     senderIdStorePath
+  })
+
+const paymentSessionStore =
+  createPaymentSessionStore({
+    paymentSessionStorePath
   })
 
 const arkesel =
@@ -58,9 +64,11 @@ const paymentFlow =
     bot,
     checkArkeselBalance: arkesel.checkArkeselBalance,
     customSenderIdFeeGHS,
+    forgetPaymentSession: paymentSessionStore.forgetPaymentSession,
     initializePayment: paystack.initializePayment,
-    paymentSessions,
+    paymentSessions: paymentSessionStore.paymentSessions,
     rememberPendingSenderIdSession: senderIdStore.rememberPendingSenderIdSession,
+    rememberPaymentSession: paymentSessionStore.rememberPaymentSession,
     requestManualSenderIdApproval: developer.requestManualSenderIdApproval,
     sendSMS: arkesel.sendSMS,
     userSessions,

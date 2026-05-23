@@ -24,12 +24,16 @@ const senderIdStorePath =
 const pendingSenderIdStorePath =
   path.join(rootDir, 'pending-sender-id-sessions.json')
 
+const paymentSessionStorePath =
+  path.join(rootDir, 'payment-sessions.json')
+
 module.exports = {
   COST_PER_SMS,
   customSenderIdFeeGHS,
   genericSenderId,
   paystackWebhookPath,
   pendingSenderIdStorePath,
+  paymentSessionStorePath,
   SELLING_PRICE_PER_SMS,
   senderIdStorePath
 }
