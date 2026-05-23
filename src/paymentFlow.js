@@ -12,6 +12,7 @@ function createPaymentFlow({
   forgetPaymentSession = reference => {
     delete paymentSessions[reference]
   },
+  genericSenderId,
   initializePayment,
   paymentSessions,
   recordDeliveryResult = async () => {},
@@ -27,6 +28,16 @@ function createPaymentFlow({
 
   const fulfilledPayments =
     new Set()
+
+  function smsResultCode(result) {
+    if (typeof result === 'string' || typeof result === 'number') {
+      return String(result).trim().toLowerCase()
+    }
+
+    return String(result?.code || result?.status || '')
+      .trim()
+      .toLowerCase()
+  }
 
   function paymentAmountMatches(payment, session) {
 
@@ -152,6 +163,11 @@ ${payment?.gateway_response || payment?.message || 'Please try again.'}`
         session.smsUnits
       )
 
+    if (session.senderIdType === 'generic' && genericSenderId) {
+      session.senderId = genericSenderId
+      rememberPaymentSession(reference, session)
+    }
+
     const arkeselBalance =
       await checkArkeselBalance()
 
@@ -189,6 +205,7 @@ ${reference}`
     let failedCount = 0
     let failureReason = null
     let shouldRetryAfterCreditRefill = false
+    let shouldRetryAfterSenderIdFix = false
     const originalContactCount =
       session.contacts.length
 
@@ -196,10 +213,12 @@ ${reference}`
 
       const result =
         await sendSMS(number, session.message, session.senderId)
+      const code =
+        smsResultCode(result)
 
-      if (result?.code === 'ok') {
+      if (code === 'ok') {
         sentCount += 1
-      } else if (result?.code === '105') {
+      } else if (code === '105') {
         shouldRetryAfterCreditRefill = true
         session.contacts =
           session.contacts.slice(index)
@@ -223,8 +242,21 @@ Sent so far: ${sentCount}/${originalContactCount}`
         )
         failureReason = 'Arkesel SMS credit ran out while sending.'
         break
-      } else if (result?.code === '106') {
-        failedCount += 1
+      } else if (code === '106') {
+        shouldRetryAfterSenderIdFix = true
+        session.contacts =
+          session.contacts.slice(index)
+        session.deliveredContacts =
+          (session.deliveredContacts || 0) + sentCount
+        session.failedContacts =
+          session.failedContacts || 0
+        session.billedSMS =
+          session.deliveredContacts * session.smsUnits
+        session.profit =
+          calculateSMSProfit(session.deliveredContacts, session.smsUnits)
+        session.step =
+          'waiting_for_sender_id_fix'
+
         await alertDeveloper(
           `ARKESEL REJECTED SENDER ID
 
@@ -241,6 +273,7 @@ Failed recipient: ${number}`
 
     if (shouldRetryAfterCreditRefill) {
       userSessions[session.userId] = session
+      rememberPaymentSession(reference, session)
       await recordDeliveryResult(session)
 
       await bot.telegram.sendMessage(
@@ -254,6 +287,27 @@ SMS sent to ${session.deliveredContacts} contacts so far.
 
 ${failureReason}
 Textora support has been notified. The remaining paid messages will continue after Arkesel credit is refilled.`
+      )
+
+      return
+    }
+
+    if (shouldRetryAfterSenderIdFix) {
+      userSessions[session.userId] = session
+      rememberPaymentSession(reference, session)
+      await recordDeliveryResult(session)
+
+      await bot.telegram.sendMessage(
+        session.chatId,
+        `✅ Payment confirmed.
+
+Sender ID:
+${session.senderId}
+
+SMS sent to ${session.deliveredContacts} contacts so far.
+
+${failureReason}
+Textora support has been notified. The remaining paid messages can be retried after the sender ID is fixed.`
       )
 
       return

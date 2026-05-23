@@ -27,6 +27,7 @@ function createFlow(overrides = {}) {
       },
       checkArkeselBalance: async () => 100000,
       customSenderIdFeeGHS: 1,
+      genericSenderId: 'ApprovedID',
       initializePayment: async () => ({
         authorization_url: 'https://paystack.test/pay',
         reference: 'ref_1'
@@ -76,7 +77,8 @@ function addPaymentSession(context, overrides = {}) {
     message: 'hello',
     paymentPurpose: 'textora_bulk_sms',
     price: '69.90',
-    senderId: 'txtora',
+    senderId: 'ApprovedID',
+    senderIdType: 'generic',
     smsUnits: 1,
     userId: 10,
     ...overrides
@@ -244,7 +246,85 @@ test('Test 15: pricing changes through config without code changes', () => {
   }
 })
 
-test('Test 16: full system flow passes splitting, billing, wallet, delivery, profit, queue, and resume rules', async () => {
+test('Test 16: runtime config requires an explicit generic sender ID', () => {
+  const envNames = [
+    'BOT_TOKEN',
+    'ARKESEL_API_KEY',
+    'PAYSTACK_SECRET_KEY',
+    'GENERIC_SENDER_ID'
+  ]
+  const originalEnv =
+    Object.fromEntries(envNames.map(name => [name, process.env[name]]))
+
+  try {
+    process.env.BOT_TOKEN = 'bot-token'
+    process.env.ARKESEL_API_KEY = 'arkesel-key'
+    process.env.PAYSTACK_SECRET_KEY = 'paystack-secret'
+    delete process.env.GENERIC_SENDER_ID
+
+    delete require.cache[require.resolve('../src/config')]
+    const { genericSenderId, validateRuntimeConfig } = require('../src/config')
+
+    assert.equal(genericSenderId, '')
+    assert.throws(
+      () => validateRuntimeConfig(),
+      /GENERIC_SENDER_ID/
+    )
+  } finally {
+    envNames.forEach(name => {
+      if (originalEnv[name] === undefined) {
+        delete process.env[name]
+      } else {
+        process.env[name] = originalEnv[name]
+      }
+    })
+    delete require.cache[require.resolve('../src/config')]
+  }
+})
+
+test('Test 17: invalid sender ID keeps a paid SMS session retryable', async () => {
+  let attempts = 0
+  const context = createFlow({
+    sendSMS: async () => {
+      attempts += 1
+      return { code: 106 }
+    }
+  })
+
+  addPaymentSession(context)
+  await context.flow.processPaystackPayment('ref_1')
+
+  assert.equal(attempts, 1)
+  assert.equal(context.paymentSessions.ref_1.step, 'waiting_for_sender_id_fix')
+  assert.equal(context.paymentSessions.ref_1.contacts.length, 100)
+  assert.equal(context.paymentSessions.ref_1.senderId, 'ApprovedID')
+  assert.match(context.alerts.at(-1), /ARKESEL REJECTED SENDER ID/)
+  assert.deepEqual(context.deliveryResults.at(-1), {
+    billedSMS: 0,
+    deliveredContacts: 0,
+    failedContacts: 0,
+    profit: '0.00'
+  })
+})
+
+test('Test 18: raw Arkesel OK response counts as delivered', async () => {
+  let attempts = 0
+  const context = createFlow({
+    sendSMS: async () => {
+      attempts += 1
+      return 'OK'
+    }
+  })
+
+  addPaymentSession(context)
+  await context.flow.processPaystackPayment('ref_1')
+
+  assert.equal(attempts, 100)
+  assert.equal(context.deliveryResults.at(-1).deliveredContacts, 100)
+  assert.equal(context.paymentSessions.ref_1, undefined)
+})
+
+test('Test 19: full system flow passes splitting, billing, wallet, delivery, profit, queue, and resume rules', async () => {
   const {
     calculateSMSPrice,
     calculateSMSProfit,

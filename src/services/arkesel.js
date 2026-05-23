@@ -2,17 +2,36 @@ function createArkeselService({ axios, apiKey, genericSenderId }) {
 
   async function sendSMS(number, message, senderId = genericSenderId) {
 
+    const from =
+      String(senderId || '').trim()
+
+    if (!from) {
+      const result =
+        {
+          code: 'missing_sender_id',
+          message: 'Missing SMS sender ID.'
+        }
+
+      console.log('SMS ERROR:', result.message)
+
+      return result
+    }
+
     try {
 
-      const url =
-        `https://sms.arkesel.com/sms/api` +
-        `?action=send-sms` +
-        `&api_key=${apiKey}` +
-        `&to=${number}` +
-        `&from=${encodeURIComponent(senderId)}` +
-        `&sms=${encodeURIComponent(message)}`
-
-      const response = await axios.get(url)
+      const response = await axios.get(
+        'https://sms.arkesel.com/sms/api',
+        {
+          params: {
+            action: 'send-sms',
+            api_key: apiKey,
+            to: number,
+            from,
+            sms: message,
+            response: 'json'
+          }
+        }
+      )
 
       console.log('SMS RESPONSE:', response.data)
 
