@@ -64,7 +64,7 @@ Contacts: ${session.contacts.length}
 SMS units: ${session.smsUnits}
 Sender ID fee: GHS ${customSenderIdFeeGHS.toFixed(2)}
 
-Create/verify this Sender ID in the Arkesel dashboard. Approval can take some time. After Arkesel approves it, tap Approve below so Textora can continue to checkout.`,
+Create/verify this Sender ID in the Textora dashboard. Approval can take some time. After Textora approves it, tap Approve below so Textora can continue to checkout.`,
         {
           reply_markup: {
             inline_keyboard: [

@@ -36,7 +36,7 @@ function validateRuntimeConfig() {
       (missingEnvNames.length === 1 ? '' : 's') +
       ': ' +
       missingEnvNames.join(', ') +
-      '. Set them in the hosting environment. The app does not fall back to txtora because Arkesel rejects unapproved sender IDs.'
+      '. Set them in the hosting environment. The app does not fall back to txtora because Textora rejects unapproved sender IDs.'
     )
   }
 

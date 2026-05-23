@@ -87,7 +87,7 @@ ${reference}`
 Sender ID:
 ${session.senderId}
 
-Textora admin will now create/verify it in Arkesel. This can take some time.
+Textora admin will now create/verify it in Textora. This can take some time.
 
 You can come back later and check this chat. Your final SMS checkout will be created here after approval.`
     )
@@ -115,7 +115,7 @@ You can come back later and check this chat. Your final SMS checkout will be cre
       `Sender ID request submitted.
 
 Status:
-Pending manual Arkesel verification`
+Pending manual Textora verification`
     )
   }
 
@@ -242,7 +242,7 @@ Reference: ${reference}
 Failed recipient: ${number}
 Sent so far: ${sentCount}/${originalContactCount}`
         )
-        failureReason = 'Arkesel SMS credit ran out while sending.'
+        failureReason = 'Textora SMS credit ran out while sending.'
         break
       } else if (code === '106') {
         shouldRetryAfterSenderIdFix = true
@@ -266,7 +266,7 @@ Reference: ${reference}
 Sender ID: ${session.senderId}
 Failed recipient: ${number}`
         )
-        failureReason = 'Arkesel rejected the sender ID.'
+        failureReason = 'Textora rejected the sender ID.'
         break
       } else {
         failedCount += 1
@@ -288,7 +288,7 @@ ${session.senderId}
 SMS sent to ${session.deliveredContacts} contacts so far.
 
 ${failureReason}
-Textora support has been notified. The remaining paid messages will continue after Arkesel credit is refilled.`
+Textora support has been notified. The remaining paid messages will continue after SMS credit is refilled.`
       )
 
       return
@@ -547,7 +547,7 @@ This checkout is only for the one-time sender ID fee. The SMS checkout will be c
 
       return ctx.reply(
         'Sender ID fee checkout is ready.\n\n' +
-        'Pay the one-time sender ID fee first. Textora admin will receive the Arkesel approval request only after this fee is confirmed.\n\n' +
+        'Pay the one-time sender ID fee first. Textora admin will receive the approval request only after this fee is confirmed.\n\n' +
         'Reference:\n' +
         payment.reference,
         {

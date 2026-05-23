@@ -335,7 +335,7 @@ Please choose the free ${genericSenderId} sender ID or try another custom sender
     return ctx.reply(`
 Custom sender ID costs ₵${customSenderIdFeeGHS.toFixed(2)} once and can be used forever after manual verification.
 
-Manual Arkesel verification can take some time. After paying the sender ID fee, you can come back later and check this chat for the approval update.
+Manual Textora verification can take some time. After paying the sender ID fee, you can come back later and check this chat for the approval update.
 
 The free ${genericSenderId} sender ID has no sender ID fee.
 
@@ -429,7 +429,7 @@ Free:
 ${genericSenderId}
 
 Custom:
-₵${customSenderIdFeeGHS.toFixed(2)} one-time fee, usable forever after manual Arkesel verification.
+₵${customSenderIdFeeGHS.toFixed(2)} one-time fee, usable forever after manual Textora verification.
 
 Previously verified custom IDs show as extra free options.
     `,
@@ -541,7 +541,7 @@ ${session.senderIdUseCase}
 Fee:
 ₵${customSenderIdFeeGHS.toFixed(2)}
 
-You will pay this one-time fee now. Textora admin receives the Arkesel approval request only after the fee is confirmed.
+You will pay this one-time fee now. Textora admin receives the approval request only after the fee is confirmed.
 
 Approval can take some time. You can come back later and check this chat for the approval update.
     `,
@@ -583,7 +583,7 @@ Approval can take some time. You can come back later and check this chat for the
     }
 
     if (session.step === 'waiting_for_sender_verification') {
-      return ctx.reply('Your custom sender ID is still pending manual Arkesel verification. This can take some time. Textora will continue here when it is approved, so you can come back and check later.')
+      return ctx.reply('Your custom sender ID is still pending manual Textora verification. This can take some time. Textora will continue here when it is approved, so you can come back and check later.')
     }
 
     if (session.step === 'waiting_for_sender_id_fee_payment') {
