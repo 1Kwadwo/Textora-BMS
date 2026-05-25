@@ -300,8 +300,8 @@ Creating your final checkout now...`
 
     forgetPendingSenderIdSession(requestId)
 
-    session.step = 'waiting_for_sender_choice'
-    clearCustomSenderIdDetails(session)
+    session.step = 'sender_id_rejected'
+    session.rejectedRequestId = requestId
     userSessions[session.userId] = session
 
     await ctx.reply('Rejected sender ID request. The customer has been notified.')
@@ -310,10 +310,23 @@ Creating your final checkout now...`
       session.chatId,
       `❌ Sender ID was not verified.
 
-Please choose the free ${genericSenderId} sender ID or try another custom sender ID.`,
+You can request a refund for the sender ID fee or try another custom sender ID.`,
       {
         reply_markup: {
-          inline_keyboard: senderIdKeyboard(session.userId)
+          inline_keyboard: [
+            [
+              {
+                text: 'Request refund',
+                callback_data: `request_refund_${requestId}`
+              }
+            ],
+            [
+              {
+                text: 'Try another sender ID',
+                callback_data: 'try_another_sender_id'
+              }
+            ]
+          ]
         }
       }
     )
@@ -339,6 +352,31 @@ Manual Textora verification can take some time. After paying the sender ID fee, 
 
 The free ${genericSenderId} sender ID has no sender ID fee.
 
+Send the custom sender ID you want.
+
+Rules:
+- 1 to 11 characters
+- Letters, numbers, spaces, and normal symbols only
+- Cannot be only numbers
+- Cannot start or end with a space
+  `)
+  })
+
+  bot.action('try_another_sender_id', async (ctx) => {
+
+    await answerCallback(ctx)
+
+    const userId = ctx.from.id
+    const session = userSessions[userId]
+
+    if (!session) {
+      return ctx.reply('Start again with /start to send a new bulk SMS.')
+    }
+
+    session.step = 'waiting_for_custom_sender_id'
+    clearCustomSenderIdDetails(session)
+
+    return ctx.reply(`
 Send the custom sender ID you want.
 
 Rules:
@@ -387,6 +425,63 @@ Rules:
         }
       }
     )
+  })
+
+  bot.action(/^request_refund_(.+)$/, async (ctx) => {
+
+    await answerCallback(ctx)
+
+    const userId = ctx.from.id
+    const requestId = ctx.match[1]
+    const session = userSessions[userId]
+
+    if (!session) {
+      return ctx.reply('Session not found. Please start again with /start')
+    }
+
+    session.step = 'waiting_for_refund_momo_number'
+    session.refundRequestId = requestId
+
+    return ctx.reply(`
+Please send your MoMo number for the refund.
+
+Accepted formats:
+233541234567
+0541234567
++233541234567
+    `)
+  })
+
+  bot.action(/^confirm_refund_(.+)$/, async (ctx) => {
+
+    await answerCallback(ctx)
+
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only the Textora admin can confirm refunds.')
+    }
+
+    const refundId = ctx.match[1]
+    const session = userSessions[refundId]
+
+    if (!session || !session.refundMomoNumber) {
+      return ctx.reply('Refund request not found or already processed.')
+    }
+
+    await ctx.reply('Refund marked as completed. Customer has been notified.')
+
+    await bot.telegram.sendMessage(
+      session.chatId,
+      `✅ Your refund has been processed.
+
+Amount: ₵${customSenderIdFeeGHS.toFixed(2)}
+MoMo number: ${session.refundMomoNumber}
+
+Thank you for using Textora SMS.`
+    )
+
+    delete session.refundMomoNumber
+    delete session.refundRequestId
+    session.step = 'waiting_for_sender_choice'
   })
 
   bot.on('text', async (ctx) => {
@@ -566,6 +661,62 @@ Approval can take some time. You can come back later and check this chat for the
       )
     }
 
+    if (session.step === 'waiting_for_refund_momo_number') {
+
+      const contactResult =
+        validateContactsFromText(ctx.message.text)
+
+      if (contactResult.contacts.length !== 1 || contactResult.totalCandidates !== 1) {
+        return ctx.reply(`
+❌ Send one valid Ghana MoMo number for the refund.
+
+Accepted formats:
+233541234567
+0541234567
++233541234567
+        `)
+      }
+
+      session.refundMomoNumber = contactResult.contacts[0]
+      session.step = 'waiting_for_refund_confirmation'
+
+      await ctx.reply(`
+✅ Refund request received.
+
+MoMo number: ${session.refundMomoNumber}
+Amount: ₵${customSenderIdFeeGHS.toFixed(2)}
+
+You will receive your refund soon.
+      `)
+
+      const refundId = session.refundRequestId || `${userId}_${Date.now()}`
+      userSessions[refundId] = session
+
+      return bot.telegram.sendMessage(
+        process.env.DEVELOPER_CHAT_ID,
+        `REFUND REQUEST
+
+Customer chat: ${session.chatId}
+Telegram user: ${userId}
+MoMo number: ${session.refundMomoNumber}
+Amount: ₵${customSenderIdFeeGHS.toFixed(2)}
+
+After refunding, tap the button below.`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: 'Refunded',
+                  callback_data: `confirm_refund_${refundId}`
+                }
+              ]
+            ]
+          }
+        }
+      )
+    }
+
     if (session.step === 'waiting_for_sender_choice') {
       return ctx.reply('Choose a sender ID option using the buttons above.')
     }
@@ -592,6 +743,10 @@ Approval can take some time. You can come back later and check this chat for the
 
     if (session.step === 'waiting_for_payment') {
       return ctx.reply('Open the Paystack checkout link above to complete payment.')
+    }
+
+    if (session.step === 'waiting_for_refund_confirmation') {
+      return ctx.reply('Your refund request has been submitted. You will be notified when it is processed.')
     }
   })
 
