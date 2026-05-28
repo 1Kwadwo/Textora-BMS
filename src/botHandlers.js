@@ -1,3 +1,5 @@
+const fs = require('fs')
+const path = require('path')
 const { extractContactsFromFile, validateContactsFromText } = require('./contacts')
 const { calculateSMSUnits } = require('./pricing')
 const { buildSenderIdKeyboard, validateSenderId } = require('./senderIds')
@@ -6,6 +8,55 @@ const {
   downloadTelegramFile,
   isDeveloperApprovalContext
 } = require('./services/telegram')
+
+const usersFilePath = path.join(__dirname, '..', 'users.json')
+
+function loadUsers() {
+  let users = []
+  try {
+    if (fs.existsSync(usersFilePath)) {
+      users = JSON.parse(fs.readFileSync(usersFilePath, 'utf8'))
+    }
+  } catch (err) {
+    console.log('Error loading users:', err.message)
+  }
+
+  // Seed from sender-ids.json to make sure we don't miss past users
+  try {
+    const senderIdsPath = path.join(__dirname, '..', 'sender-ids.json')
+    if (fs.existsSync(senderIdsPath)) {
+      const senderIds = JSON.parse(fs.readFileSync(senderIdsPath, 'utf8'))
+      Object.keys(senderIds).forEach(id => {
+        const numId = Number(id)
+        if (!isNaN(numId) && !users.includes(numId)) {
+          users.push(numId)
+        }
+      })
+    }
+  } catch (err) {
+    console.log('Error seeding users from sender-ids.json:', err.message)
+  }
+
+  return users
+}
+
+function saveUsers(users) {
+  try {
+    fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2))
+  } catch (err) {
+    console.log('Error saving users:', err.message)
+  }
+}
+
+const loadedUsersSet = new Set(loadUsers())
+
+function rememberUser(userId) {
+  const numId = Number(userId)
+  if (!isNaN(numId) && !loadedUsersSet.has(numId)) {
+    loadedUsersSet.add(numId)
+    saveUsers([...loadedUsersSet])
+  }
+}
 
 function registerBotHandlers({
   axios,
@@ -87,7 +138,41 @@ Now type the SMS message you want to send.
   `)
   }
 
+  bot.use((ctx, next) => {
+    if (ctx.from && ctx.from.id && !ctx.from.is_bot) {
+      rememberUser(ctx.from.id)
+    }
+    return next()
+  })
+
   bot.start((ctx) => {
+    if (ctx.from && ctx.from.id) {
+      rememberUser(ctx.from.id)
+    }
+
+    const keyboard = [
+      [
+        {
+          text: '📨 Send Bulk SMS',
+          callback_data: 'send_bulk'
+        }
+      ],
+      [
+        {
+          text: '📖 Help',
+          callback_data: 'help'
+        }
+      ]
+    ]
+
+    if (isDeveloperApprovalContext(ctx)) {
+      keyboard.push([
+        {
+          text: '📢 Admin Broadcast',
+          callback_data: 'admin_broadcast'
+        }
+      ])
+    }
 
     ctx.reply(
       `🚀 Welcome to Textora SMS
@@ -95,20 +180,7 @@ Now type the SMS message you want to send.
 Choose an option below:`,
       {
         reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: '📨 Send Bulk SMS',
-                callback_data: 'send_bulk'
-              }
-            ],
-            [
-              {
-                text: '📖 Help',
-                callback_data: 'help'
-              }
-            ]
-          ]
+          inline_keyboard: keyboard
         }
       }
     )
@@ -150,6 +222,76 @@ Choose an option below:`,
       `Your Telegram chat ID is:
 ${ctx.chat.id}`
     )
+  })
+
+  bot.action('admin_broadcast', async (ctx) => {
+    await answerCallback(ctx)
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only the Textora admin can send broadcasts.')
+    }
+
+    const userId = ctx.from.id
+    userSessions[userId] = {
+      step: 'waiting_for_broadcast_content',
+      userId,
+      chatId: ctx.chat.id
+    }
+
+    return ctx.reply(
+      '📢 *Admin Broadcast*\n\n' +
+      'Please type the message you want to broadcast, or upload an image/picture with a caption. To cancel, type *cancel*.'
+    )
+  })
+
+  bot.action('confirm_send_broadcast', async (ctx) => {
+    await answerCallback(ctx)
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only the Textora admin can send broadcasts.')
+    }
+
+    const userId = ctx.from.id
+    const session = userSessions[userId]
+    if (!session || session.step !== 'confirming_broadcast') {
+      return ctx.reply('No active broadcast session found.')
+    }
+
+    await ctx.reply('⏳ Dispatching broadcast to all users...')
+
+    const users = [...loadedUsersSet]
+    let successCount = 0
+    let failCount = 0
+
+    for (const targetId of users) {
+      try {
+        if (session.broadcastType === 'photo') {
+          await bot.telegram.sendPhoto(targetId, session.broadcastPhotoId, {
+            caption: session.broadcastCaption
+          })
+        } else {
+          await bot.telegram.sendMessage(targetId, session.broadcastText)
+        }
+        successCount++
+      } catch (err) {
+        console.log(`Failed to send broadcast to ${targetId}:`, err.message)
+        failCount++
+      }
+    }
+
+    delete userSessions[userId]
+
+    return ctx.reply(
+      `✅ *Broadcast Complete*\n\n` +
+      `👥 Total recipients: ${users.length}\n` +
+      `🎉 Successfully sent: ${successCount}\n` +
+      `❌ Failed (blocked/inactive): ${failCount}`
+    )
+  })
+
+  bot.action('cancel_broadcast', async (ctx) => {
+    await answerCallback(ctx)
+    const userId = ctx.from.id
+    delete userSessions[userId]
+    return ctx.reply('Broadcast cancelled.')
   })
 
   bot.action('send_bulk', async (ctx) => {
@@ -492,6 +634,33 @@ Thank you for using Textora SMS.`
 
     if (!session) return
 
+    if (session.step === 'waiting_for_broadcast_content') {
+      if (ctx.message.text.toLowerCase() === 'cancel') {
+        delete userSessions[userId]
+        return ctx.reply('Broadcast cancelled.')
+      }
+
+      session.broadcastType = 'text'
+      session.broadcastText = ctx.message.text
+      session.step = 'confirming_broadcast'
+
+      return ctx.reply(
+        `📝 *Broadcast Preview (Text)*\n\n` +
+        `*Message:*\n${session.broadcastText}\n\n` +
+        `Do you want to send this broadcast to all users?`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '✅ Yes, Send', callback_data: 'confirm_send_broadcast' },
+                { text: '❌ Cancel', callback_data: 'cancel_broadcast' }
+              ]
+            ]
+          }
+        }
+      )
+    }
+
     if (session.step === 'waiting_for_contacts') {
 
       return acceptContacts(
@@ -785,6 +954,36 @@ After refunding, tap the button below.`,
       return ctx.reply(
         'Could not read that contact file.\n\n' +
         (err.message || 'Upload a .xlsx, .csv, .tsv, or .txt file.')
+      )
+    }
+  })
+
+  bot.on('photo', async (ctx) => {
+    const userId = ctx.from.id
+    const session = userSessions[userId]
+    if (!session) return
+
+    if (session.step === 'waiting_for_broadcast_content') {
+      const photo = ctx.message.photo[ctx.message.photo.length - 1]
+      session.broadcastType = 'photo'
+      session.broadcastPhotoId = photo.file_id
+      session.broadcastCaption = ctx.message.caption || ''
+      session.step = 'confirming_broadcast'
+
+      return ctx.reply(
+        `📸 *Broadcast Preview (Image)*\n\n` +
+        (session.broadcastCaption ? `*Caption:*\n${session.broadcastCaption}\n\n` : '') +
+        `Do you want to send this broadcast to all users?`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '✅ Yes, Send', callback_data: 'confirm_send_broadcast' },
+                { text: '❌ Cancel', callback_data: 'cancel_broadcast' }
+              ]
+            ]
+          }
+        }
       )
     }
   })
