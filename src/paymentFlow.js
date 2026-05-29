@@ -1,8 +1,11 @@
 const {
   calculateSMSPrice,
   calculateSMSProfit,
-  calculateTotalSMSUnits
+  calculateTotalSMSUnits,
+  calculateSMSUnits,
+  detectEncoding
 } = require('./pricing')
+const { COST_PER_SMS, SELLING_PRICE_PER_SMS } = require('./config')
 
 function createPaymentFlow({
   alertDeveloper,
@@ -211,6 +214,8 @@ ${reference}`
     const originalContactCount =
       session.contacts.length
 
+    let runningArkeselBalance = arkeselBalance !== null ? arkeselBalance : 0
+
     for (const [index, number] of session.contacts.entries()) {
 
       const result =
@@ -218,7 +223,31 @@ ${reference}`
       const code =
         smsResultCode(result)
 
-      if (code === 'ok') {
+      const msgUnits = calculateSMSUnits(session.message)
+      const wallet_before = runningArkeselBalance
+      const wallet_after = runningArkeselBalance - msgUnits
+      runningArkeselBalance = wallet_after
+
+      const msgId = result?.id || result?.message_id || `msg_${reference}_${index}`
+      const userCharge = (msgUnits * SELLING_PRICE_PER_SMS).toFixed(2)
+      const providerCost = (msgUnits * COST_PER_SMS).toFixed(4)
+
+      console.log(JSON.stringify({
+        message_id: String(msgId),
+        recipient: number,
+        raw_message: session.message,
+        character_count: session.message.length,
+        detected_encoding: detectEncoding(session.message),
+        calculated_segments: msgUnits,
+        user_charge: userCharge,
+        arkesel_charge: providerCost,
+        wallet_before: wallet_before.toFixed(2),
+        wallet_after: wallet_after.toFixed(2),
+        deducted_amount: msgUnits.toFixed(2),
+        timestamp: new Date().toISOString()
+      }))
+
+      if (code === 'ok' || code === '1000' || code === 'success') {
         sentCount += 1
       } else if (code === '105') {
         shouldRetryAfterCreditRefill = true
@@ -237,7 +266,7 @@ ${reference}`
 
         await alertDeveloper(
           `ARKESEL CREDIT RAN OUT WHILE SENDING
-
+ 
 Reference: ${reference}
 Failed recipient: ${number}
 Sent so far: ${sentCount}/${originalContactCount}`
@@ -261,7 +290,7 @@ Sent so far: ${sentCount}/${originalContactCount}`
 
         await alertDeveloper(
           `ARKESEL REJECTED SENDER ID
-
+ 
 Reference: ${reference}
 Sender ID: ${session.senderId}
 Failed recipient: ${number}`

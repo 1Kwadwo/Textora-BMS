@@ -99,10 +99,22 @@ test('Test 2: 161 characters equals 2 SMS units', () => {
   assert.equal(calculateSMSUnits('x'.repeat(161)), 2)
 })
 
-test('Test 3: 320 characters equals at least 2 SMS units', () => {
+test('Test 3: 320 characters equals at least 3 SMS units', () => {
   const { calculateSMSUnits } = loadPricing()
 
-  assert.equal(calculateSMSUnits('x'.repeat(320)), 2)
+  assert.equal(calculateSMSUnits('x'.repeat(320)), 3)
+})
+
+test('Test Unicode 1: 70 characters Unicode equals 1 SMS unit', () => {
+  const { calculateSMSUnits } = loadPricing()
+
+  assert.equal(calculateSMSUnits('🔥' + 'x'.repeat(68)), 1)
+})
+
+test('Test Unicode 2: 71 characters Unicode equals 2 SMS units', () => {
+  const { calculateSMSUnits } = loadPricing()
+
+  assert.equal(calculateSMSUnits('🔥' + 'x'.repeat(69)), 2)
 })
 
 test('Test 4: bulk send calculates 1000 recipients as 1000 SMS units', () => {
