@@ -10,6 +10,20 @@ function loadPricing() {
 }
 
 function createFlow(overrides = {}) {
+  const fs = require('fs')
+  const path = require('path')
+
+  try {
+    const locksDir = path.join(__dirname, '../locks')
+    if (fs.existsSync(locksDir)) {
+      fs.rmSync(locksDir, { recursive: true, force: true })
+    }
+    const smsLogPath = path.join(__dirname, '../src/sms-log.json')
+    if (fs.existsSync(smsLogPath)) {
+      fs.unlinkSync(smsLogPath)
+    }
+  } catch (err) {}
+
   const messages = []
   const alerts = []
   const paymentSessions = {}
@@ -426,7 +440,325 @@ test('Test 19: full system flow passes splitting, billing, wallet, delivery, pro
   assert.equal(context.paymentSessions.ref_1.contacts.length, 2)
   assert.equal(context.paymentSessions.ref_1.deliveredContacts, 2)
 
-  await context.flow.processPaystackPayment('ref_1')
+  await context.flow.processPaystackPayment('ref_1', { isManualResume: true })
   assert.equal(context.paymentSessions.ref_1, undefined)
   assert.equal(call, 5)
 })
+
+test('Test 21: concurrent payment verification calls do not duplicate SMS sending', async () => {
+  let sendSMSCount = 0
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+  const fs = require('fs')
+  const path = require('path')
+
+  // Clean up any stale files before starting
+  const cleanup = () => {
+    try {
+      const locksDir = path.join(__dirname, '../locks')
+      if (fs.existsSync(locksDir)) {
+        fs.rmSync(locksDir, { recursive: true, force: true })
+      }
+      const smsLogPath = path.join(__dirname, '../sms-log.json')
+      if (fs.existsSync(smsLogPath)) {
+        fs.unlinkSync(smsLogPath)
+      }
+    } catch (err) {}
+  }
+  cleanup()
+
+  const context = createFlow({
+    verifyPayment: async () => {
+      await delay(50)
+      return {
+        amount: 5890,
+        currency: 'GHS',
+        status: 'success'
+      }
+    },
+    sendSMS: async (number) => {
+      sendSMSCount += 1
+      await delay(20)
+      return { code: 'ok' }
+    }
+  })
+
+  // Set up session
+  context.paymentSessions.ref_1 = {
+    chatId: 1,
+    contacts: ['233201234567'],
+    message: 'hello',
+    paymentPurpose: 'textora_bulk_sms',
+    price: '58.90',
+    senderId: 'ApprovedID',
+    senderIdType: 'generic',
+    smsUnits: 1,
+    userId: 10,
+    status: 'pending'
+  }
+
+  // Fire concurrent requests
+  await Promise.all([
+    context.flow.processPaystackPayment('ref_1'),
+    context.flow.processPaystackPayment('ref_1')
+  ])
+
+  assert.equal(sendSMSCount, 1)
+  cleanup()
+})
+
+test('Test 22: payment resumption skips already sent SMS via sms-log.json', async () => {
+  const fs = require('fs')
+  const path = require('path')
+
+  const cleanup = () => {
+    try {
+      const locksDir = path.join(__dirname, '../locks')
+      if (fs.existsSync(locksDir)) {
+        fs.rmSync(locksDir, { recursive: true, force: true })
+      }
+      const smsLogPath = path.join(__dirname, '../src/sms-log.json')
+      if (fs.existsSync(smsLogPath)) {
+        fs.unlinkSync(smsLogPath)
+      }
+    } catch (err) {}
+  }
+  cleanup()
+
+  const sentNumbers = []
+  let arkeselBalance = 1000
+
+  let sendSMSMock = async (number) => {
+    sentNumbers.push(number)
+    if (number === '233202') {
+      // Simulate credit ran out (105)
+      return { code: '105' }
+    }
+    return { code: 'ok' }
+  }
+
+  const context = createFlow({
+    checkArkeselBalance: async () => arkeselBalance,
+    verifyPayment: async () => ({
+      amount: 5890,
+      currency: 'GHS',
+      status: 'success'
+    }),
+    sendSMS: async (number) => {
+      return await sendSMSMock(number)
+    }
+  })
+
+  // Set up session with 3 contacts
+  context.paymentSessions.ref_1 = {
+    chatId: 1,
+    contacts: ['233201', '233202', '233203'],
+    message: 'hello',
+    paymentPurpose: 'textora_bulk_sms',
+    price: '58.90',
+    senderId: 'ApprovedID',
+    senderIdType: 'generic',
+    smsUnits: 1,
+    userId: 10,
+    status: 'pending'
+  }
+
+  // First run: 233201 succeeds, 233202 fails with 105, 233203 is not reached
+  await context.flow.processPaystackPayment('ref_1')
+
+  assert.equal(sentNumbers.length, 2) // Tried 233201 and 233202
+  assert.deepEqual(sentNumbers, ['233201', '233202'])
+  assert.equal(context.paymentSessions.ref_1.status, 'paused')
+  assert.equal(context.paymentSessions.ref_1.step, 'waiting_for_arkesel_credit_refill')
+
+  // Clear sent log record tracking
+  sentNumbers.length = 0
+
+  // Now, the developer manual resume is triggered. Update mock to succeed
+  sendSMSMock = async (number) => {
+    sentNumbers.push(number)
+    return { code: 'ok' }
+  }
+
+
+  // Trigger manual resume
+  await context.flow.processPaystackPayment('ref_1', { isManualResume: true })
+
+  // Since 233201 is in sms-log.json as 'sent', it should skip 233201!
+  // It should try to send 233202 and 233203.
+  assert.equal(sentNumbers.length, 2)
+  assert.deepEqual(sentNumbers, ['233202', '233203'])
+  assert.equal(context.paymentSessions.ref_1, undefined) // Deleted on success
+
+  cleanup()
+})
+
+test('Test 23: recovery worker recovers stuck processing sessions', async () => {
+  const fs = require('fs')
+  const path = require('path')
+  const { runRecoveryWorker } = require('../src/recoveryWorker')
+  const { reserveSmsLog, markSmsLogSent } = require('../src/stores/smsLogger')
+
+  const paymentSessionsFile = path.join(__dirname, '../payment-sessions.json')
+
+  const cleanup = () => {
+    try {
+      const locksDir = path.join(__dirname, '../locks')
+      if (fs.existsSync(locksDir)) {
+        fs.rmSync(locksDir, { recursive: true, force: true })
+      }
+      const smsLogPath = path.join(__dirname, '../src/sms-log.json')
+      if (fs.existsSync(smsLogPath)) {
+        fs.unlinkSync(smsLogPath)
+      }
+      if (fs.existsSync(paymentSessionsFile)) {
+        fs.unlinkSync(paymentSessionsFile)
+      }
+    } catch (err) {}
+  }
+  cleanup()
+
+  // Initialize fake sessions on disk
+  const mockSessions = {
+    ref_stuck_success: {
+      contacts: ['233201'],
+      message: 'hello',
+      status: 'processing',
+      processingTimestamp: Date.now() - 130000, // stuck (> 120s)
+      userId: 10
+    },
+    ref_stuck_fail: {
+      contacts: ['233202'],
+      message: 'hello',
+      status: 'processing',
+      processingTimestamp: Date.now() - 130000, // stuck (> 120s)
+      userId: 11
+    }
+  }
+  fs.writeFileSync(paymentSessionsFile, JSON.stringify(mockSessions, null, 2), 'utf8')
+
+  // Setup sms logs: ref_stuck_success is completed, ref_stuck_fail is not
+  await markSmsLogSent('ref_stuck_success', '233201')
+
+  let recordedResult = null
+  const mockStore = {
+    paymentSessionStorePath: paymentSessionsFile,
+    getSession: async (ref) => {
+      const current = JSON.parse(fs.readFileSync(paymentSessionsFile, 'utf8'))
+      return current[ref] || null
+    },
+    updateSession: async (ref, fn) => {
+      const current = JSON.parse(fs.readFileSync(paymentSessionsFile, 'utf8'))
+      if (current[ref]) {
+        current[ref] = await fn(current[ref])
+        fs.writeFileSync(paymentSessionsFile, JSON.stringify(current, null, 2), 'utf8')
+      }
+    },
+    forgetSession: async (ref) => {
+      const current = JSON.parse(fs.readFileSync(paymentSessionsFile, 'utf8'))
+      delete current[ref]
+      fs.writeFileSync(paymentSessionsFile, JSON.stringify(current, null, 2), 'utf8')
+    },
+    forgetPaymentSession: async (ref) => {
+      const current = JSON.parse(fs.readFileSync(paymentSessionsFile, 'utf8'))
+      delete current[ref]
+      fs.writeFileSync(paymentSessionsFile, JSON.stringify(current, null, 2), 'utf8')
+    }
+  }
+
+  // Run the recovery worker
+  await runRecoveryWorker({
+    paymentSessionStorePath: paymentSessionsFile,
+    getSession: mockStore.getSession,
+    updateSession: mockStore.updateSession,
+    forgetSession: mockStore.forgetSession,
+    recordDeliveryResult: async (session) => {
+      recordedResult = session
+    }
+  })
+
+  // Read end database file status
+  const currentSessions = JSON.parse(fs.readFileSync(paymentSessionsFile, 'utf8'))
+
+  // ref_stuck_success should have completed and deleted
+  assert.equal(currentSessions.ref_stuck_success, undefined)
+  assert.notEqual(recordedResult, null)
+  assert.equal(recordedResult.status, 'sent')
+
+  // ref_stuck_fail should have transitioned to paused
+  assert.notEqual(currentSessions.ref_stuck_fail, undefined)
+  assert.equal(currentSessions.ref_stuck_fail.status, 'paused')
+  assert.equal(currentSessions.ref_stuck_fail.step, 'waiting_for_arkesel_credit_refill')
+
+  cleanup()
+})
+
+test('Test 24: expired SMS reservations are retried', async () => {
+  const fs = require('fs')
+  const path = require('path')
+  const { reserveSmsLog, getSmsLogStatus } = require('../src/stores/smsLogger')
+  const { withLock } = require('../src/lockManager')
+
+  const cleanup = () => {
+    try {
+      const locksDir = path.join(__dirname, '../locks')
+      if (fs.existsSync(locksDir)) {
+        fs.rmSync(locksDir, { recursive: true, force: true })
+      }
+      const smsLogPath = path.join(__dirname, '../src/sms-log.json')
+      if (fs.existsSync(smsLogPath)) {
+        fs.unlinkSync(smsLogPath)
+      }
+    } catch (err) {}
+  }
+  cleanup()
+
+  const sentNumbers = []
+  const context = createFlow({
+    verifyPayment: async () => ({
+      amount: 5890,
+      currency: 'GHS',
+      status: 'success'
+    }),
+    sendSMS: async (number) => {
+      sentNumbers.push(number)
+      return { code: 'ok' }
+    }
+  })
+
+  // Set up session
+  context.paymentSessions.ref_expired = {
+    chatId: 1,
+    contacts: ['233201'],
+    message: 'hello',
+    paymentPurpose: 'textora_bulk_sms',
+    price: '58.90',
+    senderId: 'ApprovedID',
+    senderIdType: 'generic',
+    smsUnits: 1,
+    userId: 10,
+    status: 'pending'
+  }
+
+  // Pre-seed an expired SMS reservation in sms-log.json (> 120s old)
+  const smsLogPath = path.join(__dirname, '../src/sms-log.json')
+  const staleData = {
+    'ref_expired:233201': {
+      status: 'reserved',
+      timestamp: Date.now() - 130000 // expired
+    }
+  }
+  fs.writeFileSync(smsLogPath, JSON.stringify(staleData, null, 2), 'utf8')
+
+  // Run payment processor
+  await context.flow.processPaystackPayment('ref_expired')
+
+  // Since it was expired, it must NOT skip, and should call sendSMS!
+  assert.equal(sentNumbers.length, 1)
+  assert.equal(sentNumbers[0], '233201')
+
+  cleanup()
+})
+
+
+

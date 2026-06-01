@@ -6,6 +6,13 @@ const {
   detectEncoding
 } = require('./pricing')
 const { COST_PER_SMS, SELLING_PRICE_PER_SMS } = require('./config')
+const { withLock } = require('./lockManager')
+const {
+  getSmsLogStatus,
+  reserveSmsLog,
+  markSmsLogSent,
+  markSmsLogFailed
+} = require('./stores/smsLogger')
 
 function createPaymentFlow({
   alertDeveloper,
@@ -31,6 +38,37 @@ function createPaymentFlow({
 
   const fulfilledPayments =
     new Set()
+
+  // Helper functions for reading/modifying payment sessions with fallback support for in-memory object (tests)
+  const getSession = async (reference) => {
+    if (typeof paymentSessions.getSession === 'function') {
+      return await paymentSessions.getSession(reference)
+    }
+    return paymentSessions[reference] || null
+  }
+
+  const updateSession = async (reference, updateFn) => {
+    if (typeof paymentSessions.updateSession === 'function') {
+      await paymentSessions.updateSession(reference, updateFn)
+    } else {
+      const session = paymentSessions[reference]
+      if (session) {
+        const res = await updateFn(session)
+        if (res !== undefined) {
+          paymentSessions[reference] = res
+        }
+      }
+    }
+  }
+
+  const forgetSession = async (reference) => {
+    if (typeof paymentSessions.forgetSession === 'function') {
+      await paymentSessions.forgetSession(reference)
+    } else {
+      delete paymentSessions[reference]
+    }
+    forgetPaymentSession(reference)
+  }
 
   function smsResultCode(result) {
     if (typeof result === 'string' || typeof result === 'number') {
@@ -76,7 +114,7 @@ ${reference}`
   async function requestSenderIdApprovalAfterFee(reference, session) {
 
     fulfilledPayments.add(reference)
-    forgetPaymentSession(reference)
+    await forgetSession(reference)
 
     session.senderIdFeePaid = true
     session.senderVerificationStatus = 'pending'
@@ -128,37 +166,10 @@ Pending manual Textora verification`
       return
     }
 
-    const session =
-      paymentSessions[reference]
+    const session = await getSession(reference)
 
     if (!session) {
       console.log('PAYMENT SESSION NOT FOUND:', reference)
-      return
-    }
-
-    const payment =
-      await verifyPayment(reference)
-
-    if (payment?.status !== 'success') {
-
-      await bot.telegram.sendMessage(
-        session.chatId,
-        `❌ Payment not completed.
-
-Status:
-${payment?.status || 'unknown'}
-
-Message:
-${payment?.gateway_response || payment?.message || 'Please try again.'}`
-      )
-
-      return
-    }
-
-    if (!paymentAmountMatches(payment, session)) {
-      session.paymentAmount = payment.amount
-      session.paymentCurrency = payment.currency
-      await notifyPaymentMismatch(reference, session, 'SMS order')
       return
     }
 
@@ -170,7 +181,10 @@ ${payment?.gateway_response || payment?.message || 'Please try again.'}`
 
     if (session.senderIdType === 'generic' && genericSenderId) {
       session.senderId = genericSenderId
-      rememberPaymentSession(reference, session)
+      await updateSession(reference, s => {
+        s.senderId = genericSenderId
+        return s
+      })
     }
 
     const arkeselBalance =
@@ -203,6 +217,10 @@ Reference:
 ${reference}`
       )
 
+      await updateSession(reference, s => {
+        s.step = 'waiting_for_arkesel_credit_refill'
+        return s
+      })
       return
     }
 
@@ -217,11 +235,36 @@ ${reference}`
     let runningArkeselBalance = arkeselBalance !== null ? arkeselBalance : 0
 
     for (const [index, number] of session.contacts.entries()) {
+      // 1. Check SMS log for duplicate
+      const logEntry = await getSmsLogStatus(reference, number)
 
-      const result =
-        await sendSMS(number, session.message, session.senderId)
-      const code =
-        smsResultCode(result)
+      if (logEntry) {
+        if (logEntry.status === 'sent') {
+          console.log(`SMS already sent to ${number} for ${reference}. Skipping.`)
+          sentCount += 1
+          continue
+        }
+        if (logEntry.status === 'reserved') {
+          const isFresh = (Date.now() - logEntry.timestamp) < 120000
+          if (isFresh) {
+            console.log(`SMS already reserved/sending to ${number} for ${reference}. Skipping.`)
+            sentCount += 1
+            continue
+          }
+        }
+      }
+
+      // 2. Reserve SMS before sending
+      await reserveSmsLog(reference, number)
+
+      let result
+      try {
+        result = await sendSMS(number, session.message, session.senderId)
+      } catch (err) {
+        result = { code: 'failed', message: err.message }
+      }
+
+      const code = smsResultCode(result)
 
       const msgUnits = calculateSMSUnits(session.message)
       const wallet_before = runningArkeselBalance
@@ -248,21 +291,21 @@ ${reference}`
       }))
 
       if (code === 'ok' || code === '1000' || code === 'success') {
+        await markSmsLogSent(reference, number)
         sentCount += 1
       } else if (code === '105') {
+        await markSmsLogFailed(reference, number)
         shouldRetryAfterCreditRefill = true
-        session.contacts =
-          session.contacts.slice(index)
-        session.deliveredContacts =
-          (session.deliveredContacts || 0) + sentCount
-        session.failedContacts =
-          session.failedContacts || 0
-        session.billedSMS =
-          session.deliveredContacts * session.smsUnits
-        session.profit =
-          calculateSMSProfit(session.deliveredContacts, session.smsUnits)
-        session.step =
-          'waiting_for_arkesel_credit_refill'
+        
+        await updateSession(reference, s => {
+          s.contacts = s.contacts.slice(index)
+          s.deliveredContacts = (s.deliveredContacts || 0) + sentCount
+          s.failedContacts = s.failedContacts || 0
+          s.billedSMS = s.deliveredContacts * s.smsUnits
+          s.profit = calculateSMSProfit(s.deliveredContacts, s.smsUnits)
+          s.step = 'waiting_for_arkesel_credit_refill'
+          return s
+        })
 
         await alertDeveloper(
           `ARKESEL CREDIT RAN OUT WHILE SENDING
@@ -274,19 +317,18 @@ Sent so far: ${sentCount}/${originalContactCount}`
         failureReason = 'Textora SMS credit ran out while sending.'
         break
       } else if (code === '106') {
+        await markSmsLogFailed(reference, number)
         shouldRetryAfterSenderIdFix = true
-        session.contacts =
-          session.contacts.slice(index)
-        session.deliveredContacts =
-          (session.deliveredContacts || 0) + sentCount
-        session.failedContacts =
-          session.failedContacts || 0
-        session.billedSMS =
-          session.deliveredContacts * session.smsUnits
-        session.profit =
-          calculateSMSProfit(session.deliveredContacts, session.smsUnits)
-        session.step =
-          'waiting_for_sender_id_fix'
+        
+        await updateSession(reference, s => {
+          s.contacts = s.contacts.slice(index)
+          s.deliveredContacts = (s.deliveredContacts || 0) + sentCount
+          s.failedContacts = s.failedContacts || 0
+          s.billedSMS = s.deliveredContacts * s.smsUnits
+          s.profit = calculateSMSProfit(s.deliveredContacts, s.smsUnits)
+          s.step = 'waiting_for_sender_id_fix'
+          return s
+        })
 
         await alertDeveloper(
           `ARKESEL REJECTED SENDER ID
@@ -298,23 +340,25 @@ Failed recipient: ${number}`
         failureReason = 'Textora rejected the sender ID.'
         break
       } else {
+        await markSmsLogFailed(reference, number)
         failedCount += 1
       }
     }
 
+    const currentSession = await getSession(reference)
+
     if (shouldRetryAfterCreditRefill) {
-      userSessions[session.userId] = session
-      rememberPaymentSession(reference, session)
-      await recordDeliveryResult(session)
+      userSessions[currentSession.userId] = currentSession
+      await recordDeliveryResult(currentSession)
 
       await bot.telegram.sendMessage(
-        session.chatId,
+        currentSession.chatId,
         `✅ Payment confirmed.
 
 Sender ID:
-${session.senderId}
+${currentSession.senderId}
 
-SMS sent to ${session.deliveredContacts} contacts so far.
+SMS sent to ${currentSession.deliveredContacts} contacts so far.
 
 ${failureReason}
 Textora support has been notified. The remaining paid messages will continue after SMS credit is refilled.`
@@ -324,18 +368,17 @@ Textora support has been notified. The remaining paid messages will continue aft
     }
 
     if (shouldRetryAfterSenderIdFix) {
-      userSessions[session.userId] = session
-      rememberPaymentSession(reference, session)
-      await recordDeliveryResult(session)
+      userSessions[currentSession.userId] = currentSession
+      await recordDeliveryResult(currentSession)
 
       await bot.telegram.sendMessage(
-        session.chatId,
+        currentSession.chatId,
         `✅ Payment confirmed.
 
 Sender ID:
-${session.senderId}
+${currentSession.senderId}
 
-SMS sent to ${session.deliveredContacts} contacts so far.
+SMS sent to ${currentSession.deliveredContacts} contacts so far.
 
 ${failureReason}
 Textora support has been notified. The remaining paid messages can be retried after the sender ID is fixed.`
@@ -344,84 +387,165 @@ Textora support has been notified. The remaining paid messages can be retried af
       return
     }
 
-    session.deliveredContacts =
-      (session.deliveredContacts || 0) + sentCount
-    session.failedContacts =
-      (session.failedContacts || 0) + failedCount
-    session.billedSMS =
-      session.deliveredContacts * session.smsUnits
-    session.profit =
-      calculateSMSProfit(session.deliveredContacts, session.smsUnits)
+    await updateSession(reference, s => {
+      s.deliveredContacts = (s.deliveredContacts || 0) + sentCount
+      s.failedContacts = (s.failedContacts || 0) + failedCount
+      s.billedSMS = s.deliveredContacts * s.smsUnits
+      s.profit = calculateSMSProfit(s.deliveredContacts, s.smsUnits)
+      return s
+    })
 
+    const finalSession = await getSession(reference)
     fulfilledPayments.add(reference)
-    await recordDeliveryResult(session)
-    delete userSessions[session.userId]
-    forgetPaymentSession(reference)
+    await recordDeliveryResult(finalSession)
+    delete userSessions[finalSession.userId]
+    await forgetSession(reference)
 
     await bot.telegram.sendMessage(
-      session.chatId,
+      finalSession.chatId,
       `✅ Payment confirmed.
 
 Sender ID:
-${session.senderId}
+${finalSession.senderId}
 
-SMS sent to ${session.deliveredContacts}/${session.deliveredContacts + session.failedContacts} contacts.${
+SMS sent to ${finalSession.deliveredContacts}/${finalSession.deliveredContacts + finalSession.failedContacts} contacts.${
   failureReason ? `\n\n${failureReason}\nTextora support has been notified.` : ''
 }`
     )
   }
 
-  async function processPaystackPayment(reference) {
+  async function processPaystackPayment(reference, options = {}) {
+    const { isManualResume = false } = options
 
     if (fulfilledPayments.has(reference)) {
       return
     }
 
-    const session =
-      paymentSessions[reference]
+    // STEP 1 — Claim Phase (Inside Transaction Lock)
+    let session = null
+    const eligible = await withLock(`tx_${reference}`, async () => {
+      session = await getSession(reference)
+      if (!session) {
+        console.log('PAYMENT SESSION NOT FOUND:', reference)
+        return false
+      }
 
-    if (!session) {
-      console.log('PAYMENT SESSION NOT FOUND:', reference)
+      // Read status from state machine
+      const status = session.status || 'pending'
+
+      if (isManualResume) {
+        // Only paused is allowed for manual resume
+        if (status !== 'paused') {
+          console.log(`Manual resume skipped: Transaction status is ${status}, expected paused.`)
+          return false
+        }
+      } else {
+        // Webhooks and standard button clicks must only process pending
+        if (status !== 'pending') {
+          console.log(`Auto-process skipped: Transaction status is ${status}, expected pending.`)
+          return false
+        }
+      }
+
+      // Transition to processing
+      await updateSession(reference, s => {
+        s.status = 'processing'
+        s.processingTimestamp = Date.now()
+        return s
+      })
+      return true
+    })
+
+    if (!eligible) {
       return
     }
 
-    const payment =
-      await verifyPayment(reference)
+    // Refresh local variable with processing status
+    session = await getSession(reference)
 
-    if (payment?.status !== 'success') {
+    // STEP 2 — Execution Phase (No Lock)
+    let executionError = null
+    try {
+      const payment = await verifyPayment(reference)
 
-      await bot.telegram.sendMessage(
-        session.chatId,
-        `❌ Payment not completed.
+      if (payment?.status !== 'success') {
+        await bot.telegram.sendMessage(
+          session.chatId,
+          `❌ Payment not completed.
 
 Status:
 ${payment?.status || 'unknown'}
 
 Message:
 ${payment?.gateway_response || payment?.message || 'Please try again.'}`
-      )
+        )
+        throw new Error(`Paystack verification failed with status: ${payment?.status}`)
+      }
 
-      return
+      if (!paymentAmountMatches(payment, session)) {
+        session.paymentAmount = payment.amount
+        session.paymentCurrency = payment.currency
+        await notifyPaymentMismatch(
+          reference,
+          session,
+          session.paymentPurpose === 'sender_id_fee'
+            ? 'sender ID fee'
+            : 'SMS order'
+        )
+        throw new Error('Payment amount mismatch')
+      }
+
+      if (session.paymentPurpose === 'sender_id_fee') {
+        await requestSenderIdApprovalAfterFee(reference, session)
+      } else {
+        await sendBulkSMSForPayment(reference)
+      }
+    } catch (err) {
+      executionError = err
     }
 
-    if (!paymentAmountMatches(payment, session)) {
-      session.paymentAmount = payment.amount
-      session.paymentCurrency = payment.currency
-      await notifyPaymentMismatch(
-        reference,
-        session,
-        session.paymentPurpose === 'sender_id_fee'
-          ? 'sender ID fee'
-          : 'SMS order'
-      )
-      return
-    }
+    // STEP 3 — Final Commit Phase (Re-lock)
+    await withLock(`tx_${reference}`, async () => {
+      const currentSession = await getSession(reference)
+      if (!currentSession) {
+        // If it was already completed and deleted, do nothing
+        return
+      }
 
-    if (session.paymentPurpose === 'sender_id_fee') {
-      return requestSenderIdApprovalAfterFee(reference, session)
-    }
+      // Verify that no other process has tampered with the status
+      if (currentSession.status !== 'processing') {
+        console.log(`Duplicate commit avoided. Status is ${currentSession.status}`)
+        return
+      }
 
-    return sendBulkSMSForPayment(reference)
+      if (executionError) {
+        const isRefill = currentSession.step === 'waiting_for_arkesel_credit_refill'
+        const isSenderFix = currentSession.step === 'waiting_for_sender_id_fix'
+
+        const nextStatus = (isRefill || isSenderFix) ? 'paused' : 'failed'
+        await updateSession(reference, s => {
+          s.status = nextStatus
+          return s
+        })
+      } else {
+        // If not deleted already, set it to sent
+        const isRefill = currentSession.step === 'waiting_for_arkesel_credit_refill'
+        const isSenderFix = currentSession.step === 'waiting_for_sender_id_fix'
+
+        if (isRefill || isSenderFix) {
+          await updateSession(reference, s => {
+            s.status = 'paused'
+            return s
+          })
+        } else {
+          // Final immutable state
+          await updateSession(reference, s => {
+            s.status = 'sent'
+            return s
+          })
+        }
+      }
+    })
   }
 
   async function createCheckout(ctx, userId, session) {
@@ -450,6 +574,7 @@ ${payment?.gateway_response || payment?.message || 'Please try again.'}`
     session.senderIdFee = 0
     session.paymentPurpose = 'textora_bulk_sms'
     session.step = 'waiting_for_payment'
+    session.status = 'pending'
 
     await ctx.reply(`
 📊 SMS SUMMARY
@@ -487,9 +612,10 @@ SMS Cost:
       session.paymentReference =
         payment.reference
 
-      rememberPaymentSession(payment.reference, {
+      await rememberPaymentSession(payment.reference, {
         ...session,
-        paymentReference: payment.reference
+        paymentReference: payment.reference,
+        status: 'pending'
       })
 
       return ctx.reply(
@@ -544,6 +670,7 @@ SMS Cost:
 
     session.step =
       'waiting_for_sender_id_fee_payment'
+    session.status = 'pending'
 
     await ctx.reply(`
 Custom sender ID fee:
@@ -569,9 +696,10 @@ This checkout is only for the one-time sender ID fee. The SMS checkout will be c
       session.senderIdFeePaymentReference =
         payment.reference
 
-      rememberPaymentSession(payment.reference, {
+      await rememberPaymentSession(payment.reference, {
         ...session,
-        senderIdFeePaymentReference: payment.reference
+        senderIdFeePaymentReference: payment.reference,
+        status: 'pending'
       })
 
       return ctx.reply(

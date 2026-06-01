@@ -224,6 +224,23 @@ ${ctx.chat.id}`
     )
   })
 
+  bot.command('resume', async (ctx) => {
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only Textora admin can resume transactions.')
+    }
+    const reference = ctx.message.text.split(' ')[1]
+    if (!reference) {
+      return ctx.reply('Usage: /resume <transaction_reference>')
+    }
+    await ctx.reply(`⏳ Attempting manual resume for transaction: ${reference}...`)
+    try {
+      await paymentProcessor(reference, { isManualResume: true })
+    } catch (err) {
+      await ctx.reply(`❌ Resume failed: ${err.message}`)
+    }
+  })
+
+
   bot.action('admin_broadcast', async (ctx) => {
     await answerCallback(ctx)
     if (!isDeveloperApprovalContext(ctx)) {

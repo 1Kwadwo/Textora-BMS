@@ -20,6 +20,7 @@ const { createPaystackService } = require('./src/services/paystack')
 const { createPaymentSessionStore } = require('./src/stores/paymentSessions')
 const { createSenderIdStore } = require('./src/stores/senderIds')
 const { startPaystackWebhookServer } = require('./src/webhook')
+const { runRecoveryWorker } = require('./src/recoveryWorker')
 
 validateRuntimeConfig()
 
@@ -98,6 +99,16 @@ startPaystackWebhookServer({
   paystackWebhookPath,
   processPaystackPayment: paymentFlow.processPaystackPayment,
   secretKey: process.env.PAYSTACK_SECRET_KEY
+})
+
+runRecoveryWorker({
+  paymentSessionStorePath,
+  getSession: paymentSessionStore.getSession,
+  updateSession: paymentSessionStore.updateSession,
+  forgetSession: paymentSessionStore.forgetSession,
+  recordDeliveryResult: async () => {}
+}).catch(err => {
+  console.log('CRASH RECOVERY WORKER ERROR:', err.message)
 })
 
 bot.launch()
