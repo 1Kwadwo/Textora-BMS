@@ -1,5 +1,5 @@
 .env
-sender-ids.json
 pending-sender-id-sessions.json
 payment-sessions.json
 node_modules/
+

@@ -19,51 +19,51 @@ function writeJsonFile(filePath, value) {
 
 function createSenderIdStore({ senderIdStorePath, pendingSenderIdStorePath }) {
 
-  const verifiedSenderIds =
-    readJsonFile(senderIdStorePath, {})
+  const verifiedSenderIds = {}
+  const pendingSenderIdSessions = {}
 
-  const pendingSenderIdSessions =
-    readJsonFile(pendingSenderIdStorePath, {})
-
-  function saveVerifiedSenderIds() {
-
-    writeJsonFile(senderIdStorePath, verifiedSenderIds)
+  function syncVerifiedSenderIds() {
+    const data = readJsonFile(senderIdStorePath, {})
+    Object.keys(verifiedSenderIds).forEach(key => delete verifiedSenderIds[key])
+    Object.assign(verifiedSenderIds, data)
   }
 
-  function getVerifiedSenderIds(userId) {
+  function syncPendingSenderIdSessions() {
+    const data = readJsonFile(pendingSenderIdStorePath, {})
+    Object.keys(pendingSenderIdSessions).forEach(key => delete pendingSenderIdSessions[key])
+    Object.assign(pendingSenderIdSessions, data)
+  }
 
+  // Initial load
+  syncVerifiedSenderIds()
+  syncPendingSenderIdSessions()
+
+  function getVerifiedSenderIds(userId) {
+    syncVerifiedSenderIds()
     return verifiedSenderIds[String(userId)] || []
   }
 
   function rememberVerifiedSenderId(userId, senderId) {
-
-    const key =
-      String(userId)
-
-    const current =
-      verifiedSenderIds[key] || []
+    syncVerifiedSenderIds()
+    const key = String(userId)
+    const current = verifiedSenderIds[key] || []
 
     if (!current.includes(senderId)) {
       verifiedSenderIds[key] = [...current, senderId]
-      saveVerifiedSenderIds()
+      writeJsonFile(senderIdStorePath, verifiedSenderIds)
     }
   }
 
-  function savePendingSenderIdSessions() {
-
+  function rememberPendingSenderIdSession(requestId, session) {
+    syncPendingSenderIdSessions()
+    pendingSenderIdSessions[requestId] = session
     writeJsonFile(pendingSenderIdStorePath, pendingSenderIdSessions)
   }
 
-  function rememberPendingSenderIdSession(requestId, session) {
-
-    pendingSenderIdSessions[requestId] = session
-    savePendingSenderIdSessions()
-  }
-
   function forgetPendingSenderIdSession(requestId) {
-
+    syncPendingSenderIdSessions()
     delete pendingSenderIdSessions[requestId]
-    savePendingSenderIdSessions()
+    writeJsonFile(pendingSenderIdStorePath, pendingSenderIdSessions)
   }
 
   return {
@@ -78,3 +78,4 @@ function createSenderIdStore({ senderIdStorePath, pendingSenderIdStorePath }) {
 module.exports = {
   createSenderIdStore
 }
+
