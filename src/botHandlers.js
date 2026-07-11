@@ -240,6 +240,22 @@ ${ctx.chat.id}`
     }
   })
 
+  bot.command('bypass', async (ctx) => {
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only Textora admin can bypass payment verification.')
+    }
+    const reference = ctx.message.text.split(' ')[1]
+    if (!reference) {
+      return ctx.reply('Usage: /bypass <transaction_reference>')
+    }
+    await ctx.reply(`⏳ Attempting bypass verification for transaction: ${reference}...`)
+    try {
+      await paymentProcessor(reference, { isBypassVerification: true })
+    } catch (err) {
+      await ctx.reply(`❌ Bypass failed: ${err.message}`)
+    }
+  })
+
 
   bot.action('admin_broadcast', async (ctx) => {
     await answerCallback(ctx)

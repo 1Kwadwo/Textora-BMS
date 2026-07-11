@@ -415,7 +415,7 @@ SMS sent to ${finalSession.deliveredContacts}/${finalSession.deliveredContacts +
   }
 
   async function processPaystackPayment(reference, options = {}) {
-    const { isManualResume = false } = options
+    const { isManualResume = false, isBypassVerification = false } = options
 
     if (fulfilledPayments.has(reference)) {
       return
@@ -466,7 +466,16 @@ SMS sent to ${finalSession.deliveredContacts}/${finalSession.deliveredContacts +
     // STEP 2 — Execution Phase (No Lock)
     let executionError = null
     try {
-      const payment = await verifyPayment(reference)
+      let payment
+      if (isBypassVerification) {
+        payment = {
+          status: 'success',
+          amount: Math.round(Number(session.price) * 100),
+          currency: 'GHS'
+        }
+      } else {
+        payment = await verifyPayment(reference)
+      }
 
       if (payment?.status !== 'success') {
         await bot.telegram.sendMessage(
