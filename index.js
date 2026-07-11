@@ -71,7 +71,7 @@ const paymentFlow =
     forgetPaymentSession: paymentSessionStore.forgetPaymentSession,
     initializePayment: paystack.initializePayment,
     genericSenderId,
-    paymentSessions: paymentSessionStore.paymentSessions,
+    paymentSessions: paymentSessionStore,
     rememberPendingSenderIdSession: senderIdStore.rememberPendingSenderIdSession,
     rememberPaymentSession: paymentSessionStore.rememberPaymentSession,
     requestManualSenderIdApproval: developer.requestManualSenderIdApproval,

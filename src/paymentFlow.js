@@ -434,9 +434,9 @@ SMS sent to ${finalSession.deliveredContacts}/${finalSession.deliveredContacts +
       const status = session.status || 'pending'
 
       if (isManualResume) {
-        // Only paused is allowed for manual resume
-        if (status !== 'paused') {
-          console.log(`Manual resume skipped: Transaction status is ${status}, expected paused.`)
+        // Allow paused or pending status for manual resume
+        if (status !== 'paused' && status !== 'pending') {
+          console.log(`Manual resume skipped: Transaction status is ${status}, expected paused or pending.`)
           return false
         }
       } else {
