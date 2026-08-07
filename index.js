@@ -111,9 +111,53 @@ runRecoveryWorker({
   console.log('CRASH RECOVERY WORKER ERROR:', err.message)
 })
 
-bot.launch()
+let retryTimeout = null
+function retryLaunch() {
+  if (retryTimeout) return
+  console.log('Scheduling bot launch retry in 10 seconds...')
+  retryTimeout = setTimeout(async () => {
+    retryTimeout = null
+    try {
+      bot.stop()
+    } catch (e) {}
+    await startBot()
+  }, 10000)
+}
 
-console.log('🚀 Textora Bot Running...')
+async function startBot() {
+  try {
+    await bot.launch()
+    console.log('🚀 Textora Bot Running...')
+  } catch (err) {
+    console.error('Error launching bot:', err.message)
+    if (err.message && err.message.includes('409')) {
+      console.log('Conflict (409) detected during launch.')
+    }
+    retryLaunch()
+  }
+}
+
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err)
+  if (err && err.message && err.message.includes('409')) {
+    console.log('Telegram 409 conflict detected (terminated by other getUpdates). Retrying launch...')
+    retryLaunch()
+  } else {
+    process.exit(1)
+  }
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION at:', promise, 'reason:', reason)
+  const message = reason?.message || String(reason)
+  if (message.includes('409')) {
+    console.log('Telegram 409 conflict detected (unhandled rejection). Retrying launch...')
+    retryLaunch()
+  }
+})
+
+startBot()
 
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
+
