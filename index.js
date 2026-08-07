@@ -1,5 +1,6 @@
 require('dotenv').config()
 
+const os = require('os')
 const { Telegraf } = require('telegraf')
 const axios = require('axios')
 
@@ -114,7 +115,7 @@ runRecoveryWorker({
 let retryTimeout = null
 function retryLaunch() {
   if (retryTimeout) return
-  console.log('Scheduling bot launch retry in 10 seconds...')
+  console.log(`[${os.hostname()}][PID:${process.pid}] Scheduling bot launch retry in 10 seconds...`)
   retryTimeout = setTimeout(async () => {
     retryTimeout = null
     try {
@@ -127,20 +128,20 @@ function retryLaunch() {
 async function startBot() {
   try {
     await bot.launch()
-    console.log('🚀 Textora Bot Running...')
+    console.log(`[${os.hostname()}][PID:${process.pid}] 🚀 Textora Bot Running...`)
   } catch (err) {
-    console.error('Error launching bot:', err.message)
+    console.error(`[${os.hostname()}][PID:${process.pid}] Error launching bot:`, err.message)
     if (err.message && err.message.includes('409')) {
-      console.log('Conflict (409) detected during launch.')
+      console.log(`[${os.hostname()}][PID:${process.pid}] Conflict (409) detected during launch.`)
     }
     retryLaunch()
   }
 }
 
 process.on('uncaughtException', (err) => {
-  console.error('UNCAUGHT EXCEPTION:', err)
+  console.error(`[${os.hostname()}][PID:${process.pid}] UNCAUGHT EXCEPTION:`, err)
   if (err && err.message && err.message.includes('409')) {
-    console.log('Telegram 409 conflict detected (terminated by other getUpdates). Retrying launch...')
+    console.log(`[${os.hostname()}][PID:${process.pid}] Telegram 409 conflict detected (terminated by other getUpdates). Retrying launch...`)
     retryLaunch()
   } else {
     process.exit(1)
@@ -148,10 +149,10 @@ process.on('uncaughtException', (err) => {
 })
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('UNHANDLED REJECTION at:', promise, 'reason:', reason)
+  console.error(`[${os.hostname()}][PID:${process.pid}] UNHANDLED REJECTION at:`, promise, 'reason:', reason)
   const message = reason?.message || String(reason)
   if (message.includes('409')) {
-    console.log('Telegram 409 conflict detected (unhandled rejection). Retrying launch...')
+    console.log(`[${os.hostname()}][PID:${process.pid}] Telegram 409 conflict detected (unhandled rejection). Retrying launch...`)
     retryLaunch()
   }
 })
