@@ -8,6 +8,7 @@ function startPaystackWebhookServer({
   checkArkeselBalance,
   sendSMS,
   apiDevelopersStore,
+  apiLogsStore,
   getVerifiedSenderIds,
   initializePayment,
   paymentSessionStore
@@ -73,6 +74,11 @@ function startPaystackWebhookServer({
             return json(200, { ok: true, balance: developer.balance })
           }
 
+          if (req.method === 'GET' && requestPath === '/api/v1/logs') {
+            const logs = await apiLogsStore.getApiUsageLogs(developer.userId)
+            return json(200, { ok: true, logs })
+          }
+
           if (req.method === 'GET' && requestPath === '/api/v1/sender-ids') {
             const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
             const targetUserId = urlObj.searchParams.get('userId') || developer.userId
@@ -123,6 +129,18 @@ function startPaystackWebhookServer({
             })
 
             const results = await Promise.all(sendPromises)
+
+            try {
+              await apiLogsStore.logApiUsage(developer.userId, {
+                message,
+                recipientsCount: recipients.length,
+                unitsDebited: totalCreditsNeeded,
+                remainingBalance: debitRes.balance,
+                status: 'success'
+              })
+            } catch (logErr) {
+              console.log('Error logging API usage:', logErr.message)
+            }
 
             return json(200, {
               ok: true,

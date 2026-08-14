@@ -23,6 +23,7 @@ const { createPaystackService } = require('./src/services/paystack')
 const { createPaymentSessionStore } = require('./src/stores/paymentSessions')
 const { createSenderIdStore } = require('./src/stores/senderIds')
 const { createApiDevelopersStore } = require('./src/stores/apiDevelopers')
+const { createApiLogsStore } = require('./src/stores/apiLogs')
 const { startPaystackWebhookServer } = require('./src/webhook')
 const { runRecoveryWorker } = require('./src/recoveryWorker')
 
@@ -47,6 +48,11 @@ const paymentSessionStore =
 const apiDevelopersStore =
   createApiDevelopersStore({
     apiDevelopersStorePath: path.join(__dirname, 'api-developers.json')
+  })
+
+const apiLogsStore =
+  createApiLogsStore({
+    apiLogsPath: path.join(__dirname, 'api-usage-log.json')
   })
 
 const arkesel =
@@ -103,6 +109,7 @@ registerBotHandlers({
   rememberVerifiedSenderId: senderIdStore.rememberVerifiedSenderId,
   userSessions,
   apiDevelopersStore,
+  apiLogsStore,
   paymentSessionStore,
   initializePayment: paystack.initializePayment,
   rememberPaymentSession: paymentSessionStore.rememberPaymentSession,
@@ -116,6 +123,7 @@ startPaystackWebhookServer({
   checkArkeselBalance: arkesel.checkArkeselBalance,
   sendSMS: arkesel.sendSMS,
   apiDevelopersStore,
+  apiLogsStore,
   getVerifiedSenderIds: senderIdStore.getVerifiedSenderIds,
   initializePayment: paystack.initializePayment,
   paymentSessionStore

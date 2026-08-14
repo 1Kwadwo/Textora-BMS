@@ -72,6 +72,7 @@ function registerBotHandlers({
   rememberVerifiedSenderId,
   userSessions,
   apiDevelopersStore,
+  apiLogsStore,
   paymentSessionStore,
   initializePayment,
   rememberPaymentSession,
@@ -211,6 +212,10 @@ Choose an option below:`,
       description: 'View/manage your developer API key'
     },
     {
+      command: 'balance',
+      description: 'Check your API SMS credits balance'
+    },
+    {
       command: 'recharge',
       description: 'Purchase API SMS credits'
     }
@@ -226,6 +231,7 @@ Choose an option below:`,
 /start - Open Menu
 /myid - Show your Telegram chat ID
 /apikey - View/manage your developer API key
+/balance - Check your API SMS credits balance
 /recharge - Purchase API SMS credits
 
 📨 Bulk SMS Flow:
@@ -302,11 +308,21 @@ ${ctx.chat.id}`
         reply_markup: {
           inline_keyboard: [
             [{ text: '🔄 Regenerate API Key', callback_data: 'regenerate_api_key' }],
-            [{ text: '💳 Buy API Credits', callback_data: 'buy_api_credits' }]
+            [{ text: '💳 Buy API Credits', callback_data: 'buy_api_credits' }],
+            [{ text: '📄 View Usage Logs', callback_data: 'view_api_logs' }]
           ]
         }
       }
     )
+  })
+
+  bot.command('balance', async (ctx) => {
+    const userId = ctx.from.id
+    const dev = await apiDevelopersStore.getDeveloperByUserId(userId)
+    if (!dev) {
+      return ctx.reply('You do not have a developer API profile yet. Send /apikey to create one.')
+    }
+    return ctx.reply(`💰 *Your prepaid developer API balance:* ${dev.balance} SMS units.`)
   })
 
   bot.command('recharge', async (ctx) => {
@@ -351,11 +367,32 @@ ${ctx.chat.id}`
         reply_markup: {
           inline_keyboard: [
             [{ text: '🔄 Regenerate API Key', callback_data: 'regenerate_api_key' }],
-            [{ text: '💳 Buy API Credits', callback_data: 'buy_api_credits' }]
+            [{ text: '💳 Buy API Credits', callback_data: 'buy_api_credits' }],
+            [{ text: '📄 View Usage Logs', callback_data: 'view_api_logs' }]
           ]
         }
       }
     )
+  })
+
+  bot.action('view_api_logs', async (ctx) => {
+    await answerCallback(ctx)
+    const userId = ctx.from.id
+    const logs = await apiLogsStore.getApiUsageLogs(userId)
+    if (logs.length === 0) {
+      return ctx.reply('No API usage logs found for your developer profile.')
+    }
+
+    const recentLogs = logs.slice(-10).reverse()
+    let text = `📄 *Recent API SMS Usage Logs (Last 10)*\n\n`
+    recentLogs.forEach((log, idx) => {
+      const date = new Date(log.timestamp).toLocaleDateString()
+      text += `${idx + 1}. *${date}* - Sent *${log.recipientsCount}* SMS `
+      text += `(Debited: *${log.unitsDebited}* units, Bal: *${log.remainingBalance}*)\n`
+      text += `   _"${log.message.substring(0, 30)}${log.message.length > 30 ? '...' : ''}"_\n\n`
+    })
+
+    return ctx.reply(text, { parse_mode: 'Markdown' })
   })
 
   bot.action('regenerate_api_key', async (ctx) => {

@@ -4,17 +4,23 @@ const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
 const { createApiDevelopersStore } = require('../src/stores/apiDevelopers')
+const { createApiLogsStore } = require('../src/stores/apiLogs')
 const { startPaystackWebhookServer } = require('../src/webhook')
 
 const testDbPath = path.join(__dirname, 'api-developers-test.json')
+const testLogsPath = path.join(__dirname, 'api-usage-log-test.json')
 
 test('Integration Test: API Endpoints', async (t) => {
   if (fs.existsSync(testDbPath)) {
     fs.unlinkSync(testDbPath)
   }
+  if (fs.existsSync(testLogsPath)) {
+    fs.unlinkSync(testLogsPath)
+  }
 
-  // Create store
+  // Create stores
   const apiDevelopersStore = createApiDevelopersStore({ apiDevelopersStorePath: testDbPath })
+  const apiLogsStore = createApiLogsStore({ apiLogsPath: testLogsPath })
 
   // Initialize developer
   const dev = await apiDevelopersStore.createOrGetDeveloper('dev123', 'API Dev')
@@ -46,6 +52,7 @@ test('Integration Test: API Endpoints', async (t) => {
     checkArkeselBalance: mockCheckArkeselBalance,
     sendSMS: mockSendSMS,
     apiDevelopersStore,
+    apiLogsStore,
     getVerifiedSenderIds: (userId) => ['kwadwocode'],
     initializePayment: async (userId, session) => ({ authorization_url: 'http://checkout', reference: 'ref123' }),
     paymentSessionStore: { rememberPaymentSession: async (ref, sess) => {} }
@@ -103,6 +110,17 @@ test('Integration Test: API Endpoints', async (t) => {
     assert.equal(sentSms[0].senderId, 'TESTER')
   })
 
+  await t.test('GET /api/v1/logs - success', async () => {
+    const res = await axios.get('http://localhost:3123/api/v1/logs', {
+      headers: { 'Authorization': `Bearer ${dev.apiKey}` }
+    })
+    assert.equal(res.status, 200)
+    assert.equal(res.data.ok, true)
+    assert.equal(res.data.logs.length, 1)
+    assert.equal(res.data.logs[0].unitsDebited, 2)
+    assert.equal(res.data.logs[0].message, 'Hello world')
+  })
+
   await t.test('POST /api/v1/send-sms - insufficient balance', async () => {
     try {
       await axios.post('http://localhost:3123/api/v1/send-sms', {
@@ -136,6 +154,9 @@ test('Integration Test: API Endpoints', async (t) => {
   // Clean up
   if (fs.existsSync(testDbPath)) {
     fs.unlinkSync(testDbPath)
+  }
+  if (fs.existsSync(testLogsPath)) {
+    fs.unlinkSync(testLogsPath)
   }
   
   // Close HTTP server process
