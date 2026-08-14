@@ -49,31 +49,51 @@ function calculateTotalSMSUnits(contactCount, smsUnits) {
   return contactCount * smsUnits
 }
 
-function calculateSMSPrice(contactCount, smsUnits) {
+function isGhanaNumber(number) {
+  const clean = String(number || '').replace(/\D/g, '')
+  return clean.startsWith('233')
+}
 
-  const total =
-    calculateTotalSMSUnits(contactCount, smsUnits) *
-    SELLING_PRICE_PER_SMS
+function calculateSMSPrice(contacts, smsUnits) {
+  if (Array.isArray(contacts)) {
+    let total = 0
+    for (const contact of contacts) {
+      if (isGhanaNumber(contact)) {
+        total += smsUnits * SELLING_PRICE_PER_SMS
+      } else {
+        total += smsUnits * 0.08
+      }
+    }
+    return total.toFixed(2)
+  }
 
+  const count = Number(contacts || 0)
+  const total = count * smsUnits * SELLING_PRICE_PER_SMS
   return total.toFixed(2)
 }
 
-function calculateSMSCost(contactCount, smsUnits) {
+function calculateSMSCost(contacts, smsUnits) {
+  if (Array.isArray(contacts)) {
+    let total = 0
+    for (const contact of contacts) {
+      if (isGhanaNumber(contact)) {
+        total += smsUnits * COST_PER_SMS
+      } else {
+        total += smsUnits * 0.08
+      }
+    }
+    return total.toFixed(2)
+  }
 
-  const cost =
-    calculateTotalSMSUnits(contactCount, smsUnits) *
-    COST_PER_SMS
-
-  return cost.toFixed(2)
+  const count = Number(contacts || 0)
+  const total = count * smsUnits * COST_PER_SMS
+  return total.toFixed(2)
 }
 
-function calculateSMSProfit(contactCount, smsUnits) {
-
-  const profit =
-    calculateTotalSMSUnits(contactCount, smsUnits) *
-    (SELLING_PRICE_PER_SMS - COST_PER_SMS)
-
-  return profit.toFixed(2)
+function calculateSMSProfit(contacts, smsUnits) {
+  const price = Number(calculateSMSPrice(contacts, smsUnits))
+  const cost = Number(calculateSMSCost(contacts, smsUnits))
+  return (price - cost).toFixed(2)
 }
 
 module.exports = {
@@ -82,5 +102,6 @@ module.exports = {
   calculateSMSPrice,
   calculateSMSUnits,
   calculateTotalSMSUnits,
-  detectEncoding
+  detectEncoding,
+  isGhanaNumber
 }

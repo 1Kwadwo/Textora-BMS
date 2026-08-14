@@ -612,7 +612,7 @@ ${payment?.gateway_response || payment?.message || 'Please try again.'}`
 
     session.smsPrice =
       calculateSMSPrice(
-        session.contacts.length,
+        session.contacts,
         session.smsUnits
       )
 
@@ -627,7 +627,7 @@ ${payment?.gateway_response || payment?.message || 'Please try again.'}`
 
     session.profit =
       calculateSMSProfit(
-        session.contacts.length,
+        session.contacts,
         session.smsUnits
       )
 

@@ -18,6 +18,10 @@ function normalizePhoneNumber(value) {
     return `233${digits}`
   }
 
+  if (digits.length >= 7 && digits.length <= 15) {
+    return digits
+  }
+
   return null
 }
 

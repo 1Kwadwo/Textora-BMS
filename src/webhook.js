@@ -110,9 +110,18 @@ function startPaystackWebhookServer({
               return json(400, { ok: false, message: 'No valid recipients specified in "to"' })
             }
 
-            const { calculateSMSUnits } = require('./pricing')
+            const { calculateSMSUnits, isGhanaNumber } = require('./pricing')
             const msgUnits = calculateSMSUnits(message)
-            const totalCreditsNeeded = recipients.length * msgUnits
+            
+            let totalCreditsNeeded = 0
+            for (const recipient of recipients) {
+              if (isGhanaNumber(recipient)) {
+                totalCreditsNeeded += msgUnits * 1.0
+              } else {
+                totalCreditsNeeded += msgUnits * 1.6
+              }
+            }
+            totalCreditsNeeded = Number(totalCreditsNeeded.toFixed(2))
 
             const debitRes = await apiDevelopersStore.debitDeveloperBalance(apiKey, totalCreditsNeeded)
             if (!debitRes.ok) {

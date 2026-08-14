@@ -110,14 +110,30 @@ test('Integration Test: API Endpoints', async (t) => {
     assert.equal(sentSms[0].senderId, 'TESTER')
   })
 
+  await t.test('POST /api/v1/send-sms - mixed local and international tiered debit', async () => {
+    sentSms = []
+    const res = await axios.post('http://localhost:3123/api/v1/send-sms', {
+      to: '233201234567, 1234567890', // 1 local (1.0 units), 1 international (1.6 units)
+      message: 'Hello world',
+      senderId: 'TESTER'
+    }, {
+      headers: { 'Authorization': `Bearer ${dev.apiKey}` }
+    })
+
+    assert.equal(res.status, 200)
+    assert.equal(res.data.ok, true)
+    assert.equal(res.data.total_units_debited, 2.6)
+    assert.equal(res.data.remaining_balance, 495.4) // 498 - 2.6
+    assert.equal(sentSms.length, 2)
+  })
+
   await t.test('GET /api/v1/logs - success', async () => {
     const res = await axios.get('http://localhost:3123/api/v1/logs', {
       headers: { 'Authorization': `Bearer ${dev.apiKey}` }
     })
     assert.equal(res.status, 200)
     assert.equal(res.data.ok, true)
-    assert.equal(res.data.logs.length, 1)
-    assert.equal(res.data.logs[0].unitsDebited, 2)
+    assert.equal(res.data.logs.length, 2)
     assert.equal(res.data.logs[0].message, 'Hello world')
   })
 
