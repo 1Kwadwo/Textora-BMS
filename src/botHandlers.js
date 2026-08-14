@@ -171,6 +171,12 @@ Now type the SMS message you want to send.
       ],
       [
         {
+          text: '📄 Docs & Terms',
+          callback_data: 'docs_menu'
+        }
+      ],
+      [
+        {
           text: '📖 Help',
           callback_data: 'help'
         }
@@ -218,6 +224,10 @@ Choose an option below:`,
     {
       command: 'recharge',
       description: 'Purchase API SMS credits'
+    },
+    {
+      command: 'docs',
+      description: 'Download platform documents & terms'
     }
   ])
 
@@ -233,6 +243,7 @@ Choose an option below:`,
 /apikey - View/manage your developer API key
 /balance - Check your API SMS credits balance
 /recharge - Purchase API SMS credits
+/docs - Download developer API docs & terms
 
 📨 Bulk SMS Flow:
 1. Paste contacts or upload .xlsx, .csv, .tsv, or .txt contacts
@@ -247,6 +258,102 @@ Choose an option below:`,
 2. Tap "Buy API Credits" or send /recharge to purchase prepaid SMS credits.
 3. Call the API from your backend servers using your key!
   `)
+  })
+
+  async function sendDocsMenu(ctx) {
+    return ctx.reply(
+      `📄 *Textora Platform Documents*\n\n` +
+      `Select a document below to download as PDF:`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '📥 Developer API Documentation', callback_data: 'download_docs' }],
+            [{ text: '📥 Terms of Service & Privacy Policy', callback_data: 'download_terms' }],
+            [{ text: '⬅️ Back to Main Menu', callback_data: 'back_to_main' }]
+          ]
+        }
+      }
+    )
+  }
+
+  bot.command('docs', async (ctx) => {
+    return sendDocsMenu(ctx)
+  })
+
+  bot.command('terms', async (ctx) => {
+    return sendDocsMenu(ctx)
+  })
+
+  bot.action('docs_menu', async (ctx) => {
+    await answerCallback(ctx)
+    return sendDocsMenu(ctx)
+  })
+
+  bot.action('download_docs', async (ctx) => {
+    await answerCallback(ctx)
+    await ctx.reply('⏳ Preparing file, sending now...')
+    await ctx.replyWithDocument({
+      source: path.join(__dirname, '..', 'Textora_Architecture_Documentation.pdf'),
+      filename: 'Textora_Architecture_Documentation.pdf'
+    })
+  })
+
+  bot.action('download_terms', async (ctx) => {
+    await answerCallback(ctx)
+    await ctx.reply('⏳ Preparing file, sending now...')
+    await ctx.replyWithDocument({
+      source: path.join(__dirname, '..', 'Textora_Legal_Terms.pdf'),
+      filename: 'Textora_Legal_Terms.pdf'
+    })
+  })
+
+  bot.action('back_to_main', async (ctx) => {
+    await answerCallback(ctx)
+    const keyboard = [
+      [
+        {
+          text: '📨 Send Bulk SMS',
+          callback_data: 'send_bulk'
+        }
+      ],
+      [
+        {
+          text: '🔑 Developer API',
+          callback_data: 'dev_api_profile'
+        }
+      ],
+      [
+        {
+          text: '📄 Docs & Terms',
+          callback_data: 'docs_menu'
+        }
+      ],
+      [
+        {
+          text: '📖 Help',
+          callback_data: 'help'
+        }
+      ]
+    ]
+
+    if (isDeveloperApprovalContext(ctx)) {
+      keyboard.push([
+        {
+          text: '📢 Admin Broadcast',
+          callback_data: 'admin_broadcast'
+        }
+      ])
+    }
+
+    return ctx.reply(
+      `🚀 Welcome to Textora SMS\n\nChoose an option below:`,
+      {
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
+      }
+    )
   })
 
   bot.command('myid', async (ctx) => {
