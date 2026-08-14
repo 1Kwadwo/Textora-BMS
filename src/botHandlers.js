@@ -164,6 +164,12 @@ Now type the SMS message you want to send.
       ],
       [
         {
+          text: '🔑 Developer API',
+          callback_data: 'dev_api_profile'
+        }
+      ],
+      [
+        {
           text: '📖 Help',
           callback_data: 'help'
         }
@@ -199,6 +205,14 @@ Choose an option below:`,
     {
       command: 'myid',
       description: 'Show your Telegram chat ID'
+    },
+    {
+      command: 'apikey',
+      description: 'View/manage your developer API key'
+    },
+    {
+      command: 'recharge',
+      description: 'Purchase API SMS credits'
     }
   ])
 
@@ -210,6 +224,9 @@ Choose an option below:`,
 📌 TEXTORA SMS COMMANDS
 
 /start - Open Menu
+/myid - Show your Telegram chat ID
+/apikey - View/manage your developer API key
+/recharge - Purchase API SMS credits
 
 📨 Bulk SMS Flow:
 1. Paste contacts or upload .xlsx, .csv, .tsv, or .txt contacts
@@ -218,6 +235,11 @@ Choose an option below:`,
 4. New custom sender IDs cost ₵${customSenderIdFeeGHS.toFixed(2)} once before admin approval
 5. After sender ID approval, pay only the SMS cost
 6. SMS sends after Paystack confirms the SMS payment
+
+🔑 Developer API Flow:
+1. Tap "🔑 Developer API" or send /apikey to generate your API Key.
+2. Tap "Buy API Credits" or send /recharge to purchase prepaid SMS credits.
+3. Call the API from your backend servers using your key!
   `)
   })
 
@@ -304,6 +326,33 @@ ${ctx.chat.id}`
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: keyboard
+        }
+      }
+    )
+  })
+
+  bot.action('dev_api_profile', async (ctx) => {
+    await answerCallback(ctx)
+    const userId = ctx.from.id
+    const name = `${ctx.from.first_name || ''} ${ctx.from.last_name || ''}`.trim()
+    const dev = await apiDevelopersStore.createOrGetDeveloper(userId, name)
+
+    return ctx.reply(
+      `🔑 *Textora Developer Profile*\n\n` +
+      `👤 *Name:* ${dev.name}\n` +
+      `💰 *Prepaid SMS Balance:* ${dev.balance} units\n` +
+      `🔑 *API Key:* \`${dev.apiKey}\`\n\n` +
+      `⚠️ *Keep this key secret!* Do not share it.\n\n` +
+      `Use this key in your API request headers as:\n` +
+      `\`Authorization: Bearer ${dev.apiKey}\`\n\n` +
+      `To recharge your balance, click *Buy API Credits* below or type \`/recharge\`.`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔄 Regenerate API Key', callback_data: 'regenerate_api_key' }],
+            [{ text: '💳 Buy API Credits', callback_data: 'buy_api_credits' }]
+          ]
         }
       }
     )
