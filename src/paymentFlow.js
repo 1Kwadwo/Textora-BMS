@@ -3,7 +3,8 @@ const {
   calculateSMSProfit,
   calculateTotalSMSUnits,
   calculateSMSUnits,
-  detectEncoding
+  detectEncoding,
+  isGhanaNumber
 } = require('./pricing')
 const { COST_PER_SMS, SELLING_PRICE_PER_SMS } = require('./config')
 const { withLock } = require('./lockManager')
@@ -636,26 +637,22 @@ ${payment?.gateway_response || payment?.message || 'Please try again.'}`
     session.step = 'waiting_for_payment'
     session.status = 'pending'
 
+    const localCount = session.contacts.filter(isGhanaNumber).length
+    const internationalCount = session.contacts.length - localCount
+
     await ctx.reply(`
 📊 SMS SUMMARY
 
-👥 Contacts:
-${session.contacts.length}
+👥 Total Contacts: ${session.contacts.length}
+  🇬🇭 Ghana: ${localCount}
+  🌍 International: ${internationalCount}
 
-📨 SMS Units:
-${session.smsUnits}
+📨 SMS Units: ${session.smsUnits}
+Total SMS Units: ${session.totalSMSUnits}
 
-Total SMS Units:
-${session.totalSMSUnits}
+Sender ID: ${session.senderId}
 
-Sender ID:
-${session.senderId}
-
-SMS Cost:
-₵${session.smsPrice}
-
-💵 Total SMS Cost:
-₵${session.price}
+💵 Total SMS Cost: ₵${session.price}
 
 ⏳ Creating Paystack checkout...
   `)

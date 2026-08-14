@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const { extractContactsFromFile, validateContactsFromText } = require('./contacts')
-const { calculateSMSUnits } = require('./pricing')
+const { calculateSMSUnits, isGhanaNumber } = require('./pricing')
 const { buildSenderIdKeyboard, validateSenderId } = require('./senderIds')
 const {
   answerCallback,
@@ -112,9 +112,8 @@ function registerBotHandlers({
 You can paste contacts or upload a .xlsx, .csv, .tsv, or .txt file.
 
 Accepted formats include:
-233541234567
-0541234567
-+233541234567
+Local Ghana: 233541234567, 0541234567
+International: +14155552671 (US), +447911123456 (UK)
     `)
     }
 
@@ -131,14 +130,16 @@ Accepted formats include:
     session.step =
       'waiting_for_message'
 
+    const localCount = contactResult.contacts.filter(isGhanaNumber).length
+    const internationalCount = contactResult.contacts.length - localCount
+
     return ctx.reply(`
 ✅ ${contactResult.contacts.length} valid unique contacts uploaded.
+  🇬🇭 Ghana: ${localCount}
+  🌍 International: ${internationalCount}
 
-Duplicates removed:
-${contactResult.duplicates.length}
-
-Invalid entries skipped:
-${contactResult.invalid.length}
+Duplicates removed: ${contactResult.duplicates.length}
+Invalid entries skipped: ${contactResult.invalid.length}
 
 Now type the SMS message you want to send.
   `)
