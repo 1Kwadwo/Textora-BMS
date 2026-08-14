@@ -4,8 +4,10 @@ const os = require('os')
 const { Telegraf } = require('telegraf')
 const axios = require('axios')
 
+const path = require('path')
 const { registerBotHandlers } = require('./src/botHandlers')
 const {
+  API_RECHARGE_PLANS,
   customSenderIdFeeGHS,
   genericSenderId,
   paystackWebhookPath,
@@ -20,6 +22,7 @@ const { createDeveloperService } = require('./src/services/developer')
 const { createPaystackService } = require('./src/services/paystack')
 const { createPaymentSessionStore } = require('./src/stores/paymentSessions')
 const { createSenderIdStore } = require('./src/stores/senderIds')
+const { createApiDevelopersStore } = require('./src/stores/apiDevelopers')
 const { startPaystackWebhookServer } = require('./src/webhook')
 const { runRecoveryWorker } = require('./src/recoveryWorker')
 
@@ -39,6 +42,11 @@ const senderIdStore =
 const paymentSessionStore =
   createPaymentSessionStore({
     paymentSessionStorePath
+  })
+
+const apiDevelopersStore =
+  createApiDevelopersStore({
+    apiDevelopersStorePath: path.join(__dirname, 'api-developers.json')
   })
 
 const arkesel =
@@ -93,13 +101,24 @@ registerBotHandlers({
   paymentProcessor: paymentFlow.processPaystackPayment,
   pendingSenderIdSessions: senderIdStore.pendingSenderIdSessions,
   rememberVerifiedSenderId: senderIdStore.rememberVerifiedSenderId,
-  userSessions
+  userSessions,
+  apiDevelopersStore,
+  paymentSessionStore,
+  initializePayment: paystack.initializePayment,
+  rememberPaymentSession: paymentSessionStore.rememberPaymentSession,
+  API_RECHARGE_PLANS
 })
 
 startPaystackWebhookServer({
   paystackWebhookPath,
   processPaystackPayment: paymentFlow.processPaystackPayment,
-  secretKey: process.env.PAYSTACK_SECRET_KEY
+  secretKey: process.env.PAYSTACK_SECRET_KEY,
+  checkArkeselBalance: arkesel.checkArkeselBalance,
+  sendSMS: arkesel.sendSMS,
+  apiDevelopersStore,
+  getVerifiedSenderIds: senderIdStore.getVerifiedSenderIds,
+  initializePayment: paystack.initializePayment,
+  paymentSessionStore
 })
 
 runRecoveryWorker({

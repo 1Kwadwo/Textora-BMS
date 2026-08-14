@@ -160,6 +160,55 @@ Pending manual Textora verification`
     )
   }
 
+  async function requestApiRechargeApproval(reference, session) {
+    fulfilledPayments.add(reference)
+
+    await updateSession(reference, s => {
+      s.status = 'waiting_for_admin_approval'
+      return s
+    })
+
+    const developerChatId = process.env.DEVELOPER_CHAT_ID
+
+    if (!developerChatId) {
+      console.log(`API Recharge Approval needed for ref ${reference}, but DEVELOPER_CHAT_ID is not configured.`)
+      return
+    }
+
+    try {
+      await bot.telegram.sendMessage(
+        developerChatId,
+        `🔔 *NEW API RECHARGE PAYMENT* 🔔\n\n` +
+        `👤 *Developer ID:* \`${session.userId}\`\n` +
+        `💰 *Amount Paid:* ₵${session.price}\n` +
+        `📨 *SMS Credits requested:* ${session.credits} units\n` +
+        `🔑 *Reference:* \`${reference}\`\n\n` +
+        `*Action Required:*\n` +
+        `1. Please top up your Arkesel account with at least *${session.credits}* credits.\n` +
+        `2. Once topped up, click *Approve Recharge* below to fund the developer's prepaid balance.`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '✅ Approve Recharge', callback_data: `approve_recharge_${reference}` }],
+              [{ text: '❌ Reject Recharge', callback_data: `reject_recharge_${reference}` }]
+            ]
+          }
+        }
+      )
+
+      await bot.telegram.sendMessage(
+        session.chatId,
+        `✅ *Payment Verified Successfully!*\n\n` +
+        `Amount: ₵${session.price}\n` +
+        `Credits: ${session.credits} units\n\n` +
+        `The bot owner has been notified to top up the SMS gateway. Your API balance will be updated once they approve. Thank you!`
+      )
+    } catch (err) {
+      console.log('API RECHARGE APPROVAL ALERT ERROR:', err.message)
+    }
+  }
+
   async function sendBulkSMSForPayment(reference) {
 
     if (fulfilledPayments.has(reference)) {
@@ -499,13 +548,15 @@ ${payment?.gateway_response || payment?.message || 'Please try again.'}`
           session,
           session.paymentPurpose === 'sender_id_fee'
             ? 'sender ID fee'
-            : 'SMS order'
+            : (session.paymentPurpose === 'textora_api_recharge' ? 'API recharge' : 'SMS order')
         )
         throw new Error('Payment amount mismatch')
       }
 
       if (session.paymentPurpose === 'sender_id_fee') {
         await requestSenderIdApprovalAfterFee(reference, session)
+      } else if (session.paymentPurpose === 'textora_api_recharge') {
+        await requestApiRechargeApproval(reference, session)
       } else {
         await sendBulkSMSForPayment(reference)
       }

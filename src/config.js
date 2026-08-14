@@ -96,7 +96,19 @@ const pendingSenderIdStorePath =
 const paymentSessionStorePath =
   path.join(rootDir, 'payment-sessions.json')
 
+const API_RECHARGE_PLANS = [
+  { id: 1, priceGHS: 20, credits: 400 },
+  { id: 2, priceGHS: 50, credits: 1000 },
+  { id: 3, priceGHS: 100, credits: 2000 },
+  { id: 4, priceGHS: 200, credits: 4000 },
+  { id: 5, priceGHS: 500, credits: 10000 },
+  { id: 6, priceGHS: 1000, credits: 20000 },
+  { id: 7, priceGHS: 2000, credits: 40000 },
+  { id: 8, priceGHS: 5000, credits: 100000 }
+]
+
 module.exports = {
+  API_RECHARGE_PLANS,
   COST_PER_SMS,
   customSenderIdFeeGHS,
   genericSenderId,

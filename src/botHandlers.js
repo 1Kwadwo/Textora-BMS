@@ -70,7 +70,12 @@ function registerBotHandlers({
   paymentProcessor,
   pendingSenderIdSessions,
   rememberVerifiedSenderId,
-  userSessions
+  userSessions,
+  apiDevelopersStore,
+  paymentSessionStore,
+  initializePayment,
+  rememberPaymentSession,
+  API_RECHARGE_PLANS
 }) {
 
   function senderIdKeyboard(userId) {
@@ -253,6 +258,214 @@ ${ctx.chat.id}`
       await paymentProcessor(reference, { isBypassVerification: true })
     } catch (err) {
       await ctx.reply(`❌ Bypass failed: ${err.message}`)
+    }
+  })
+
+  bot.command('apikey', async (ctx) => {
+    const userId = ctx.from.id
+    const name = `${ctx.from.first_name || ''} ${ctx.from.last_name || ''}`.trim()
+    const dev = await apiDevelopersStore.createOrGetDeveloper(userId, name)
+
+    return ctx.reply(
+      `🔑 *Textora Developer Profile*\n\n` +
+      `👤 *Name:* ${dev.name}\n` +
+      `💰 *Prepaid SMS Balance:* ${dev.balance} units\n` +
+      `🔑 *API Key:* \`${dev.apiKey}\`\n\n` +
+      `⚠️ *Keep this key secret!* Do not share it.\n\n` +
+      `Use this key in your API request headers as:\n` +
+      `\`Authorization: Bearer ${dev.apiKey}\`\n\n` +
+      `To recharge your balance, click *Buy API Credits* below or type \`/recharge\`.`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔄 Regenerate API Key', callback_data: 'regenerate_api_key' }],
+            [{ text: '💳 Buy API Credits', callback_data: 'buy_api_credits' }]
+          ]
+        }
+      }
+    )
+  })
+
+  bot.command('recharge', async (ctx) => {
+    const userId = ctx.from.id
+    const name = `${ctx.from.first_name || ''} ${ctx.from.last_name || ''}`.trim()
+
+    await apiDevelopersStore.createOrGetDeveloper(userId, name)
+
+    const keyboard = API_RECHARGE_PLANS.map(plan => [{
+      text: `GHS ${plan.priceGHS} (${plan.credits} units)`,
+      callback_data: `buy_plan_${plan.id}`
+    }])
+
+    return ctx.reply(
+      `💳 *Select an API SMS Package to Recharge:*`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
+      }
+    )
+  })
+
+  bot.action('regenerate_api_key', async (ctx) => {
+    await answerCallback(ctx)
+    const userId = ctx.from.id
+    const dev = await apiDevelopersStore.regenerateApiKey(userId)
+    if (!dev) {
+      return ctx.reply('Developer profile not found.')
+    }
+
+    return ctx.reply(
+      `✅ *API Key Regenerated!*\n\n` +
+      `Your new API Key is:\n\`${dev.apiKey}\`\n\n` +
+      `Make sure to update this key in your backend integrations.`,
+      { parse_mode: 'Markdown' }
+    )
+  })
+
+  bot.action('buy_api_credits', async (ctx) => {
+    await answerCallback(ctx)
+    const keyboard = API_RECHARGE_PLANS.map(plan => [{
+      text: `GHS ${plan.priceGHS} (${plan.credits} units)`,
+      callback_data: `buy_plan_${plan.id}`
+    }])
+
+    return ctx.reply(
+      `💳 *Select an API SMS Package to Recharge:*`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: keyboard
+        }
+      }
+    )
+  })
+
+  bot.action(/^buy_plan_(\d+)$/, async (ctx) => {
+    await answerCallback(ctx)
+    const planId = parseInt(ctx.match[1], 10)
+    const plan = API_RECHARGE_PLANS.find(p => p.id === planId)
+    if (!plan) {
+      return ctx.reply('Invalid package selection.')
+    }
+
+    const userId = ctx.from.id
+    const price = plan.priceGHS.toFixed(2)
+    const credits = plan.credits
+
+    await ctx.reply(`⏳ Creating recharge checkout for ${credits} SMS units (₵${price})...`)
+
+    try {
+      const session = {
+        price,
+        credits,
+        chatId: ctx.chat.id,
+        userId: userId,
+        paymentPurpose: 'textora_api_recharge',
+        status: 'pending',
+        step: 'waiting_for_payment'
+      }
+
+      const payment = await initializePayment(userId, session)
+      if (!payment?.authorization_url || !payment?.reference) {
+        throw new Error('Paystack did not return a checkout URL.')
+      }
+
+      await rememberPaymentSession(payment.reference, session)
+
+      return ctx.reply(
+        `💳 *API Recharge Checkout Ready!*\n\n` +
+        `Amount: ₵${price}\n` +
+        `Credits: ${credits} SMS units\n\n` +
+        `Click the button below to pay via Mobile Money / Card:`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '💸 Pay ₵' + price, url: payment.authorization_url }],
+              [{ text: '🔄 Check Payment Status', callback_data: `check_payment_${payment.reference}` }]
+            ]
+          }
+        }
+      )
+    } catch (err) {
+      console.log('API RECHARGE PAYMENT INIT ERROR:', err.message)
+      return ctx.reply(`❌ Failed to initialize payment: ${err.message}`)
+    }
+  })
+
+  bot.action(/^approve_recharge_(.+)$/, async (ctx) => {
+    await answerCallback(ctx)
+
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only Textora admins can approve recharges.')
+    }
+
+    const reference = ctx.match[1]
+    const session = await paymentSessionStore.getSession(reference)
+    if (!session) {
+      return ctx.reply('Recharge session was not found or has already been approved.')
+    }
+
+    await apiDevelopersStore.creditDeveloperBalance(session.userId, session.credits)
+    await paymentSessionStore.forgetSession(reference)
+
+    const updatedDev = await apiDevelopersStore.getDeveloperByUserId(session.userId)
+    const newBalance = updatedDev ? updatedDev.balance : 'unknown'
+
+    await ctx.editMessageText(
+      `✅ *Recharge Approved!*\n\n` +
+      `Developer ID: \`${session.userId}\`\n` +
+      `Credited: ${session.credits} units\n` +
+      `New Prepaid Balance: ${newBalance} units`,
+      { parse_mode: 'Markdown' }
+    )
+
+    try {
+      await bot.telegram.sendMessage(
+        session.chatId,
+        `🎉 *API Recharge Successful!*\n\n` +
+        `Your account has been credited with *${session.credits}* SMS credits.\n` +
+        `New Prepaid Balance: *${newBalance}* units.\n\n` +
+        `Thank you for using Textora API!`
+      )
+    } catch (err) {
+      console.log('Failed to notify developer of approved recharge:', err.message)
+    }
+  })
+
+  bot.action(/^reject_recharge_(.+)$/, async (ctx) => {
+    await answerCallback(ctx)
+
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only Textora admins can reject recharges.')
+    }
+
+    const reference = ctx.match[1]
+    const session = await paymentSessionStore.getSession(reference)
+    if (!session) {
+      return ctx.reply('Recharge session was not found or has already been handled.')
+    }
+
+    await paymentSessionStore.forgetSession(reference)
+
+    await ctx.editMessageText(
+      `❌ *Recharge Rejected*\n\n` +
+      `Developer ID: \`${session.userId}\`\n` +
+      `Amount: ₵${session.price}\n` +
+      `Credits: ${session.credits} units`,
+      { parse_mode: 'Markdown' }
+    )
+
+    try {
+      await bot.telegram.sendMessage(
+        session.chatId,
+        `❌ Your API recharge request for *${session.credits}* credits (₵${session.price}) has been rejected/cancelled by the admin.`
+      )
+    } catch (err) {
+      console.log('Failed to notify developer of rejected recharge:', err.message)
     }
   })
 
