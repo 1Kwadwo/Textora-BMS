@@ -464,7 +464,8 @@ ${ctx.chat.id}`
       return ctx.reply(
         `💳 *API Recharge Checkout Ready!*\n\n` +
         `Amount: ₵${price}\n` +
-        `Credits: ${credits} SMS units\n\n` +
+        `Credits: ${credits} SMS units\n` +
+        `Reference: \`${payment.reference}\`\n\n` +
         `Click the button below to pay via Mobile Money / Card:`,
         {
           parse_mode: 'Markdown',
