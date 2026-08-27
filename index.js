@@ -158,6 +158,14 @@ async function startBot() {
     console.log(`[${os.hostname()}][PID:${process.pid}] 🚀 Textora Bot Running...`)
   } catch (err) {
     console.error(`[${os.hostname()}][PID:${process.pid}] Error launching bot:`, err.message)
+    const isUnauthorized =
+      err.code === 401 ||
+      (err.response && err.response.error_code === 401) ||
+      (err.message && (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')))
+    if (isUnauthorized) {
+      console.error(`[${os.hostname()}][PID:${process.pid}] Critical error: Telegram bot token is unauthorized (401). Check BOT_TOKEN environment variable. Exiting...`)
+      process.exit(1)
+    }
     if (err.message && err.message.includes('409')) {
       console.log(`[${os.hostname()}][PID:${process.pid}] Conflict (409) detected during launch.`)
     }
@@ -181,6 +189,9 @@ process.on('unhandledRejection', (reason, promise) => {
   if (message.includes('409')) {
     console.log(`[${os.hostname()}][PID:${process.pid}] Telegram 409 conflict detected (unhandled rejection). Retrying launch...`)
     retryLaunch()
+  } else if (message.includes('401') || message.toLowerCase().includes('unauthorized')) {
+    console.error(`[${os.hostname()}][PID:${process.pid}] Critical error: Telegram bot token is unauthorized (401) in unhandled rejection. Exiting...`)
+    process.exit(1)
   }
 })
 

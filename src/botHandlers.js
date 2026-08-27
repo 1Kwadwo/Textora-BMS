@@ -230,7 +230,17 @@ Choose an option below:`,
       command: 'docs',
       description: 'Download platform documents & terms'
     }
-  ])
+  ]).catch(err => {
+    console.error('Failed to set bot commands:', err.message)
+    const isUnauthorized =
+      err.code === 401 ||
+      (err.response && err.response.error_code === 401) ||
+      (err.message && (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')))
+    if (isUnauthorized) {
+      console.error('Critical error: Telegram bot token is unauthorized (401). Exiting...')
+      process.exit(1)
+    }
+  })
 
   bot.action('help', async (ctx) => {
 
