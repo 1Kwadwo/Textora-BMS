@@ -1,0 +1,214 @@
+/* ==========================================================================
+   KEBSEND WEB PLATFORM: BLUEPRINT DESIGN SYSTEM & DASHBOARD ENGINE
+   ========================================================================== */
+
+:root {
+  --blueprint-blue: #1e60eb;
+  --blueprint-blue-dark: #1244b3;
+  --blueprint-blue-light: #3b82f6;
+  --blueprint-blue-subtle: #eff6ff;
+  --slate-black: #0f172a;
+  --slate-dark: #1e293b;
+  --slate-border: #e2e8f0;
+  --pure-white: #ffffff;
+  --bg-primary: #f8fafc;
+  --card-bg: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0b1120;
+  --card-bg: #131d31;
+  --slate-border: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --blueprint-blue-subtle: #172554;
+}
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--text-main);
+  background-color: var(--bg-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#view-landing, #view-auth, #view-dashboard {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 767px) {
+  #landing-nav-links {
+    display: none !important;
+  }
+}
+
+.hidden-nav {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   BLUEPRINT GRID PATTERNS
+   -------------------------------------------------------------------------- */
+
+.blueprint-canvas {
+  background-color: var(--blueprint-blue);
+  background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(to right, rgba(255, 255, 255, 0.28) 1.5px, transparent 1.5px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.28) 1.5px, transparent 1.5px);
+  color: #ffffff;
+}
+
+.blueprint-light-grid {
+  background-color: var(--bg-primary);
+  background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+  background-image: 
+    linear-gradient(to right, rgba(30, 96, 235, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 96, 235, 0.05) 1px, transparent 1px),
+    linear-gradient(to right, rgba(30, 96, 235, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 96, 235, 0.12) 1px, transparent 1px);
+}
+
+/* Technical Blueprint Frame */
+.blueprint-card {
+  position: relative;
+  background: var(--card-bg);
+  border: 1px solid var(--slate-border);
+  transition: all 0.25s ease;
+}
+
+.blueprint-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+}
+
+/* --------------------------------------------------------------------------
+   DEDICATED DASHBOARD STYLING (CLEAN WHITE & BLUE SAAS APP)
+   -------------------------------------------------------------------------- */
+
+.dashboard-sidebar {
+  background-color: var(--card-bg);
+  border-right: 1px solid var(--slate-border);
+  width: 260px;
+  min-height: calc(100vh - 64px);
+}
+
+@media (max-width: 767px) {
+  .dashboard-sidebar {
+    display: none !important;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.sidebar-nav-item:hover {
+  background-color: var(--blueprint-blue-subtle);
+  color: var(--blueprint-blue);
+}
+
+.sidebar-nav-item.active {
+  background-color: var(--blueprint-blue);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.dash-surface-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--slate-border);
+  border-radius: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   SCROLL-DRIVEN MOTION
+   -------------------------------------------------------------------------- */
+
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(35px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-reveal-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal-left.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.scroll-reveal-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal-right.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.delay-100 { transition-delay: 100ms; }
+.delay-200 { transition-delay: 200ms; }
+.delay-300 { transition-delay: 300ms; }
+
+.code-dark-box {
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--blueprint-blue);
+}

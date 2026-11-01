@@ -925,6 +925,82 @@ You can request a refund for the sender ID fee or try another custom sender ID.`
     )
   })
 
+  // --------------------------------------------------------------------------
+  // WEB DASHBOARD SENDER ID TELEGRAM APPROVAL & REJECTION ACTIONS
+  // --------------------------------------------------------------------------
+  bot.action(/^approve_web_sid_(.+)$/, async (ctx) => {
+    await answerCallback(ctx)
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only the Textora admin can approve sender IDs.')
+    }
+
+    const requestId = ctx.match[1]
+    try {
+      const { connectDB } = require('../web/src/db')
+      await connectDB()
+      const { UserRepo, SenderIdRequestRepo } = require('../web/src/models')
+      const reqRecord = await SenderIdRequestRepo.findById(requestId)
+      if (!reqRecord) {
+        console.warn(`[Web Sender ID Approval] Request not found for ID: ${requestId}`)
+        return ctx.reply('⚠️ Sender ID request not found or expired.')
+      }
+
+      await SenderIdRequestRepo.updateStatus(requestId, 'approved')
+      await UserRepo.addSenderId(reqRecord.userId, reqRecord.senderId)
+
+      const user = await UserRepo.findById(reqRecord.userId)
+      const userDisplay = user ? `${user.name} (${user.email})` : reqRecord.userId
+
+      await ctx.editMessageText(
+        `✅ *Sender ID Approved*\n\n` +
+        `• *Sender ID:* \`${reqRecord.senderId}\`\n` +
+        `• *Approved For:* ${userDisplay}\n` +
+        `• *Status:* Active\n` +
+        `• *Approved At:* ${new Date().toLocaleString()}\n\n` +
+        `_The user can now select "${reqRecord.senderId}" on their Web Dashboard and REST API._`,
+        { parse_mode: 'Markdown' }
+      )
+    } catch (err) {
+      console.error('[Web Sender ID Approval Error]', err)
+      return ctx.reply(`Error approving Sender ID: ${err.message}`)
+    }
+  })
+
+  bot.action(/^reject_web_sid_(.+)$/, async (ctx) => {
+    await answerCallback(ctx)
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only the Textora admin can reject sender IDs.')
+    }
+
+    const requestId = ctx.match[1]
+    try {
+      const { connectDB } = require('../web/src/db')
+      await connectDB()
+      const { UserRepo, SenderIdRequestRepo } = require('../web/src/models')
+      const reqRecord = await SenderIdRequestRepo.findById(requestId)
+      if (!reqRecord) {
+        console.warn(`[Web Sender ID Rejection] Request not found for ID: ${requestId}`)
+        return ctx.reply('⚠️ Sender ID request not found or expired.')
+      }
+
+      await SenderIdRequestRepo.updateStatus(requestId, 'rejected')
+      const user = await UserRepo.findById(reqRecord.userId)
+      const userDisplay = user ? `${user.name} (${user.email})` : reqRecord.userId
+
+      await ctx.editMessageText(
+        `❌ *Sender ID Rejected*\n\n` +
+        `• *Sender ID:* \`${reqRecord.senderId}\`\n` +
+        `• *User:* ${userDisplay}\n` +
+        `• *Status:* Rejected\n` +
+        `• *Rejected At:* ${new Date().toLocaleString()}`,
+        { parse_mode: 'Markdown' }
+      )
+    } catch (err) {
+      console.error('[Web Sender ID Rejection Error]', err)
+      return ctx.reply(`Error rejecting Sender ID: ${err.message}`)
+    }
+  })
+
   bot.action('create_custom_sender_id', async (ctx) => {
 
     await answerCallback(ctx)

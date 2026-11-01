@@ -6,7 +6,7 @@ function createPaystackService({ axios, secretKey, callbackUrl }) {
 
       const payload = {
         email: `${userId}@textora.app`,
-        amount: Math.round(Number(session.price) * 100),
+              amount: Math.round(Number(session.price) * 100),
         currency: 'GHS',
         channels: ['mobile_money'],
         metadata: {
@@ -14,7 +14,7 @@ function createPaystackService({ axios, secretKey, callbackUrl }) {
           telegram_user_id: String(userId),
           telegram_chat_id: String(session.chatId),
           contact_count: session.contacts?.length || 0,
-          sms_units: session.smsUnits || 0,
+              sms_units: session.smsUnits || 0,
           sender_id: session.senderId,
           sender_id_type: session.senderIdType,
           sender_id_fee: session.senderIdFee || 0

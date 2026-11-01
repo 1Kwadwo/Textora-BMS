@@ -3,3 +3,9 @@ pending-sender-id-sessions.json
 payment-sessions.json
 node_modules/
 
+
+# Local data stores (contain user/customer data)
+sender-ids.json
+users.json
+api-developers.json
+data/

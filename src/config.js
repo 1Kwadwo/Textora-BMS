@@ -79,7 +79,7 @@ const genericSenderId =
   readEnv('GENERIC_SENDER_ID')
 
 const customSenderIdFeeGHS =
-  Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 1)
+  Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 8)
 
 const COST_PER_SMS =
   Number(readEnv('COST_PER_SMS'))

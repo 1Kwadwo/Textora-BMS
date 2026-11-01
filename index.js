@@ -27,7 +27,10 @@ const { createApiLogsStore } = require('./src/stores/apiLogs')
 const { startPaystackWebhookServer } = require('./src/webhook')
 const { runRecoveryWorker } = require('./src/recoveryWorker')
 
+const { connectDB } = require('./web/src/db')
+
 validateRuntimeConfig()
+connectDB().catch(err => console.warn('[Bot DB Connect]', err.message))
 
 const bot =
   new Telegraf(process.env.BOT_TOKEN)
@@ -154,7 +157,8 @@ function retryLaunch() {
 
 async function startBot() {
   try {
-    await bot.launch()
+    await bot.telegram.deleteWebhook({ drop_pending_updates: false }).catch(() => {})
+    await bot.launch({ dropPendingUpdates: true })
     console.log(`[${os.hostname()}][PID:${process.pid}] 🚀 Textora Bot Running...`)
   } catch (err) {
     console.error(`[${os.hostname()}][PID:${process.pid}] Error launching bot:`, err.message)

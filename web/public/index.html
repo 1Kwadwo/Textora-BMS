@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KebSEND — Bulk SMS & Developer API for Ghana</title>
+  <meta name="description" content="KebSEND is a bulk SMS platform for Ghana: send single or bulk messages, register a branded sender ID, top up via Mobile Money or card, and integrate a simple REST API.">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS & DaisyUI CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: ['class', '[data-theme="dark"]'],
+      theme: {
+        extend: {
+          colors: {
+            blueprint: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#1e60eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#0f3ba0',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Blueprint & Scroll Motion CSS -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
+  <link rel="stylesheet" href="style.css?v=7">
+  <style>
+    html, body {
+      overflow-x: hidden !important;
+      max-width: 100vw !important;
+      width: 100% !important;
+      margin: 0;
+      padding: 0;
+    }
+    @media (max-width: 767px) {
+      .dashboard-sidebar {
+        display: none !important;
+      }
+      #landing-nav-links {
+        display: none !important;
+      }
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- =========================================================================
+       APP HEADER / TOP NAVIGATION (STICKY)
+       ========================================================================= -->
+  <header class="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <a href="#landing" class="nav-route-link flex items-center gap-2.5 sm:gap-3 group shrink-0" data-view="landing">
+        <div class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center group-hover:scale-105 transition-transform">
+          <img src="kebsend-icon.svg" alt="KebSEND" class="w-full h-full" />
+        </div>
+        <div>
+          <div class="font-extrabold text-slate-900 dark:text-white tracking-tight text-base sm:text-lg leading-none">KEBSEND</div>
+          <div class="hidden sm:block text-[10px] text-slate-500 font-mono uppercase tracking-wider mt-0.5">Bulk Messaging System</div>
+        </div>
+      </a>
+
+      <!-- Desktop Navigation (Visible only on Landing Page on desktop screens) -->
+      <nav id="landing-nav-links" class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-700 dark:text-slate-300">
+        <a href="#calculator" class="nav-link-spy hover:text-blue-600 transition py-1">Pricing</a>
+        <a href="#web-sms-preview" class="nav-link-spy hover:text-blue-600 transition py-1">Web Dispatcher</a>
+        <a href="#sender-id-preview" class="nav-link-spy hover:text-blue-600 transition py-1">Sender ID</a>
+        <a href="#api-docs-preview" class="nav-link-spy hover:text-blue-600 transition py-1">Developer API</a>
+        <a href="#docs-preview" class="nav-link-spy hover:text-blue-600 transition py-1">Docs</a>
+      </nav>
+
+      <!-- Right Controls: Theme Toggle + Auth Status + Mobile Menu Toggle -->
+      <div class="flex items-center gap-1.5 sm:gap-3">
+        
+        <!-- Dark/Light Mode Switcher -->
+        <button id="btn-theme-toggle" class="btn btn-xs sm:btn-sm btn-circle btn-ghost text-slate-600 dark:text-slate-300" title="Toggle Dark/Light Mode">
+          <!-- Sun Icon (shown in dark mode) -->
+          <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+          <!-- Moon Icon (shown in light mode) -->
+          <svg id="theme-icon-moon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+        </button>
+
+        <!-- Unauthenticated Buttons -->
+        <div id="nav-unauth-group" class="flex items-center gap-1.5 sm:gap-2">
+          <button class="nav-route-link btn btn-xs sm:btn-sm btn-ghost text-slate-700 dark:text-slate-300 hover:text-blue-600 font-semibold px-2 sm:px-3" data-view="login">
+            Sign In
+          </button>
+          <button class="nav-route-link btn btn-xs sm:btn-sm btn-primary bg-blue-600 hover:bg-blue-700 text-white font-semibold border-none shadow-sm px-2.5 sm:px-4" data-view="register">
+            Get Started
+          </button>
+        </div>
+
+        <!-- Authenticated Buttons -->
+        <div id="nav-auth-group" class="hidden flex items-center gap-1.5 sm:gap-3">
+          <div id="nav-user-balance-pill" class="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-lg cursor-pointer hover:border-blue-500 transition-colors" title="Tap to Top Up Wallet">
+            <span class="text-[10px] font-mono text-slate-500 uppercase font-semibold hidden sm:inline">Wallet:</span>
+            <span id="nav-user-balance" class="font-mono font-bold text-xs sm:text-sm text-blue-600 dark:text-blue-400">0.00 Cr</span>
+          </div>
+          <button id="nav-btn-dashboard" class="nav-route-link btn btn-xs sm:btn-sm btn-primary bg-blue-600 hover:bg-blue-700 text-white font-semibold border-none" data-view="dashboard">
+            Dashboard
+          </button>
+          <button id="btn-logout" class="btn btn-xs sm:btn-sm btn-outline border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+            Sign Out
+          </button>
+        </div>
+
+        <!-- Mobile Navigation Menu Toggle Button -->
+        <button id="btn-mobile-nav-toggle" class="btn btn-xs sm:btn-sm btn-circle btn-ghost text-slate-700 dark:text-slate-300 md:hidden" aria-label="Toggle section menu">
+          <svg id="mobile-menu-icon-open" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          <svg id="mobile-menu-icon-close" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Mobile Dropdown Navigation Menu (Sections) -->
+    <div id="mobile-nav-dropdown" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 shadow-lg">
+      <nav class="flex flex-col space-y-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+        <a href="#calculator" class="mobile-nav-link flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 transition">
+          <span>Pricing Calculator</span>
+          <span class="text-[11px] font-mono text-blue-600 dark:text-blue-400 font-bold">GH₵ 0.05</span>
+        </a>
+        <a href="#web-sms-preview" class="mobile-nav-link py-2 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 transition">
+          Web SMS Dispatcher
+        </a>
+        <a href="#sender-id-preview" class="mobile-nav-link py-2 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 transition">
+          Sender ID Registry
+        </a>
+        <a href="#api-docs-preview" class="mobile-nav-link py-2 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 transition">
+          Developer REST API
+        </a>
+        <a href="#docs-preview" class="mobile-nav-link py-2 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 transition">
+          Architecture &amp; Manuals
+        </a>
+      </nav>
+    </div>
+
+    <!-- Mobile Dashboard Sub-Navigation Bar (Shown only when on Dashboard) -->
+    <div id="mobile-dash-subnav" class="hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-2 overflow-x-auto no-scrollbar shadow-sm">
+      <div class="flex items-center gap-1.5 min-w-max">
+        <button class="mobile-dash-tab-btn active inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-600 text-white shadow-sm transition-all" data-dash-tab="dash-overview">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+          Overview
+        </button>
+        <button class="mobile-dash-tab-btn inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" data-dash-tab="dash-sms-composer">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+          Send SMS
+        </button>
+        <button class="mobile-dash-tab-btn inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" data-dash-tab="dash-sender-ids">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+          Sender IDs
+        </button>
+        <button class="mobile-dash-tab-btn inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" data-dash-tab="dash-logs">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+          Logs
+        </button>
+        <button class="mobile-dash-tab-btn inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" data-dash-tab="dash-api-keys">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+          API Keys
+        </button>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- =========================================================================
+       VIEW 1: PUBLIC MARKETING LANDING PAGE
+       ========================================================================= -->
+  <main id="view-landing" class="view-panel">
+    
+    <!-- Hero Section -->
+    <section id="hero" class="blueprint-canvas relative pt-10 pb-14 sm:pt-16 sm:pb-20 overflow-hidden border-b border-blue-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          
+          <div class="lg:col-span-7 space-y-5 sm:space-y-6">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[11px] sm:text-xs font-semibold text-white tracking-wide">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              Bulk SMS &amp; Developer API for Ghana
+            </div>
+
+            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight">
+              Reliable bulk SMS for Ghana and beyond.
+            </h1>
+
+            <p class="text-sm sm:text-base lg:text-lg text-blue-100 max-w-2xl font-normal leading-relaxed">
+              Create an account, generate API keys, top up with Mobile Money or card, and send single or bulk messages — from your dashboard or our REST API.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+              <button class="cta-gate-register btn btn-md bg-white hover:bg-slate-100 text-blue-700 font-bold border-none shadow-lg w-full sm:w-auto text-center">
+                Create Free Account
+              </button>
+              <a href="#calculator" class="btn btn-md btn-outline text-white hover:bg-white/10 border-white font-semibold w-full sm:w-auto text-center">
+                Calculate SMS Rates
+              </a>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-4 sm:pt-6">
+              <div class="bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded border border-white/15">
+                <div class="text-xl sm:text-2xl font-black text-white font-mono">GH₵ 0.05</div>
+                <div class="text-[10px] sm:text-[11px] text-blue-200 uppercase font-mono mt-0.5">Local Ghana / SMS</div>
+              </div>
+              <div class="bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded border border-white/15">
+                <div class="text-xl sm:text-2xl font-black text-white font-mono">GH₵ 0.08</div>
+                <div class="text-[10px] sm:text-[11px] text-blue-200 uppercase font-mono mt-0.5">International SMS</div>
+              </div>
+              <div class="bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded border border-white/15">
+                <div class="text-xl sm:text-2xl font-black text-white font-mono">190+</div>
+                <div class="text-[10px] sm:text-[11px] text-blue-200 uppercase font-mono mt-0.5">Countries reached</div>
+              </div>
+              <div class="bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded border border-white/15">
+                <div class="text-xl sm:text-2xl font-black text-white font-mono">MoMo</div>
+                <div class="text-[10px] sm:text-[11px] text-blue-200 uppercase font-mono mt-0.5">&amp; card top-up</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Decorative Desktop Illustration (Hidden on mobile to eliminate clutter) -->
+          <div class="hidden lg:block lg:col-span-5 relative">
+            <div class="p-3 bg-white/5 border border-white/20 rounded-xl shadow-2xl">
+              <img src="illustrations/hero-telecom.svg" alt="Telecom Infrastructure" class="w-full h-auto drop-shadow-md">
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing Calculator Section -->
+    <section id="calculator" class="py-14 sm:py-20 blueprint-light-grid border-b border-slate-200 dark:border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <div class="text-center max-w-3xl mx-auto mb-10 sm:mb-14 scroll-reveal">
+          <div class="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Pricing</div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Simple, transparent pricing
+          </h2>
+          <p class="text-slate-600 dark:text-slate-400 mt-2 text-base">
+            Pay per message, with no monthly fees. The calculator counts GSM-7 and Unicode segments so you see the real cost before you send.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          
+          <div class="lg:col-span-7 blueprint-card p-6 sm:p-8 rounded-xl shadow-sm scroll-reveal-left">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-700 mb-6">
+              <h3 class="font-bold text-lg text-slate-900 dark:text-white">
+                Cost calculator
+              </h3>
+            </div>
+
+            <div class="space-y-6">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="form-control">
+                  <label class="label py-1"><span class="label-text font-semibold text-xs uppercase text-slate-600 dark:text-slate-400">Destination Route</span></label>
+                  <select id="calc-dest-type" class="select select-bordered select-sm w-full font-medium bg-white dark:bg-slate-800">
+                    <option value="local" selected>Ghana Local Networks (GH₵ 0.05 / SMS)</option>
+                    <option value="international">International (190+ countries) (GH₵ 0.08 / SMS)</option>
+                  </select>
+                </div>
+
+                <div class="form-control">
+                  <label class="label py-1"><span class="label-text font-semibold text-xs uppercase text-slate-600 dark:text-slate-400">Recipient Count</span></label>
+                  <input id="calc-volume-input" type="number" min="1" max="100000" value="1000" class="input input-bordered input-sm font-mono font-bold text-blue-600 bg-white dark:bg-slate-800">
+                </div>
+              </div>
+
+              <div class="form-control">
+                <div class="flex justify-between text-xs font-mono text-slate-500 mb-1">
+                  <span>100 SMS</span>
+                  <span>10,000 SMS</span>
+                  <span>50,000+ SMS</span>
+                </div>
+                <input id="calc-volume-slider" type="range" min="100" max="50000" step="100" value="1000" class="range range-primary range-sm">
+              </div>
+
+              <div class="form-control">
+                <div class="flex justify-between items-center mb-1">
+                  <label class="label-text font-semibold text-xs uppercase text-slate-600 dark:text-slate-400">Sample SMS Content</label>
+                  <span id="calc-encoding-type" class="badge badge-sm badge-outline text-blue-600 border-blue-600 font-mono">GSM-7 (Standard)</span>
+                </div>
+                <textarea id="calc-message-input" rows="3" class="textarea textarea-bordered font-mono text-sm leading-relaxed bg-white dark:bg-slate-800" placeholder="Type message to test segments...">Hello! Your monthly flash sale is live at KebSEND. Enjoy 20% discount on all orders today!</textarea>
+                <div class="flex justify-between items-center text-xs font-mono text-slate-500 mt-1">
+                  <span id="calc-char-count">88 characters</span>
+                  <span id="calc-segments-count">1 part</span>
+                </div>
+              </div>
+
+              <div class="p-5 bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-lg">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
+                  <div>
+                    <div class="text-[11px] uppercase font-mono text-slate-500 font-semibold">Rate Per SMS</div>
+                    <div id="calc-rate-per-sms" class="text-lg font-bold text-slate-900 dark:text-white font-mono mt-0.5">GH₵ 0.05 / SMS</div>
+                  </div>
+                  <div>
+                    <div class="text-[11px] uppercase font-mono text-slate-500 font-semibold">API Credits Needed</div>
+                    <div id="calc-unit-credits" class="text-lg font-bold text-slate-900 dark:text-white font-mono mt-0.5">1,000 Units</div>
+                  </div>
+                  <div>
+                    <div class="text-[11px] uppercase font-mono text-blue-600 font-bold">Total Estimated Cost</div>
+                    <div id="calc-total-cost" class="text-2xl font-black text-blue-700 dark:text-blue-400 font-mono">GH₵ 50.00</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 space-y-6 scroll-reveal-right">
+            <div class="blueprint-card p-6 rounded-xl">
+              <img src="illustrations/pricing-calculator.svg" alt="Pricing Scale" class="hidden sm:block w-full h-auto mb-4">
+              <h4 class="font-bold text-slate-900 dark:text-white text-base">Instant Mobile Money &amp; Card Recharge</h4>
+              <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Top up credits instantly via Paystack (MTN MoMo, Telecel Cash, AT Money, Visa, Mastercard) right from your account dashboard.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Plans Grid -->
+        <div class="mt-12 sm:mt-16">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-6">
+            <h3 class="font-extrabold text-lg sm:text-xl text-slate-900 dark:text-white">Prepaid Wallet Top-up Tiers</h3>
+            <span class="text-xs font-mono text-slate-500 uppercase">Secured by Paystack</span>
+          </div>
+          <div id="plans-grid-container" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Web SMS Preview Section -->
+    <section id="web-sms-preview" class="py-14 sm:py-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto mb-10 sm:mb-14 scroll-reveal">
+          <div class="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Web dispatcher</div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Send SMS straight from your browser
+          </h2>
+          <p class="text-slate-600 dark:text-slate-400 mt-2 text-base">
+            Upload a CSV or TXT list, or paste numbers directly. Ghana numbers are formatted automatically.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div class="lg:col-span-6 blueprint-card p-6 sm:p-8 rounded-xl shadow-sm">
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white mb-3">Instant Web Dispatcher</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
+              Create a free account to dispatch live campaigns to thousands of recipients directly in your browser with real-time delivery reporting.
+            </p>
+            <button class="cta-gate-register btn btn-primary bg-blue-600 hover:bg-blue-700 text-white font-bold">
+              Create Account to Send SMS →
+            </button>
+          </div>
+          <div class="lg:col-span-6">
+            <div class="code-dark-box rounded-xl p-6 shadow-xl">
+              <div class="text-xs font-mono text-slate-400 pb-3 border-b border-slate-800 uppercase mb-3">Example delivery summary</div>
+              <pre class="font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">{
+  "campaign": "Flash sale",
+  "senderId": "MYSHOP",
+  "recipients": 1240,
+  "segments": 1,
+  "creditsUsed": 1240,
+  "status": "sent"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sender ID Section -->
+    <section id="sender-id-preview" class="py-14 sm:py-20 blueprint-light-grid border-b border-slate-200 dark:border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto mb-10 sm:mb-14 scroll-reveal">
+          <div class="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Sender ID</div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Register your own branded Sender ID
+          </h2>
+          <p class="text-slate-600 dark:text-slate-400 mt-2 text-base">
+            Send messages from your business or organization name, in line with NCA requirements.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          <div class="lg:col-span-6 blueprint-card p-6 sm:p-8 rounded-xl shadow-sm">
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white mb-2">Interactive Sender ID Validator</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mb-6">Test whether your brand name satisfies telecom formatting rules.</p>
+            <div class="form-control mb-4">
+              <input id="sid-validator-input" type="text" maxlength="15" placeholder="e.g. SHOPRITE, PAYSTACK" class="input input-bordered font-mono font-bold text-lg uppercase text-blue-600 bg-white dark:bg-slate-800">
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-mono font-semibold uppercase text-slate-500">Carrier Rule Check:</span>
+                <span id="sid-status-badge" class="badge badge-sm badge-neutral font-mono">Awaiting input</span>
+              </div>
+              <ul id="sid-feedback-list" class="text-xs space-y-1 font-mono text-slate-600 dark:text-slate-400">
+                <li>• Length: 3 to 11 characters</li>
+                <li>• Alphanumeric characters only</li>
+              </ul>
+            </div>
+          </div>
+          <div class="hidden lg:block lg:col-span-6">
+            <div class="p-4 blueprint-card rounded-xl">
+              <img src="illustrations/sender-id.svg" alt="Sender ID Compliance" class="w-full h-auto">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Developer API Preview Section -->
+    <section id="api-docs-preview" class="py-14 sm:py-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto mb-10 sm:mb-14 scroll-reveal">
+          <div class="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Developer API</div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            A clean REST API for developers
+          </h2>
+          <p class="text-slate-600 dark:text-slate-400 mt-2 text-base">
+            Send OTPs, transaction alerts, and notifications, and check your balance — with a few lines of code.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div class="lg:col-span-7">
+            <div class="code-dark-box rounded-xl overflow-hidden shadow-xl">
+              <div class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 bg-slate-900 border-b border-slate-800">
+                <div class="flex items-center gap-1 overflow-x-auto no-scrollbar min-w-0">
+                  <button class="api-lang-tab tab tab-sm font-mono font-bold rounded tab-active bg-blue-600 text-white shrink-0" data-lang="curl">cURL</button>
+                  <button class="api-lang-tab tab tab-sm font-mono font-bold rounded text-slate-400 hover:text-white shrink-0" data-lang="js">Node.js</button>
+                  <button class="api-lang-tab tab tab-sm font-mono font-bold rounded text-slate-400 hover:text-white shrink-0" data-lang="python">Python</button>
+                  <button class="api-lang-tab tab tab-sm font-mono font-bold rounded text-slate-400 hover:text-white shrink-0" data-lang="php">PHP</button>
+                </div>
+                <button class="copy-btn btn btn-xs btn-outline border-slate-700 text-slate-300 font-mono shrink-0" data-target="code-display-curl">Copy</button>
+              </div>
+              <div id="code-display-curl" class="api-code-snippet p-4 sm:p-5 text-xs font-mono text-blue-300 overflow-x-auto leading-relaxed" data-lang="curl">
+<pre><span class="text-emerald-400">curl</span> -X POST https://your-kebsend-host.com/api/v1/send-sms \
+  -H <span class="text-amber-300">"Authorization: Bearer ksnd_live_..."</span> \
+  -H <span class="text-amber-300">"Content-Type: application/json"</span> \
+  -d <span class="text-white">'{
+    "to": "233240001234",
+    "message": "Your verification code: 9482",
+    "senderId": "MYSHOP"
+  }'</span></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 blueprint-card p-6 rounded-xl">
+            <h3 class="font-bold text-base text-slate-900 dark:text-white mb-2">Get Instant API Keys</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mb-6">Create an account to generate live API keys and test endpoints in real time.</p>
+            <button class="cta-gate-register btn btn-primary bg-blue-600 hover:bg-blue-700 btn-block text-white font-bold">
+              Create Developer Account
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Docs Download Section -->
+    <section id="docs-preview" class="py-14 sm:py-20 blueprint-light-grid border-b border-slate-200 dark:border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div class="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Documentation</div>
+        <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white mb-8">System Manuals &amp; Legal Policies</h2>
+        <div class="flex flex-wrap justify-center gap-4">
+          <a href="/docs/architecture" target="_blank" class="btn btn-sm btn-primary bg-blue-600 text-white font-mono">
+            Download Architecture PDF
+          </a>
+          <a href="/docs/terms" target="_blank" class="btn btn-sm btn-outline border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-mono">
+            Download Legal Terms PDF
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Public Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-10 border-t border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs font-mono">
+        <div>© 2026 KEBSEND BMS. ALL RIGHTS RESERVED.</div>
+      </div>
+    </footer>
+
+  </main>
+
+
+  <!-- =========================================================================
+       VIEW 2: DEDICATED AUTH PAGES (SIGN IN & REGISTER)
+       ========================================================================= -->
+  <main id="view-auth" class="view-panel hidden min-h-[calc(100vh-64px)] flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
+    
+    <!-- Auth Container Box -->
+    <div class="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-xl">
+      
+      <!-- Sub-view: Sign In -->
+      <div id="auth-panel-login" class="space-y-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 flex items-center justify-center">
+            <img src="kebsend-icon.svg" alt="KebSEND" class="w-full h-full" />
+          </div>
+          <div>
+            <div class="text-xs font-mono text-blue-600 uppercase font-bold tracking-wider">CLIENT PORTAL</div>
+            <h2 class="text-2xl font-black text-slate-900 dark:text-white leading-tight">Sign In to KebSEND</h2>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Enter your email and password to access your dashboard.</p>
+
+        <form id="form-auth-login" class="space-y-4">
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text font-semibold text-xs text-slate-700 dark:text-slate-300">Email Address</span></label>
+            <input id="auth-login-email" type="email" required placeholder="developer@company.com" class="input input-bordered input-sm font-mono bg-white dark:bg-slate-800">
+          </div>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text font-semibold text-xs text-slate-700 dark:text-slate-300">Password</span></label>
+            <input id="auth-login-password" type="password" required placeholder="••••••••" class="input input-bordered input-sm font-mono bg-white dark:bg-slate-800">
+          </div>
+
+          <div id="auth-login-error" class="hidden text-xs text-red-600 font-mono"></div>
+
+          <button type="submit" class="btn btn-primary bg-blue-600 hover:bg-blue-700 btn-block btn-sm text-white font-bold">
+            Sign In
+          </button>
+        </form>
+
+        <div class="text-center text-xs text-slate-500 pt-4 border-t border-slate-100 dark:border-slate-800">
+          Don't have an account? <button class="switch-auth-btn text-blue-600 font-bold hover:underline" data-target="register">Create Account</button>
+        </div>
+      </div>
+
+      <!-- Sub-view: Register -->
+      <div id="auth-panel-register" class="hidden space-y-6">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 flex items-center justify-center">
+            <img src="kebsend-icon.svg" alt="KebSEND" class="w-full h-full" />
+          </div>
+          <div>
+            <div class="text-xs font-mono text-emerald-600 uppercase font-bold tracking-wider">NEW DEVELOPER</div>
+            <h2 class="text-2xl font-black text-slate-900 dark:text-white leading-tight">Create Account</h2>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Includes 5 free starter test credits upon signup.</p>
+
+        <form id="form-auth-register" class="space-y-4">
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text font-semibold text-xs text-slate-700 dark:text-slate-300">Full Name</span></label>
+            <input id="auth-reg-name" type="text" required placeholder="Harrison Kwadwo" class="input input-bordered input-sm font-mono bg-white dark:bg-slate-800">
+          </div>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text font-semibold text-xs text-slate-700 dark:text-slate-300">Email Address</span></label>
+            <input id="auth-reg-email" type="email" required placeholder="developer@company.com" class="input input-bordered input-sm font-mono bg-white dark:bg-slate-800">
+          </div>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text font-semibold text-xs text-slate-700 dark:text-slate-300">Phone Number (Ghana / MoMo)</span></label>
+            <input id="auth-reg-phone" type="text" placeholder="0244000123" class="input input-bordered input-sm font-mono bg-white dark:bg-slate-800">
+          </div>
+          <div class="form-control">
+            <label class="label py-1"><span class="label-text font-semibold text-xs text-slate-700 dark:text-slate-300">Password (Min 6 Characters)</span></label>
+            <input id="auth-reg-password" type="password" required minlength="6" placeholder="••••••••" class="input input-bordered input-sm font-mono bg-white dark:bg-slate-800">
+          </div>
+
+          <div id="auth-reg-error" class="hidden text-xs text-red-600 font-mono"></div>
+
+          <button type="submit" class="btn btn-primary bg-blue-600 hover:bg-blue-700 btn-block btn-sm text-white font-bold">
+            Create Free Account
+          </button>
+        </form>
+
+        <div class="text-center text-xs text-slate-500 pt-4 border-t border-slate-100 dark:border-slate-800">
+          Already registered? <button class="switch-auth-btn text-blue-600 font-bold hover:underline" data-target="login">Sign In</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+
+  <!-- =========================================================================
+       VIEW 3: DEDICATED CLIENT SAAS DASHBOARD (WHITE & BLUE, ZERO GRADIENT)
+       ========================================================================= -->
+  <main id="view-dashboard" class="view-panel hidden min-h-[calc(100vh-64px)] flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950">
+    
+    <!-- Left Navigation Sidebar (Desktop Only) -->
+    <aside class="dashboard-sidebar p-5 space-y-6 shrink-0 hidden md:block">
+      <div>
+        <div class="text-[10px] font-mono text-slate-400 uppercase tracking-widest font-bold mb-3 px-3">WORKSPACE</div>
+        <nav class="space-y-1">
+          <button class="sidebar-nav-item w-full active text-left" data-dash-tab="dash-overview">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            Overview &amp; Wallet
+          </button>
+          <button class="sidebar-nav-item w-full text-left" data-dash-tab="dash-api-keys">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+            API Keys
+          </button>
+          <button class="sidebar-nav-item w-full text-left" data-dash-tab="dash-sms-composer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+            Send Bulk SMS
+          </button>
+          <button class="sidebar-nav-item w-full text-left" data-dash-tab="dash-logs">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            Message Logs
+          </button>
+          <button class="sidebar-nav-item w-full text-left" data-dash-tab="dash-sender-ids">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            Sender IDs
+          </button>
+        </nav>
+      </div>
+
+      <div class="pt-6 border-t border-slate-200 dark:border-slate-800">
+        <div class="p-4 bg-blue-50 dark:bg-slate-800 rounded-xl border border-blue-200 dark:border-slate-700">
+          <div class="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase font-semibold">Account Balance</div>
+          <div id="sidebar-balance" class="text-xl font-black text-blue-600 dark:text-blue-400 font-mono mt-1">0.00 Credits</div>
+          <button id="btn-sidebar-topup" class="btn btn-xs btn-primary bg-blue-600 hover:bg-blue-700 text-white btn-block mt-3">
+            + Top Up Wallet
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <div class="flex-1 min-w-0 px-3.5 pt-3 pb-8 sm:p-8 space-y-5 sm:space-y-8 overflow-y-visible md:overflow-y-auto">
+      
+      <!-- Workspace Top Bar (Desktop Only - On mobile, tabs start immediately) -->
+      <div class="hidden md:flex flex-row items-center justify-between gap-3 pb-5 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">Welcome, <span id="dash-greeting-name" class="text-blue-600">Developer</span></h1>
+          <div class="text-xs font-mono text-slate-500 mt-0.5 truncate max-w-xs">Account: <span id="dash-user-email">user@example.com</span></div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button id="btn-dash-topup" class="btn btn-sm btn-primary bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+            + Top Up Credits
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 1: OVERVIEW & WALLET -->
+      <div id="dash-overview" class="dash-workspace-tab space-y-4 sm:space-y-6">
+        
+        <!-- Mobile User Welcome Strip (Mobile Only) -->
+        <div class="block md:hidden pb-2">
+          <div class="text-lg font-black text-slate-900 dark:text-white leading-tight">Welcome, <span id="dash-mobile-greeting-name" class="text-blue-600">Developer</span></div>
+          <div class="text-[11px] font-mono text-slate-500 mt-0.5 truncate">Account: <span id="dash-mobile-user-email">user@example.com</span></div>
+        </div>
+
+        <!-- Featured Executive Wallet Card -->
+        <div class="rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white border border-blue-900/60 shadow-xl relative overflow-hidden">
+          <div class="relative z-10 flex flex-col justify-between h-full">
+            <div class="flex items-center justify-between pb-3 border-b border-white/10">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-bold text-blue-200 uppercase tracking-wider">Wallet Balance</span>
+              </div>
+              <span class="badge badge-sm bg-blue-500/20 text-blue-300 border border-blue-400/30 font-mono text-[10px]">
+                Prepaid
+              </span>
+            </div>
+
+            <div class="my-4">
+              <div id="card-balance" class="text-3xl sm:text-4xl font-black font-mono tracking-tight text-white">
+                0.00 <span class="text-sm font-normal text-blue-200">Credits</span>
+              </div>
+              <div class="text-xs text-blue-200/80 font-mono mt-1 flex items-center gap-2">
+                <span>1 Credit = 1 Local SMS</span>
+                <span class="text-white/30">•</span>
+                <span>GH₵ 0.05 / msg</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 pt-3 border-t border-white/10">
+              <button id="btn-wallet-topup" class="btn btn-sm bg-blue-600 hover:bg-blue-500 text-white font-bold font-mono border-none shadow-md">
+                + Top Up Wallet
+              </button>
+              <button class="btn btn-sm bg-white/10 hover:bg-white/20 text-white font-semibold font-mono border border-white/15 quick-nav-tab" data-dash-tab="dash-sms-composer">
+                Send SMS →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2-Column Compact Metric Tiles (API Keys & Sender IDs) -->
+        <div class="grid grid-cols-2 gap-3 sm:gap-4">
+          <div class="dash-surface-card p-4 sm:p-5 flex flex-col justify-between hover:border-blue-500 transition-colors">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-mono uppercase text-slate-500 font-bold">API Keys</span>
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+              </div>
+              <div id="card-api-keys-count" class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono mt-2">0</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">REST credentials</div>
+            </div>
+            <button class="text-xs text-blue-600 dark:text-blue-400 font-bold mt-3 text-left quick-nav-tab hover:underline" data-dash-tab="dash-api-keys">
+              Manage Keys →
+            </button>
+          </div>
+
+          <div class="dash-surface-card p-4 sm:p-5 flex flex-col justify-between hover:border-blue-500 transition-colors">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-mono uppercase text-slate-500 font-bold">Sender IDs</span>
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+              </div>
+              <div id="card-sender-ids-count" class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono mt-2">1</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Brand identifiers</div>
+            </div>
+            <button class="text-xs text-blue-600 dark:text-blue-400 font-bold mt-3 text-left quick-nav-tab hover:underline" data-dash-tab="dash-sender-ids">
+              Manage IDs →
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Top Up Packages Grid -->
+        <div class="dash-surface-card p-4 sm:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-bold text-sm sm:text-base text-slate-900 dark:text-white">Prepaid SMS Recharge Plans</h3>
+              <p class="text-[11px] sm:text-xs text-slate-500">Instant credit top-up via Paystack (MTN MoMo, Telecel, AT, Bank Cards).</p>
+            </div>
+          </div>
+          <div id="dash-plans-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: API KEYS -->
+      <div id="dash-api-keys" class="dash-workspace-tab hidden space-y-6">
+        <div class="dash-surface-card p-4 sm:p-6 space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <h3 class="font-bold text-lg text-slate-900 dark:text-white">Developer API Keys</h3>
+              <p class="text-xs text-slate-500">Authenticate your backend services using your secret API keys.</p>
+            </div>
+            <button id="btn-generate-api-key" class="btn btn-sm btn-primary bg-blue-600 hover:bg-blue-700 text-white font-mono w-full sm:w-auto shrink-0">
+              + Generate New Key
+            </button>
+          </div>
+
+          <div id="dash-api-keys-list" class="space-y-3">
+            <div class="text-xs text-slate-500 font-mono">Loading API keys...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: SEND BULK SMS -->
+      <div id="dash-sms-composer" class="dash-workspace-tab hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-7 dash-surface-card p-4 sm:p-6 space-y-5">
+            <div class="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white">Dispatch Bulk SMS</h3>
+                <p class="text-xs text-slate-500">Send to many recipients at once.</p>
+              </div>
+              <span id="dash-composer-balance-tag" class="self-start text-xs font-mono px-2.5 py-1 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-900 shrink-0">
+                Balance: 0.00 Credits
+              </span>
+            </div>
+
+            <div class="form-control">
+              <label class="label py-1"><span class="label-text font-semibold text-xs uppercase text-slate-600 dark:text-slate-400">Sender ID</span></label>
+              <select id="dash-sms-sender-id" class="select select-bordered select-sm bg-white dark:bg-slate-800 font-mono text-xs w-full">
+                <option value="TXTORA">TXTORA (Default)</option>
+              </select>
+            </div>
+
+            <!-- Contact Input & File Dropzone Section -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="label py-0"><span class="label-text font-semibold text-xs uppercase text-slate-600 dark:text-slate-400">Recipients / Contact Book</span></label>
+                <div class="flex items-center gap-2">
+                  <a id="btn-download-sample-csv" href="#" class="text-xs font-mono text-blue-600 dark:text-blue-400 hover:underline">Sample CSV</a>
+                  <span class="text-slate-300 dark:text-slate-700">|</span>
+                  <button type="button" id="btn-clear-recipients" class="text-xs font-mono text-slate-500 hover:text-red-500">Clear</button>
+                </div>
+              </div>
+
+              <!-- Drag and drop zone -->
+              <div id="contact-dropzone" class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-lg p-3 text-center bg-slate-50/50 dark:bg-slate-800/30 transition-colors cursor-pointer group">
+                <input type="file" id="contact-file-input" accept=".csv,.txt,.tsv" class="hidden" />
+                <div class="flex items-center justify-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                  <svg class="w-4 h-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                  </svg>
+                  <span class="font-medium">Upload CSV / TXT contact list</span>
+                  <span class="text-slate-400 dark:text-slate-500 text-[11px]">(or drag &amp; drop file here)</span>
+                </div>
+              </div>
+
+              <textarea id="dash-sms-recipients" rows="4" class="textarea textarea-bordered font-mono text-xs bg-white dark:bg-slate-800 w-full focus:border-blue-600 focus:outline-none" placeholder="Enter recipient numbers (e.g. 0244123456, 0501234567, 233244000000) or upload a CSV file above..."></textarea>
+              
+              <!-- Contact Validation Live Stats Badge Bar -->
+              <div id="contact-stats-bar" class="grid grid-cols-3 gap-2 text-center text-xs font-mono py-1.5 px-3 bg-slate-100 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700/60">
+                <div class="text-emerald-600 dark:text-emerald-400">
+                  <span class="font-bold" id="stat-valid-count">0</span> Valid
+                </div>
+                <div class="text-amber-600 dark:text-amber-400">
+                  <span class="font-bold" id="stat-dups-count">0</span> Dups Filtered
+                </div>
+                <div class="text-slate-500 dark:text-slate-400">
+                  <span class="font-bold" id="stat-invalid-count">0</span> Invalid
+                </div>
+              </div>
+            </div>
+
+            <!-- Message Composer Section -->
+            <div class="form-control">
+              <div class="flex items-center justify-between">
+                <label class="label py-1"><span class="label-text font-semibold text-xs uppercase text-slate-600 dark:text-slate-400">Message Text</span></label>
+                <div class="text-xs font-mono text-slate-500" id="dash-char-counter">0 chars | 0 parts (GSM-7)</div>
+              </div>
+              <textarea id="dash-sms-message" rows="3" class="textarea textarea-bordered font-mono text-xs bg-white dark:bg-slate-800 w-full focus:border-blue-600 focus:outline-none" placeholder="Type your SMS message here..."></textarea>
+            </div>
+
+            <!-- Campaign Summary Box -->
+            <div class="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-lg text-xs font-mono flex items-center justify-between">
+              <div>
+                <span class="text-slate-500">Estimated Cost:</span>
+                <span id="dash-sms-total-cost" class="font-bold text-blue-600 dark:text-blue-400 ml-1">0.00 Credits</span>
+              </div>
+              <div id="dash-sms-charge-rate" class="text-slate-500 text-[11px]">
+                Rate: 1 credit / segment / contact
+              </div>
+            </div>
+
+            <button id="btn-dash-send-sms" class="btn btn-primary bg-blue-600 hover:bg-blue-700 btn-block text-white font-bold font-mono">
+              Dispatch Bulk Campaign
+            </button>
+          </div>
+
+          <div class="lg:col-span-5 dash-surface-card p-4 sm:p-6 flex flex-col justify-between">
+            <div>
+              <div class="text-xs font-mono text-slate-500 pb-3 border-b border-slate-200 dark:border-slate-800 uppercase mb-3 flex items-center justify-between">
+                <span>Delivery output</span>
+              </div>
+              <pre id="dash-sms-output" class="text-xs font-mono text-emerald-600 dark:text-emerald-400 h-48 sm:h-80 overflow-y-auto leading-relaxed bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800">{
+  "status": "idle",
+  "info": "Results will appear here after you send."
+}</pre>
+            </div>
+
+            <div class="mt-4 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200 dark:border-slate-700/50 text-[11px] font-mono text-slate-500">
+              <span class="font-bold text-slate-700 dark:text-slate-300">Format Notice:</span> Ghana numbers starting with <code class="text-blue-600 dark:text-blue-400">024...</code>, <code class="text-blue-600 dark:text-blue-400">050...</code> are automatically converted to E.164 <code class="text-blue-600 dark:text-blue-400">23324...</code> format.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: MESSAGE LOGS -->
+      <div id="dash-logs" class="dash-workspace-tab hidden space-y-4">
+        <div class="dash-surface-card p-4 sm:p-6">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white">Message Delivery Logs</h3>
+            <button id="btn-refresh-logs" class="btn btn-xs btn-outline border-slate-300 dark:border-slate-700 font-mono">Refresh Logs</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="table table-sm w-full font-mono text-xs text-slate-700 dark:text-slate-300">
+              <thead>
+                <tr class="text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                  <th>Date / Time</th>
+                  <th>Recipients</th>
+                  <th>Sender ID</th>
+                  <th>Message</th>
+                  <th>Credits</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="dash-logs-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                <tr><td colspan="6" class="text-center py-4 text-slate-500">No message logs recorded yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: SENDER IDS -->
+      <div id="dash-sender-ids" class="dash-workspace-tab hidden space-y-6">
+        <div class="dash-surface-card p-4 sm:p-6 space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <h3 class="font-bold text-lg text-slate-900 dark:text-white">Custom Sender ID Management</h3>
+              <p class="text-xs text-slate-500">Register and manage your alphanumeric brand sender IDs (3 to 11 characters).</p>
+            </div>
+            <div class="self-start text-xs font-mono px-2 py-0.5 rounded bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold border border-blue-200 dark:border-slate-700 shrink-0">
+              Fast Approval
+            </div>
+          </div>
+
+          <!-- Request Form with One-time Fee -->
+          <div class="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="text-xs font-mono font-bold uppercase text-slate-700 dark:text-slate-300">Request New Brand Name</div>
+              <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 text-xs font-mono font-semibold">
+                <span>One-time Fee:</span>
+                <span id="dash-sid-fee-badge" class="font-bold">₵8.00</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div class="sm:col-span-4">
+                <label class="block text-[11px] font-mono text-slate-500 mb-1">Sender ID (3–11 Alphanumeric)</label>
+                <input id="dash-new-sid" type="text" maxlength="11" placeholder="e.g. KEBSEND, AIRLINES" class="input input-bordered input-sm font-mono uppercase font-bold bg-white dark:bg-slate-800 w-full focus:border-blue-600 focus:outline-none">
+              </div>
+              <div class="sm:col-span-5">
+                <label class="block text-[11px] font-mono text-slate-500 mb-1">Use Case / Description</label>
+                <input id="dash-new-sid-purpose" type="text" placeholder="Purpose (e.g. School Alerts, OTPs)" class="input input-bordered input-sm font-mono text-xs bg-white dark:bg-slate-800 w-full focus:border-blue-600 focus:outline-none">
+              </div>
+              <div class="sm:col-span-3 flex flex-col justify-end">
+                <button id="btn-dash-request-sid" class="btn btn-sm btn-primary bg-blue-600 hover:bg-blue-700 text-white font-mono font-bold w-full">
+                  Register (<span id="dash-sid-fee-btn">₵8.00</span>)
+                </button>
+              </div>
+            </div>
+
+            <!-- Payment Method Selector -->
+            <div class="pt-2 border-t border-slate-200/80 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+              <div class="flex items-center gap-4 text-slate-600 dark:text-slate-400">
+                <span class="font-semibold text-slate-500">Pay Fee Via:</span>
+                <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="sid-pay-method" value="wallet" checked class="radio radio-primary radio-xs">
+                  <span>Wallet Balance (<span id="sid-wallet-balance" class="font-bold text-blue-600 dark:text-blue-400">₵0.00</span>)</span>
+                </label>
+                <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="sid-pay-method" value="paystack" class="radio radio-primary radio-xs">
+                  <span>Mobile Money / Card</span>
+                </label>
+              </div>
+              <div class="text-[11px] text-slate-500">
+                Permanent ownership after verification.
+              </div>
+            </div>
+
+            <div id="dash-sid-feedback" class="hidden text-xs font-mono p-2.5 rounded border"></div>
+          </div>
+
+          <!-- Active Approved Sender IDs -->
+          <div class="space-y-3">
+            <div class="text-xs font-mono uppercase font-bold text-slate-500">Active Approved Sender IDs</div>
+            <div id="dash-active-sender-ids" class="flex flex-wrap gap-2">
+              <span class="badge badge-primary font-mono text-xs">TXTORA (Approved)</span>
+            </div>
+          </div>
+
+          <!-- Sender ID Submission History Table -->
+          <div class="space-y-3 pt-2">
+            <div class="text-xs font-mono uppercase font-bold text-slate-500">Verification Requests History</div>
+            <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+              <table class="table table-sm w-full font-mono text-xs text-slate-700 dark:text-slate-300">
+                <thead>
+                  <tr class="text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                    <th>Date</th>
+                    <th>Sender ID</th>
+                    <th>Purpose</th>
+                    <th>Fee & Method</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-sid-requests-table" class="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tr><td colspan="4" class="text-center py-4 text-slate-500">No custom sender ID requests yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+
+  <!-- =========================================================================
+       GENERATE API KEY MODAL
+       ========================================================================= -->
+  <dialog id="modal-generate-key" class="modal">
+    <div class="modal-box bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-md shadow-2xl">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3">✕</button>
+      </form>
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-extrabold text-lg text-slate-900 dark:text-white">Generate API Key</h3>
+          <p class="text-xs text-slate-500 font-mono">CREATE SECRET DEVELOPER TOKEN</p>
+        </div>
+      </div>
+
+      <div class="space-y-4 my-4">
+        <div class="form-control">
+          <label class="label py-1">
+            <span class="label-text font-semibold text-xs text-slate-700 dark:text-slate-300">Key Name / Identifier</span>
+          </label>
+          <input type="text" id="gen-key-name-input" class="input input-bordered input-sm bg-white dark:bg-slate-800 font-mono text-xs w-full focus:border-blue-600 focus:outline-none" placeholder="e.g. Production Backend, Webhook Server" value="Production Server Key">
+        </div>
+        <div id="gen-key-status" class="hidden text-xs font-mono p-2.5 rounded border"></div>
+      </div>
+
+      <div class="modal-action mt-6 flex justify-end gap-2">
+        <form method="dialog">
+          <button class="btn btn-sm btn-ghost font-mono text-xs">Cancel</button>
+        </form>
+        <button id="btn-confirm-generate-key" class="btn btn-sm btn-primary bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs">
+          Generate Secret Key
+        </button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <!-- =========================================================================
+       TOP-UP PAYMENT MODAL
+       ========================================================================= -->
+  <dialog id="modal-topup" class="modal">
+    <div class="modal-box bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-lg shadow-2xl">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3">✕</button>
+      </form>
+      <h3 class="font-extrabold text-xl text-slate-900 dark:text-white mb-1">Top Up SMS Credits</h3>
+      <p class="text-xs text-slate-500 font-mono mb-5">PAYSTACK GATEWAY (MOMO &amp; CARDS)</p>
+      <div class="grid grid-cols-2 gap-2.5 sm:gap-3 mb-6" id="topup-plans-container"></div>
+      <div id="topup-status" class="hidden text-xs font-mono p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded"></div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <!-- Application JS Engine -->
+  <script src="app.js?v=8"></script>
+</body>
+</html>
