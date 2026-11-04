@@ -1,14 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 136 140" role="img" aria-label="KebSEND">
-  <defs>
-    <linearGradient id="kebsend-icon-g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1F5FD6"/>
-      <stop offset="1" stop-color="#0A2A66"/>
-    </linearGradient>
-  </defs>
-  <g transform="translate(6 12)">
-    <path d="M26 0H64A16 16 0 0 1 80 16V44A16 16 0 0 1 64 60H36L18 75L20 60H16A16 16 0 0 1 0 44V16A16 16 0 0 1 16 0Z" transform="translate(36 6)" fill="#12B3A1" opacity=".45"/>
-    <path d="M26 0H64A16 16 0 0 1 80 16V44A16 16 0 0 1 64 60H36L18 75L20 60H16A16 16 0 0 1 0 44V16A16 16 0 0 1 16 0Z" transform="translate(22 20)" fill="#1F5FD6" opacity=".6"/>
-    <path d="M26 0H64A16 16 0 0 1 80 16V44A16 16 0 0 1 64 60H36L18 75L20 60H16A16 16 0 0 1 0 44V16A16 16 0 0 1 16 0Z" transform="translate(8 34)" fill="url(#kebsend-icon-g)"/>
-    <path d="M30 64H64M52 52L64 64L52 76" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="KebSEND icon">
+<title>KebSEND icon</title>
+<defs><linearGradient id="a-bubble-planeig" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1F5FD6"/><stop offset="1" stop-color="#0A2A66"/></linearGradient></defs><path d="M32 10H88A22 22 0 0 1 110 32V68A22 22 0 0 1 88 90H52L28 111L30 90H32A22 22 0 0 1 10 68V32A22 22 0 0 1 32 10Z" fill="url(#a-bubble-planeig)"/><path d="M33 50L86 28L71 74L59 58Z" fill="#fff"/><path d="M59 58L86 28L56 70Z" fill="#12B3A1"/>
 </svg>
