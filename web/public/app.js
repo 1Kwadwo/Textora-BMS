@@ -10,6 +10,7 @@ const THEME_KEY = 'kebsend_theme';
 migrateLegacyStorage();
 let currentAuthToken = localStorage.getItem(AUTH_TOKEN_KEY) || null;
 let currentCustomSenderIdFee = 8.0;
+let pendingVerificationEmail = '';
 
 function migrateLegacyStorage() {
   try {
@@ -160,6 +161,7 @@ function navigate(viewName, updateHash = true) {
   const authRegPanel = document.getElementById('auth-panel-register');
   const authForgotPanel = document.getElementById('auth-panel-forgot');
   const authResetPanel = document.getElementById('auth-panel-reset');
+  const authVerifyPanel = document.getElementById('auth-panel-verify');
 
   const mobileDashSubnav = document.getElementById('mobile-dash-subnav');
   if (mobileDashSubnav) {
@@ -196,6 +198,7 @@ function navigate(viewName, updateHash = true) {
     if (authRegPanel) authRegPanel.classList.add('hidden');
     if (authForgotPanel) authForgotPanel.classList.add('hidden');
     if (authResetPanel) authResetPanel.classList.add('hidden');
+    if (authVerifyPanel) authVerifyPanel.classList.add('hidden');
     if (landingNav) {
       landingNav.classList.add('hidden', 'hidden-nav');
       landingNav.style.display = 'none';
@@ -206,6 +209,7 @@ function navigate(viewName, updateHash = true) {
     if (authRegPanel) authRegPanel.classList.remove('hidden');
     if (authForgotPanel) authForgotPanel.classList.add('hidden');
     if (authResetPanel) authResetPanel.classList.add('hidden');
+    if (authVerifyPanel) authVerifyPanel.classList.add('hidden');
     if (landingNav) {
       landingNav.classList.add('hidden', 'hidden-nav');
       landingNav.style.display = 'none';
@@ -216,6 +220,7 @@ function navigate(viewName, updateHash = true) {
     if (authRegPanel) authRegPanel.classList.add('hidden');
     if (authForgotPanel) authForgotPanel.classList.remove('hidden');
     if (authResetPanel) authResetPanel.classList.add('hidden');
+    if (authVerifyPanel) authVerifyPanel.classList.add('hidden');
     if (landingNav) {
       landingNav.classList.add('hidden', 'hidden-nav');
       landingNav.style.display = 'none';
@@ -226,6 +231,25 @@ function navigate(viewName, updateHash = true) {
     if (authRegPanel) authRegPanel.classList.add('hidden');
     if (authForgotPanel) authForgotPanel.classList.add('hidden');
     if (authResetPanel) authResetPanel.classList.remove('hidden');
+    if (authVerifyPanel) authVerifyPanel.classList.add('hidden');
+    if (landingNav) {
+      landingNav.classList.add('hidden', 'hidden-nav');
+      landingNav.style.display = 'none';
+    }
+  } else if (viewName === 'verify') {
+    if (authView) authView.classList.remove('hidden');
+    if (authLoginPanel) authLoginPanel.classList.add('hidden');
+    if (authRegPanel) authRegPanel.classList.add('hidden');
+    if (authForgotPanel) authForgotPanel.classList.add('hidden');
+    if (authResetPanel) authResetPanel.classList.add('hidden');
+    if (authVerifyPanel) authVerifyPanel.classList.remove('hidden');
+    const emailDisp = document.getElementById('verify-email-display');
+    if (emailDisp && pendingVerificationEmail) emailDisp.textContent = pendingVerificationEmail;
+    const codeInput = document.getElementById('auth-verify-code');
+    if (codeInput) {
+      codeInput.value = '';
+      setTimeout(() => codeInput.focus(), 100);
+    }
     if (landingNav) {
       landingNav.classList.add('hidden', 'hidden-nav');
       landingNav.style.display = 'none';
@@ -315,6 +339,17 @@ function initAuthForms() {
         });
         const data = await res.json();
         if (!res.ok || !data.ok) {
+          if (data.requiresVerification && data.email) {
+            pendingVerificationEmail = data.email;
+            navigate('verify');
+            const verifyMsg = document.getElementById('auth-verify-msg');
+            if (verifyMsg) {
+              verifyMsg.textContent = data.message || 'Please enter the 6-digit verification code sent to your email.';
+              verifyMsg.classList.remove('hidden');
+              verifyMsg.className = 'rounded-xl border px-4 py-3 text-sm font-medium bg-amber-50 text-amber-800 border-amber-200';
+            }
+            return;
+          }
           loginError.textContent = data.message || 'Login failed';
           loginError.classList.remove('hidden');
           return;
@@ -351,6 +386,18 @@ function initAuthForms() {
         if (!res.ok || !data.ok) {
           regError.textContent = data.message || 'Registration failed';
           regError.classList.remove('hidden');
+          return;
+        }
+
+        if (data.requiresVerification && data.email) {
+          pendingVerificationEmail = data.email;
+          navigate('verify');
+          const verifyMsg = document.getElementById('auth-verify-msg');
+          if (verifyMsg) {
+            verifyMsg.textContent = data.message || 'We sent a 6-digit confirmation code to your email.';
+            verifyMsg.classList.remove('hidden');
+            verifyMsg.className = 'rounded-xl border px-4 py-3 text-sm font-medium bg-blue-50 text-blue-800 border-blue-200';
+          }
           return;
         }
 
@@ -488,6 +535,99 @@ function initAuthForms() {
           btn.disabled = false;
           btn.textContent = originalText;
         }
+      }
+    });
+  }
+
+  const formVerify = document.getElementById('form-auth-verify');
+  const verifyMsg = document.getElementById('auth-verify-msg');
+  const btnResend = document.getElementById('btn-resend-verification');
+
+  if (formVerify) {
+    formVerify.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (verifyMsg) {
+        verifyMsg.classList.add('hidden');
+        verifyMsg.className = 'rounded-xl border px-4 py-3 text-sm font-medium';
+      }
+      const code = document.getElementById('auth-verify-code').value.trim();
+      const email = pendingVerificationEmail || document.getElementById('auth-reg-email')?.value.trim() || document.getElementById('auth-login-email')?.value.trim();
+
+      const btn = formVerify.querySelector('button[type="submit"]');
+      const originalText = btn ? btn.textContent : 'Verify & Activate Account';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Verifying...';
+      }
+
+      try {
+        const res = await fetch('/api/auth/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          if (verifyMsg) {
+            verifyMsg.textContent = data.message || 'Verification failed';
+            verifyMsg.classList.remove('hidden');
+            verifyMsg.className = 'rounded-xl border px-4 py-3 text-sm font-medium bg-rose-50 text-rose-700 border-rose-200';
+          }
+          return;
+        }
+
+        currentAuthToken = data.token;
+        localStorage.setItem(AUTH_TOKEN_KEY, currentAuthToken);
+        currentUser = data.user;
+        updateNavAuthState();
+        navigate('dashboard');
+      } catch (err) {
+        if (verifyMsg) {
+          verifyMsg.textContent = 'Connection error: ' + err.message;
+          verifyMsg.classList.remove('hidden');
+          verifyMsg.className = 'rounded-xl border px-4 py-3 text-sm font-medium bg-rose-50 text-rose-700 border-rose-200';
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      }
+    });
+  }
+
+  if (btnResend) {
+    btnResend.addEventListener('click', async () => {
+      const email = pendingVerificationEmail || document.getElementById('auth-reg-email')?.value.trim() || document.getElementById('auth-login-email')?.value.trim();
+      if (!email) {
+        alert('Please enter your email first.');
+        return;
+      }
+      btnResend.disabled = true;
+      btnResend.textContent = 'Resending...';
+      try {
+        const res = await fetch('/api/auth/resend-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (verifyMsg) {
+          verifyMsg.textContent = data.message || (res.ok ? 'Code resent!' : 'Failed to resend code');
+          verifyMsg.classList.remove('hidden');
+          verifyMsg.className = 'rounded-xl border px-4 py-3 text-sm font-medium ' + (res.ok ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200');
+        }
+      } catch (err) {
+        if (verifyMsg) {
+          verifyMsg.textContent = 'Error: ' + err.message;
+          verifyMsg.classList.remove('hidden');
+          verifyMsg.className = 'rounded-xl border px-4 py-3 text-sm font-medium bg-rose-50 text-rose-700 border-rose-200';
+        }
+      } finally {
+        setTimeout(() => {
+          btnResend.disabled = false;
+          btnResend.textContent = 'Resend code';
+        }, 4000);
       }
     });
   }

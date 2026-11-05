@@ -777,6 +777,31 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
           </div>
         </div>
 
+        <!-- Email OTP Verification -->
+        <div id="auth-panel-verify" class="hidden space-y-6">
+          <div>
+            <img src="kebsend-icon.svg" alt="" class="mb-5 h-12 w-12" />
+            <h2 class="text-3xl font-black tracking-tight text-navy-900 dark:text-white">Verify your email</h2>
+            <p class="mt-1.5 text-ink dark:text-slate-400">Enter the 6-digit confirmation code sent to <b id="verify-email-display" class="text-navy-900 dark:text-white">your email</b>.</p>
+          </div>
+
+          <form id="form-auth-verify" class="space-y-4">
+            <div>
+              <label for="auth-verify-code" class="ks-label">6-Digit Verification Code</label>
+              <input id="auth-verify-code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="123456" class="ks-input text-center text-2xl font-bold tracking-widest font-mono">
+            </div>
+
+            <div id="auth-verify-msg" class="hidden rounded-xl border px-4 py-3 text-sm font-medium"></div>
+
+            <button type="submit" class="ks-btn-primary btn-block h-12 rounded-xl text-base">Verify & Activate Account</button>
+          </form>
+
+          <div class="flex items-center justify-between border-t pt-5 text-sm text-ink dark:text-slate-400" style="border-color:var(--ks-border)">
+            <button id="btn-resend-verification" type="button" class="font-medium text-blue-600 hover:underline dark:text-blue-400">Resend code</button>
+            <button class="switch-auth-btn font-bold text-ember-600 hover:underline dark:text-ember-400" data-target="login">&larr; Back to sign in</button>
+          </div>
+        </div>
+
         <!-- Reset password (from email link) -->
         <div id="auth-panel-reset" class="hidden space-y-6">
           <div>

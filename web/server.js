@@ -12,7 +12,7 @@ const { hashPassword, comparePassword, generateToken, verifyToken, extractBearer
 const { isGhanaNumber, normalizeNumber, calculateSMSUnits, sendSMS } = require('./src/services/sms')
 const { initializePayment, verifyPayment } = require('./src/services/paystack')
 const { sendTelegramSenderIdAlert } = require('./src/services/telegramAlert')
-const { sendPasswordResetEmail } = require('./src/services/email')
+const { sendPasswordResetEmail, sendVerificationEmail } = require('./src/services/email')
 
 const PORT = Number(process.env.PORT || process.env.WEB_PORT || 4000)
 const PUBLIC_DIR = path.join(__dirname, 'public')
@@ -168,19 +168,80 @@ const server = http.createServer(async (req, res) => {
 
       const existing = await UserRepo.findByEmail(email)
       if (existing) {
-        return json(400, { ok: false, message: 'An account with this email already exists.' })
+        if (existing.isVerified) {
+          return json(400, { ok: false, message: 'An account with this email already exists.' })
+        }
+        // Account exists but was not yet verified: refresh credentials and send a new OTP code
+        const code = Math.floor(100000 + Math.random() * 900000).toString()
+        const expiry = new Date(Date.now() + 15 * 60 * 1000)
+        const passwordHash = await hashPassword(password)
+        await UserRepo.updateUnverifiedUser(existing._id || existing.id, { name, phone, passwordHash, code, expiry })
+        await sendVerificationEmail({ to: email, name, code })
+
+        return json(200, {
+          ok: true,
+          requiresVerification: true,
+          email: existing.email,
+          message: 'Account pending verification. A fresh 6-digit code has been sent to your email.'
+        })
       }
 
       const passwordHash = await hashPassword(password)
-      const user = await UserRepo.create({ name, email, phone, passwordHash, initialBalance: 5 }) // Give 5 free starter test credits!
-      
-      // Auto-generate initial API key
-      const initialKey = await ApiKeyRepo.generate(user._id || user.id, 'Initial Default Key')
-      const token = generateToken(user)
+      const code = Math.floor(100000 + Math.random() * 900000).toString()
+      const expiry = new Date(Date.now() + 15 * 60 * 1000)
+
+      const user = await UserRepo.create({
+        name,
+        email,
+        phone,
+        passwordHash,
+        initialBalance: 0, // 0 credits until email code is verified!
+        isVerified: false,
+        verificationCode: code,
+        verificationCodeExpiry: expiry
+      })
+
+      await sendVerificationEmail({ to: email, name, code })
 
       return json(200, {
         ok: true,
-        message: 'Account created successfully!',
+        requiresVerification: true,
+        email: user.email,
+        message: 'Account created! Please enter the 6-digit verification code sent to your email.'
+      })
+    } catch (err) {
+      console.error('[register error]', err)
+      return json(500, { ok: false, message: 'Something went wrong creating your account.' })
+    }
+  }
+
+  if (urlPath === '/api/auth/verify-code' && req.method === 'POST') {
+    try {
+      const rl = rateLimit('verify:' + clientIp(req), 15, 15 * 60 * 1000)
+      if (!rl.ok) return json(429, { ok: false, message: 'Too many verification attempts. Please wait.' })
+      const body = await parseBody()
+      const { email, code } = body
+      if (!email || !code) {
+        return json(400, { ok: false, message: 'Email and 6-digit verification code are required.' })
+      }
+
+      const result = await UserRepo.verifyUserEmail(email, code)
+      if (!result.ok) {
+        return json(400, { ok: false, message: result.message || 'Invalid or expired code.' })
+      }
+
+      const user = result.user
+      // Ensure initial default API key exists
+      let keys = await ApiKeyRepo.listByUser(user._id || user.id)
+      let initialKey = keys && keys[0]
+      if (!initialKey) {
+        initialKey = await ApiKeyRepo.generate(user._id || user.id, 'Initial Default Key')
+      }
+
+      const token = generateToken(user)
+      return json(200, {
+        ok: true,
+        message: 'Email verified successfully! You have received 5 starter credits.',
         token,
         user: {
           id: user._id || user.id,
@@ -190,11 +251,39 @@ const server = http.createServer(async (req, res) => {
           balance: user.balance,
           senderIds: user.senderIds
         },
-        initialApiKey: initialKey.key
+        initialApiKey: initialKey?.key
       })
     } catch (err) {
-      console.error('[register error]', err)
-      return json(500, { ok: false, message: 'Something went wrong creating your account.' })
+      console.error('[verify-code error]', err)
+      return json(500, { ok: false, message: 'Failed to verify code.' })
+    }
+  }
+
+  if (urlPath === '/api/auth/resend-code' && req.method === 'POST') {
+    try {
+      const rl = rateLimit('resend:' + clientIp(req), 5, 15 * 60 * 1000)
+      if (!rl.ok) return json(429, { ok: false, message: 'Too many requests. Please wait a minute.' })
+      const body = await parseBody()
+      const { email } = body
+      if (!email) return json(400, { ok: false, message: 'Email is required.' })
+
+      const user = await UserRepo.findByEmail(email)
+      if (!user) {
+        return json(404, { ok: false, message: 'No account found with this email.' })
+      }
+      if (user.isVerified) {
+        return json(400, { ok: false, message: 'This account is already verified. Please sign in.' })
+      }
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString()
+      const expiry = new Date(Date.now() + 15 * 60 * 1000)
+      await UserRepo.setVerificationCode(user.email, code, expiry)
+      await sendVerificationEmail({ to: user.email, name: user.name, code })
+
+      return json(200, { ok: true, message: 'A new 6-digit verification code has been sent to your email.' })
+    } catch (err) {
+      console.error('[resend-code error]', err)
+      return json(500, { ok: false, message: 'Failed to resend verification code.' })
     }
   }
 
@@ -216,6 +305,24 @@ const server = http.createServer(async (req, res) => {
       const isMatch = await comparePassword(password, user.passwordHash)
       if (!isMatch) {
         return json(401, { ok: false, message: 'Invalid email or password.' })
+      }
+
+      if (user.isVerified === false) {
+        let code = user.verificationCode
+        let expiry = user.verificationCodeExpiry
+        if (!code || !expiry || new Date(expiry) <= new Date()) {
+          code = Math.floor(100000 + Math.random() * 900000).toString()
+          expiry = new Date(Date.now() + 15 * 60 * 1000)
+          await UserRepo.setVerificationCode(user.email, code, expiry)
+        }
+        await sendVerificationEmail({ to: user.email, name: user.name, code })
+
+        return json(403, {
+          ok: false,
+          requiresVerification: true,
+          email: user.email,
+          message: 'Please verify your email address to continue. A 6-digit code has been sent to your inbox.'
+        })
       }
 
       const token = generateToken(user)

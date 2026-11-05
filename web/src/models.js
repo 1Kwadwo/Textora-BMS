@@ -12,6 +12,9 @@ const userSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   balance: { type: Number, default: 0, min: 0 },
   senderIds: { type: [String], default: ['TXTORA'] },
+  isVerified: { type: Boolean, default: false },
+  verificationCode: { type: String, default: null },
+  verificationCodeExpiry: { type: Date, default: null },
   resetToken: { type: String, default: null },
   resetTokenExpiry: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now }
@@ -130,14 +133,26 @@ function saveStore(store) {
 // --------------------------------------------------------------------------
 
 const UserRepo = {
-  async create({ name, email, phone, passwordHash, initialBalance = 0 }) {
+  async create({ name, email, phone, passwordHash, initialBalance = 0, isVerified = false, verificationCode = null, verificationCodeExpiry = null }) {
     let savedObj = null
     if (getMongoStatus()) {
       try {
-        const u = new UserModel({ name, email, phone, passwordHash, balance: initialBalance })
+        const u = new UserModel({
+          name,
+          email: email.toLowerCase().trim(),
+          phone: phone ? phone.trim() : '',
+          passwordHash,
+          balance: initialBalance,
+          isVerified,
+          verificationCode,
+          verificationCodeExpiry
+        })
         const saved = await u.save()
         savedObj = saved.toObject()
       } catch (e) {
+        if (e.code === 11000) {
+          throw new Error('Email already registered')
+        }
         console.warn('[UserRepo] Mongo save failed, using file store:', e.message)
       }
     }
@@ -156,6 +171,9 @@ const UserRepo = {
       passwordHash,
       balance: initialBalance,
       senderIds: ['TXTORA'],
+      isVerified,
+      verificationCode,
+      verificationCodeExpiry,
       createdAt: new Date().toISOString()
     }
     const existingIdx = store.users.findIndex(u => u.email && u.email.toLowerCase() === email.toLowerCase())
@@ -297,6 +315,96 @@ const UserRepo = {
       user.resetTokenExpiry = null
       saveStore(store)
     }
+  },
+
+  async setVerificationCode(email, code, expiry) {
+    const cleanEmail = email.toLowerCase().trim()
+    if (getMongoStatus()) {
+      await UserModel.findOneAndUpdate(
+        { email: cleanEmail },
+        { verificationCode: code, verificationCodeExpiry: expiry }
+      )
+    }
+    const store = loadStore()
+    const user = store.users.find(u => u.email && u.email.toLowerCase() === cleanEmail)
+    if (user) {
+      user.verificationCode = code
+      user.verificationCodeExpiry = expiry
+      saveStore(store)
+    }
+  },
+
+  async updateUnverifiedUser(userId, { name, phone, passwordHash, code, expiry }) {
+    if (getMongoStatus()) {
+      await UserModel.findByIdAndUpdate(userId, {
+        name,
+        phone: phone ? phone.trim() : '',
+        passwordHash,
+        verificationCode: code,
+        verificationCodeExpiry: expiry,
+        balance: 0,
+        isVerified: false
+      })
+    }
+    const store = loadStore()
+    const user = store.users.find(u => String(u._id) === String(userId) || String(u.id) === String(userId))
+    if (user) {
+      user.name = name
+      if (phone) user.phone = phone.trim()
+      user.passwordHash = passwordHash
+      user.verificationCode = code
+      user.verificationCodeExpiry = expiry
+      user.balance = 0
+      user.isVerified = false
+      saveStore(store)
+    }
+  },
+
+  async verifyUserEmail(email, code) {
+    const cleanEmail = email.toLowerCase().trim()
+    const cleanCode = String(code).trim()
+    const now = new Date()
+
+    if (getMongoStatus()) {
+      const user = await UserModel.findOne({ email: cleanEmail })
+      if (!user) return { ok: false, message: 'User not found' }
+      if (user.isVerified) return { ok: true, user: user.toObject(), alreadyVerified: true }
+      if (!user.verificationCode || user.verificationCode !== cleanCode) {
+        return { ok: false, message: 'Invalid verification code' }
+      }
+      if (user.verificationCodeExpiry && new Date(user.verificationCodeExpiry) < now) {
+        return { ok: false, message: 'Verification code has expired. Please request a new one.' }
+      }
+
+      user.isVerified = true
+      user.verificationCode = null
+      user.verificationCodeExpiry = null
+      if (!user.balance || user.balance < 5) {
+        user.balance = 5 // Credit 5 free starter SMS units only upon verified email
+      }
+      await user.save()
+      return { ok: true, user: user.toObject() }
+    }
+
+    const store = loadStore()
+    const user = store.users.find(u => u.email && u.email.toLowerCase() === cleanEmail)
+    if (!user) return { ok: false, message: 'User not found' }
+    if (user.isVerified) return { ok: true, user, alreadyVerified: true }
+    if (!user.verificationCode || user.verificationCode !== cleanCode) {
+      return { ok: false, message: 'Invalid verification code' }
+    }
+    if (user.verificationCodeExpiry && new Date(user.verificationCodeExpiry) < now) {
+      return { ok: false, message: 'Verification code has expired. Please request a new one.' }
+    }
+
+    user.isVerified = true
+    user.verificationCode = null
+    user.verificationCodeExpiry = null
+    if (!user.balance || user.balance < 5) {
+      user.balance = 5
+    }
+    saveStore(store)
+    return { ok: true, user }
   }
 }
 

@@ -45,7 +45,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
   let generatedApiKey = ''
   const testEmail = `test_${Date.now()}@kebsend.test`
 
-  await t.test('1. User Registration: Creates account with initial balance', async () => {
+  await t.test('1. User Registration: Requires 6-digit email code and holds 0 balance initially', async () => {
     const res = await request('POST', '/api/auth/register', {
       name: 'Harrison Kwadwo',
       email: testEmail,
@@ -55,14 +55,47 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
 
     assert.strictEqual(res.statusCode, 200)
     assert.strictEqual(res.data.ok, true)
-    assert.ok(res.data.token)
-    assert.strictEqual(res.data.user.email, testEmail)
-    assert.strictEqual(res.data.user.balance, 5) // Free 5 starter credits
-    assert.ok(res.data.initialApiKey.startsWith('ksnd_live_'))
+    assert.strictEqual(res.data.requiresVerification, true)
+    assert.strictEqual(res.data.email, testEmail)
 
-    authToken = res.data.token
-    createdUserId = res.data.user.id
-    generatedApiKey = res.data.initialApiKey
+    // Verify unverified user has 0 balance and cannot login yet
+    const unverifiedUser = await UserRepo.findByEmail(testEmail)
+    assert.strictEqual(unverifiedUser.isVerified, false)
+    assert.strictEqual(unverifiedUser.balance, 0)
+    assert.ok(unverifiedUser.verificationCode)
+    assert.strictEqual(unverifiedUser.verificationCode.length, 6)
+
+    // Attempting login before verification is blocked with 403
+    const blockedLogin = await request('POST', '/api/auth/login', {
+      email: testEmail,
+      password: 'SecurePassword2026'
+    })
+    assert.strictEqual(blockedLogin.statusCode, 403)
+    assert.strictEqual(blockedLogin.data.requiresVerification, true)
+
+    // Entering incorrect code is rejected
+    const badCodeRes = await request('POST', '/api/auth/verify-code', {
+      email: testEmail,
+      code: '000000'
+    })
+    assert.strictEqual(badCodeRes.statusCode, 400)
+    assert.strictEqual(badCodeRes.data.ok, false)
+
+    // Entering valid 6-digit code activates account and awards 5 free credits
+    const verifyRes = await request('POST', '/api/auth/verify-code', {
+      email: testEmail,
+      code: unverifiedUser.verificationCode
+    })
+    assert.strictEqual(verifyRes.statusCode, 200)
+    assert.strictEqual(verifyRes.data.ok, true)
+    assert.ok(verifyRes.data.token)
+    assert.strictEqual(verifyRes.data.user.email, testEmail)
+    assert.strictEqual(verifyRes.data.user.balance, 5) // Free 5 starter credits awarded upon verification!
+    assert.ok(verifyRes.data.initialApiKey.startsWith('ksnd_live_'))
+
+    authToken = verifyRes.data.token
+    createdUserId = verifyRes.data.user.id
+    generatedApiKey = verifyRes.data.initialApiKey
   })
 
   await t.test('2. User Registration: Blocks duplicate email', async () => {
