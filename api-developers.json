@@ -8,7 +8,13 @@
     },
     "txt_cc89645e0ca5f388ada1e27ae7531197fba50c4d669d0155": {
       "userId": "7239869241",
-      "apiKey": "txt_cc89645e0ca5f388ada1e27ae7531197fba50c4d669d0155",
+      "apiKey": "txt_f4394472ba04428b95a6b72571f4ff0e6f18e6ca3f7003cd",
+      "balance": 400,
+      "name": "🥂"
+    },
+    "txt_f4394472ba04428b95a6b72571f4ff0e6f18e6ca3f7003cd": {
+      "userId": "7239869241",
+      "apiKey": "txt_f4394472ba04428b95a6b72571f4ff0e6f18e6ca3f7003cd",
       "balance": 400,
       "name": "🥂"
     }
@@ -22,7 +28,7 @@
     },
     "7239869241": {
       "userId": "7239869241",
-      "apiKey": "txt_cc89645e0ca5f388ada1e27ae7531197fba50c4d669d0155",
+      "apiKey": "txt_f4394472ba04428b95a6b72571f4ff0e6f18e6ca3f7003cd",
       "balance": 400,
       "name": "🥂"
     }

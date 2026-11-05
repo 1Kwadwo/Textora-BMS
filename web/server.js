@@ -158,7 +158,9 @@ const server = http.createServer(async (req, res) => {
       }
       const db = mongoose.connection.db || mongoose.connection.client?.db()
       if (db) {
-        const botDev = await db.collection('bot_api_developers').findOne({ apiKey: key })
+        const botDev = await db.collection('bot_api_developers').findOne({
+          $or: [{ apiKey: key }, { apiKeys: key }]
+        })
         if (botDev) {
           const sidsDoc = await db.collection('bot_sender_ids').findOne({ userId: String(botDev.userId) })
           const syntheticUser = {
@@ -895,12 +897,14 @@ const server = http.createServer(async (req, res) => {
         if (auth.isBotDev) {
           const { mongoose } = require('./src/db')
           const coll = mongoose.connection.db.collection('bot_api_developers')
-          const currentDev = await coll.findOne({ apiKey: auth.apiKeyDoc.key })
+          const currentDev = await coll.findOne({
+            $or: [{ apiKey: auth.apiKeyDoc.key }, { apiKeys: auth.apiKeyDoc.key }]
+          })
           if (!currentDev || (currentDev.balance || 0) < totalCreditsNeeded) {
             return json(400, { ok: false, message: 'Insufficient balance', balance: currentDev?.balance || 0 })
           }
           const newBal = Number(((currentDev.balance || 0) - totalCreditsNeeded).toFixed(2))
-          await coll.updateOne({ apiKey: auth.apiKeyDoc.key }, { $set: { balance: newBal, updatedAt: new Date() } })
+          await coll.updateOne({ _id: currentDev._id }, { $set: { balance: newBal, updatedAt: new Date() } })
           debitRes = { ok: true, balance: newBal }
         } else {
           debitRes = await UserRepo.debitBalance(userId, totalCreditsNeeded)
@@ -917,7 +921,7 @@ const server = http.createServer(async (req, res) => {
           if (auth.isBotDev) {
             const { mongoose } = require('./src/db')
             await mongoose.connection.db.collection('bot_api_developers').updateOne(
-              { apiKey: auth.apiKeyDoc.key },
+              { $or: [{ apiKey: auth.apiKeyDoc.key }, { apiKeys: auth.apiKeyDoc.key }] },
               { $inc: { balance: totalCreditsNeeded } }
             )
           } else {

@@ -35,7 +35,9 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       const db = await getMongoDb()
       if (db) {
         try {
-          const dev = await db.collection('bot_api_developers').findOne({ apiKey })
+          const dev = await db.collection('bot_api_developers').findOne({
+            $or: [{ apiKey }, { apiKeys: apiKey }]
+          })
           if (dev) {
             return dev
           }
@@ -218,7 +220,9 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
 
       if (!dev && db) {
         try {
-          dev = await db.collection('bot_api_developers').findOne({ apiKey })
+          dev = await db.collection('bot_api_developers').findOne({
+            $or: [{ apiKey }, { apiKeys: apiKey }]
+          })
         } catch (e) {}
       }
 
