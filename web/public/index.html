@@ -31,7 +31,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
   <link rel="apple-touch-icon" href="kebsend-icon.png">
   <!-- Compiled Tailwind + DaisyUI + KebSEND theme (source: web/styles/input.css) -->
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body class="min-h-screen">
 
@@ -174,41 +174,127 @@
       </div>
     </section>
 
-    <!-- WHO IT'S FOR -->
+    <!-- WHO IT'S FOR: switchable phone inbox -->
     <section id="use-cases" class="ks-section">
-      <div class="ks-container">
-        <div class="mx-auto mb-12 max-w-2xl text-center scroll-reveal">
+      <div class="ks-container grid items-center gap-10 lg:grid-cols-12 lg:gap-16">
+        <div class="min-w-0 lg:col-span-6">
           <div class="ks-kicker mb-3">Who it's for</div>
-          <h2 class="ks-h2">One message. Everyone you need to reach.</h2>
-          <p class="ks-lead mt-4">From a boutique in Osu to a church in Kumasi, KebSEND helps you keep people in the loop.</p>
+          <h2 class="ks-h2">What lands on their phone</h2>
+          <p class="ks-lead mt-4">These are the kinds of messages KebSEND users send every day. Pick one to see it the way your people will.</p>
+          <div class="ks-aud-tabs mt-8" role="tablist" aria-label="Who uses KebSEND">
+              <button type="button" role="tab" id="aud-tab-business" aria-controls="aud-panel-business" aria-selected="true" data-audience="business" class="ks-aud-tab">
+                <span class="block font-extrabold">Shops &amp; businesses</span>
+                <span class="ks-aud-desc block text-sm">Promos, order updates, payment reminders</span>
+              </button><button type="button" role="tab" id="aud-tab-schools" aria-controls="aud-panel-schools" aria-selected="false" data-audience="schools" class="ks-aud-tab">
+                <span class="block font-extrabold">Schools</span>
+                <span class="ks-aud-desc block text-sm">Fees reminders, PTA meetings, results</span>
+              </button><button type="button" role="tab" id="aud-tab-halls" aria-controls="aud-panel-halls" aria-selected="false" data-audience="halls" class="ks-aud-tab">
+                <span class="block font-extrabold">Halls &amp; SRCs</span>
+                <span class="ks-aud-desc block text-sm">Hall week, elections, dues, notices</span>
+              </button><button type="button" role="tab" id="aud-tab-churches" aria-controls="aud-panel-churches" aria-selected="false" data-audience="churches" class="ks-aud-tab">
+                <span class="block font-extrabold">Churches</span>
+                <span class="ks-aud-desc block text-sm">Service times, programmes, welfare</span>
+              </button><button type="button" role="tab" id="aud-tab-events" aria-controls="aud-panel-events" aria-selected="false" data-audience="events" class="ks-aud-tab">
+                <span class="block font-extrabold">Events</span>
+                <span class="ks-aud-desc block text-sm">Tickets, gate times, last-minute changes</span>
+              </button><button type="button" role="tab" id="aud-tab-ngos" aria-controls="aud-panel-ngos" aria-selected="false" data-audience="ngos" class="ks-aud-tab">
+                <span class="block font-extrabold">NGOs &amp; health</span>
+                <span class="ks-aud-desc block text-sm">Outreach, screenings, community alerts</span>
+              </button>
+          </div>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <article class="ks-card ks-card-hover flex flex-col gap-4 p-6 scroll-reveal">
-            <span class="ks-icon-tile"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg></span>
-            <h3 class="text-lg font-extrabold text-navy-900 dark:text-white">Businesses</h3>
-            <p class="ks-bubble">Flash sale! 20% off everything today only. Show this SMS at the till.</p>
-          </article>
-          <article class="ks-card ks-card-hover flex flex-col gap-4 p-6 scroll-reveal delay-100">
-            <span class="ks-icon-tile"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg></span>
-            <h3 class="text-lg font-extrabold text-navy-900 dark:text-white">Schools</h3>
-            <p class="ks-bubble">PTA meeting this Saturday at 10am. Results slips are ready for collection.</p>
-          </article>
-          <article class="ks-card ks-card-hover flex flex-col gap-4 p-6 scroll-reveal delay-200">
-            <span class="ks-icon-tile"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v6m-3-3h6M5 22V12l7-4 7 4v10M9 22v-5h6v5"/></svg></span>
-            <h3 class="text-lg font-extrabold text-navy-900 dark:text-white">Churches</h3>
-            <p class="ks-bubble">Join us for Sunday service at 9am. Bring a friend. God bless you!</p>
-          </article>
-          <article class="ks-card ks-card-hover flex flex-col gap-4 p-6 scroll-reveal delay-300">
-            <span class="ks-icon-tile"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></span>
-            <h3 class="text-lg font-extrabold text-navy-900 dark:text-white">Events</h3>
-            <p class="ks-bubble">Your ticket is confirmed! Gates open 6pm. See you at the show.</p>
-          </article>
-          <article class="ks-card ks-card-hover flex flex-col gap-4 p-6 scroll-reveal sm:col-span-2 lg:col-span-1">
-            <span class="ks-icon-tile"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></span>
-            <h3 class="text-lg font-extrabold text-navy-900 dark:text-white">NGOs</h3>
-            <p class="ks-bubble">Free health screening at the community centre, Friday 8am to 2pm.</p>
-          </article>
+        <div class="min-w-0 lg:col-span-6">
+          <div class="ks-android">
+            <div class="ks-android-status"><span>9:41</span><span class="flex items-center gap-1"><svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h20V2z"/></svg><svg class="h-3 w-4" viewBox="0 0 28 14" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="22" height="12" rx="3"/><rect x="4" y="4" width="14" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M26 5v4"/></svg></span></div>
+            <div class="ks-android-screen">
+                <div role="tabpanel" id="aud-panel-business" aria-labelledby="aud-tab-business" data-audience-panel="business" class="ks-aud-panel">
+                  <div class="ks-sms-head">
+                    <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#FF6A00">M</span>
+                    <div class="min-w-0 flex-1"><div class="truncate font-bold text-slate-900">MAAMEFABRIC</div><div class="text-[11px] text-slate-500">Text message</div></div>
+                  </div>
+                  <div class="ks-sms-body">
+                    <div class="ks-sms-time">Yesterday 4:12 PM</div>
+                    <div class="ks-sms">Akwaaba! New Ankara and kente prints just landed at our Makola shop. Show this SMS for 10% off until Saturday.</div>
+                    <div class="ks-sms-time">Today 9:03 AM</div>
+                    <div class="ks-sms">Hi Efua, your order #482 is ready for pickup. Balance due: GH₵ 350. You can pay with MoMo at the shop.</div>
+                    <div class="ks-sms-delivered">Sent to 2,450 customers · Delivered</div>
+                  </div>
+                  <div class="ks-sms-foot">You can't reply to this sender</div>
+                </div><div role="tabpanel" id="aud-panel-schools" aria-labelledby="aud-tab-schools" data-audience-panel="schools" class="ks-aud-panel hidden">
+                  <div class="ks-sms-head">
+                    <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#1F5FD6">B</span>
+                    <div class="min-w-0 flex-1"><div class="truncate font-bold text-slate-900">BRIGHTSTARS</div><div class="text-[11px] text-slate-500">Text message</div></div>
+                  </div>
+                  <div class="ks-sms-body">
+                    <div class="ks-sms-time">Mon 7:30 AM</div>
+                    <div class="ks-sms">Dear Parent, second term fees of GH₵ 1,200 are due by 15th May. Kindly pay at the accounts office or via MoMo.</div>
+                    <div class="ks-sms-time">Today 8:15 AM</div>
+                    <div class="ks-sms">PTA meeting this Saturday, 10am at the assembly hall. Report cards will be given out after the meeting.</div>
+                    <div class="ks-sms-delivered">Sent to 860 parents · Delivered</div>
+                  </div>
+                  <div class="ks-sms-foot">You can't reply to this sender</div>
+                </div><div role="tabpanel" id="aud-panel-halls" aria-labelledby="aud-tab-halls" data-audience-panel="halls" class="ks-aud-panel hidden">
+                  <div class="ks-sms-head">
+                    <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#0A2A66">H</span>
+                    <div class="min-w-0 flex-1"><div class="truncate font-bold text-slate-900">HALLWEEK</div><div class="text-[11px] text-slate-500">Text message</div></div>
+                  </div>
+                  <div class="ks-sms-body">
+                    <div class="ks-sms-time">Fri 6:00 PM</div>
+                    <div class="ks-sms">Hall Week starts Monday! Opening jama at the forecourt, 7pm. Wear your hall colours.</div>
+                    <div class="ks-sms-time">Today 10:20 AM</div>
+                    <div class="ks-sms">Reminder: hall dues close this Friday. Pay at the porters' lodge to avoid missing out on hall week items.</div>
+                    <div class="ks-sms-delivered">Sent to 1,900 residents · Delivered</div>
+                  </div>
+                  <div class="ks-sms-foot">You can't reply to this sender</div>
+                </div><div role="tabpanel" id="aud-panel-churches" aria-labelledby="aud-tab-churches" data-audience-panel="churches" class="ks-aud-panel hidden">
+                  <div class="ks-sms-head">
+                    <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#12B3A1">G</span>
+                    <div class="min-w-0 flex-1"><div class="truncate font-bold text-slate-900">GRACEALIVE</div><div class="text-[11px] text-slate-500">Text message</div></div>
+                  </div>
+                  <div class="ks-sms-body">
+                    <div class="ks-sms-time">Sat 7:00 PM</div>
+                    <div class="ks-sms">Afehyia pa! Join us tomorrow at 8:30am for our Thanksgiving service. Bring a friend along.</div>
+                    <div class="ks-sms-time">Today 12:05 PM</div>
+                    <div class="ks-sms">All-night prayer meeting this Friday from 9pm. Come and let us pray together. God bless you.</div>
+                    <div class="ks-sms-delivered">Sent to 1,120 members · Delivered</div>
+                  </div>
+                  <div class="ks-sms-foot">You can't reply to this sender</div>
+                </div><div role="tabpanel" id="aud-panel-events" aria-labelledby="aud-tab-events" data-audience-panel="events" class="ks-aud-panel hidden">
+                  <div class="ks-sms-head">
+                    <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#E5484D">A</span>
+                    <div class="min-w-0 flex-1"><div class="truncate font-bold text-slate-900">ACCRAFEST</div><div class="text-[11px] text-slate-500">Text message</div></div>
+                  </div>
+                  <div class="ks-sms-body">
+                    <div class="ks-sms-time">Thu 2:40 PM</div>
+                    <div class="ks-sms">Your Accra Fest ticket is confirmed. Ticket code: AF-2291. Show this SMS at the gate.</div>
+                    <div class="ks-sms-time">Today 3:30 PM</div>
+                    <div class="ks-sms">Gates open at 6pm tonight. Parking is full, so please use the shuttle from the Arts Centre.</div>
+                    <div class="ks-sms-delivered">Sent to 3,400 guests · Delivered</div>
+                  </div>
+                  <div class="ks-sms-foot">You can't reply to this sender</div>
+                </div><div role="tabpanel" id="aud-panel-ngos" aria-labelledby="aud-tab-ngos" data-audience-panel="ngos" class="ks-aud-panel hidden">
+                  <div class="ks-sms-head">
+                    <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#7C3AED">H</span>
+                    <div class="min-w-0 flex-1"><div class="truncate font-bold text-slate-900">HEALTHRCH</div><div class="text-[11px] text-slate-500">Text message</div></div>
+                  </div>
+                  <div class="ks-sms-body">
+                    <div class="ks-sms-time">Tue 9:00 AM</div>
+                    <div class="ks-sms">Free malaria and BP screening at the Madina community centre, Friday 8am to 2pm. Everyone is welcome.</div>
+                    <div class="ks-sms-time">Today 11:45 AM</div>
+                    <div class="ks-sms">Mosquito nets will be shared after the screening. Please come with your Ghana Card.</div>
+                    <div class="ks-sms-delivered">Sent to 5,000 residents · Delivered</div>
+                  </div>
+                  <div class="ks-sms-foot">You can't reply to this sender</div>
+                </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

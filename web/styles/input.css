@@ -266,3 +266,40 @@
 /* Customer strip: scrolls the other way, text tiles for names without a logo file */
 .ks-marquee-reverse { animation-direction: reverse; animation-duration: 45s; }
 .ks-name-card { flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; gap: .15rem; }
+
+/* --------------------------------------------------------------------------
+   WHO IT'S FOR: audience picker + Android-style SMS thread
+   -------------------------------------------------------------------------- */
+.ks-aud-tabs { display: grid; gap: .5rem; }
+@media (max-width: 1023px) {
+  .ks-aud-tabs { display: flex; overflow-x: auto; scrollbar-width: none; margin: 0 -1rem; padding: 0 1rem .25rem; }
+  .ks-aud-tabs::-webkit-scrollbar { display: none; }
+  .ks-aud-tab { flex-shrink: 0; }
+  .ks-aud-tab .ks-aud-desc { display: none; }
+}
+.ks-aud-tab {
+  @apply rounded-2xl border px-5 py-3.5 text-left text-navy-900 transition dark:text-white;
+  border-color: var(--ks-border);
+  background: var(--ks-surface);
+}
+.ks-aud-tab .ks-aud-desc { @apply mt-0.5 text-ink dark:text-slate-400; }
+.ks-aud-tab:hover { border-color: #FFA866; }
+.ks-aud-tab[aria-selected="true"] { @apply border-navy-900 bg-navy-900 text-white shadow-soft dark:border-white dark:bg-white dark:text-navy-900; }
+.ks-aud-tab[aria-selected="true"] .ks-aud-desc { @apply text-blue-100 dark:text-ink; }
+
+.ks-android {
+  @apply relative mx-auto w-full max-w-[340px] rounded-[2.75rem] bg-[#111] p-2.5 shadow-chip;
+}
+.ks-android::before { content: ''; position: absolute; top: 1.15rem; left: 50%; width: .6rem; height: .6rem; margin-left: -.3rem; border-radius: 9999px; background: #222; z-index: 2; }
+.ks-android-status { @apply flex items-center justify-between rounded-t-[2.25rem] bg-white px-6 pb-1 pt-3 text-xs font-semibold text-slate-800; }
+.ks-android-screen { @apply overflow-hidden rounded-b-[2.25rem] bg-white; min-height: 470px; }
+.ks-aud-panel { display: flex; flex-direction: column; min-height: 470px; animation: ks-fade .35s ease; }
+.ks-aud-panel.hidden { display: none; }
+@keyframes ks-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ks-sms-head { @apply flex items-center gap-3 border-b border-slate-100 px-4 py-3; }
+.ks-sms-body { @apply flex-1 space-y-2 bg-white px-4 py-4; font-family: Roboto, 'Segoe UI', Inter, sans-serif; }
+.ks-sms-time { @apply pt-2 text-center text-[11px] font-medium text-slate-400; }
+.ks-sms { @apply mr-8 rounded-[1.25rem] rounded-bl-md bg-[#EEF1F6] px-4 py-2.5 text-[14px] leading-snug text-slate-800; }
+.ks-sms-delivered { @apply pt-3 text-[11px] font-semibold text-teal-600; }
+.ks-sms-foot { @apply border-t border-slate-100 px-4 py-3.5 text-center text-xs text-slate-400; }
+@media (prefers-reduced-motion: reduce) { .ks-aud-panel { animation: none; } }

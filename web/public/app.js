@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initPasswordToggles();
   initComposerPreview();
+  initAudienceSwitcher();
   initRouter();
   initAuthForms();
   initDashboardWorkspace();
@@ -1710,4 +1711,37 @@ function initComposerPreview() {
     new MutationObserver(update).observe(senderSelect, { childList: true });
   }
   update();
+}
+
+/* --------------------------------------------------------------------------
+   "WHO IT'S FOR" AUDIENCE SWITCHER (landing page)
+   -------------------------------------------------------------------------- */
+function initAudienceSwitcher() {
+  const tabs = Array.from(document.querySelectorAll('.ks-aud-tab'));
+  const panels = document.querySelectorAll('[data-audience-panel]');
+  if (!tabs.length) return;
+
+  const select = (key) => {
+    tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.audience === key)));
+    panels.forEach(p => p.classList.toggle('hidden', p.dataset.audiencePanel !== key));
+  };
+
+  // Rotate through audiences until the visitor picks one (skipped for reduced motion)
+  let timer = null;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduce) {
+    let i = 0;
+    timer = setInterval(() => { i = (i + 1) % tabs.length; select(tabs[i].dataset.audience); }, 5000);
+  }
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+
+  tabs.forEach((tab, idx) => {
+    tab.addEventListener('click', () => { stop(); select(tab.dataset.audience); });
+    tab.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowDown' && e.key !== 'ArrowLeft' && e.key !== 'ArrowUp') return;
+      e.preventDefault(); stop();
+      const next = tabs[(idx + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : tabs.length - 1)) % tabs.length];
+      select(next.dataset.audience); next.focus();
+    });
+  });
 }
