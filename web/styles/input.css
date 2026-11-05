@@ -1,0 +1,215 @@
+/* ==========================================================================
+   KEBSEND WEB: BRAND DESIGN SYSTEM
+   Source file. Run `npm run build:css` in /web to regenerate public/style.css.
+   ========================================================================== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ks-navy: #0A2A66;
+  --ks-blue: #1F5FD6;
+  --ks-teal: #12B3A1;
+  --ks-orange: #FF6A00;
+  --ks-cream: #FFF6EE;
+  --ks-ink: #5B6B85;
+  --ks-bg: #FFFBF7;
+  --ks-surface: #ffffff;
+  --ks-border: #EFE3D6;
+  --ks-text: #0A2A66;
+  --ks-muted: #5B6B85;
+}
+
+[data-theme="dark"] {
+  --ks-bg: #071430;
+  --ks-surface: #0C1F45;
+  --ks-border: #1A3367;
+  --ks-text: #E8EEF9;
+  --ks-muted: #9FB0CF;
+}
+
+@layer base {
+  html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+  html, body { overflow-x: hidden; max-width: 100%; }
+  body {
+    @apply font-sans antialiased;
+    background-color: var(--ks-bg);
+    color: var(--ks-text);
+    transition: background-color .2s ease, color .2s ease;
+  }
+  ::selection { background: #FF6A00; color: #fff; }
+  :focus-visible { outline: 3px solid rgba(31, 95, 214, .45); outline-offset: 2px; }
+}
+
+@layer components {
+  /* ---- Layout helpers ---- */
+  .ks-container { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
+  .ks-section { @apply py-16 sm:py-24; }
+  .ks-eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full bg-navy-900 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-white;
+  }
+  .ks-kicker { @apply text-sm font-bold uppercase tracking-[0.16em] text-ember-500; }
+  .ks-h2 { @apply text-3xl sm:text-5xl font-black tracking-tight text-navy-900 dark:text-white leading-[1.05]; }
+  .ks-lead { @apply text-base sm:text-lg leading-relaxed text-ink dark:text-slate-300; }
+
+  /* ---- Surfaces ---- */
+  .ks-card {
+    background-color: var(--ks-surface);
+    border: 1px solid var(--ks-border);
+    @apply rounded-3xl shadow-soft;
+  }
+  .ks-card-hover { @apply transition duration-200 hover:-translate-y-1 hover:shadow-chip; }
+  .ks-chip {
+    @apply flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-navy-900 shadow-chip dark:bg-night-850 dark:text-white;
+  }
+  .ks-chip small { @apply block text-xs font-medium text-ink dark:text-slate-400; }
+  .ks-chip-dot { @apply grid h-9 w-9 shrink-0 place-items-center rounded-full text-white; }
+  .ks-icon-tile { @apply grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-ember-400 to-ember-600 text-white shadow-ember; }
+
+  /* ---- Buttons ---- */
+  .ks-btn-primary {
+    @apply btn border-none bg-gradient-to-b from-ember-400 to-ember-500 text-white font-bold shadow-ember hover:from-ember-500 hover:to-ember-600;
+  }
+  .ks-btn-navy { @apply btn border-none bg-navy-900 text-white font-bold hover:bg-navy-800 dark:bg-white dark:text-navy-900 dark:hover:bg-cream-100; }
+  .ks-btn-ghost {
+    @apply btn bg-white/70 border border-navy-900/15 text-navy-900 font-bold hover:bg-white hover:border-navy-900/30 dark:bg-white/5 dark:text-white dark:border-white/20 dark:hover:bg-white/10;
+  }
+
+  /* ---- Forms ---- */
+  .ks-label { @apply mb-1.5 block text-sm font-semibold text-navy-900 dark:text-slate-200; }
+  .ks-input {
+    @apply input input-bordered w-full rounded-xl bg-white text-base text-navy-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none dark:bg-night-900 dark:text-white;
+    border-color: var(--ks-border);
+  }
+  .ks-textarea {
+    @apply textarea textarea-bordered w-full rounded-xl bg-white text-base leading-relaxed text-navy-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none dark:bg-night-900 dark:text-white;
+    border-color: var(--ks-border);
+  }
+  .ks-select {
+    @apply select select-bordered w-full rounded-xl bg-white text-base text-navy-900 focus:border-blue-600 focus:outline-none dark:bg-night-900 dark:text-white;
+    border-color: var(--ks-border);
+  }
+
+  /* ---- Code ---- */
+  .code-dark-box { @apply rounded-3xl bg-night-950 text-slate-100 ring-1 ring-white/10; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* ---- Header nav ---- */
+  .ks-nav-link { @apply rounded-full px-3 py-2 text-sm font-semibold text-navy-900/80 transition hover:bg-navy-900/5 hover:text-navy-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white; }
+
+  /* ---- Dashboard ---- */
+  .dashboard-sidebar {
+    background-color: var(--ks-surface);
+    border-right: 1px solid var(--ks-border);
+    width: 264px;
+    min-height: calc(100vh - 68px);
+  }
+  .sidebar-nav-item {
+    @apply flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-semibold transition;
+    color: var(--ks-muted);
+  }
+  .sidebar-nav-item:hover { @apply bg-cream-100 text-navy-900 dark:bg-white/5 dark:text-white; }
+  .sidebar-nav-item.active { @apply bg-navy-900 text-white shadow-soft dark:bg-white dark:text-navy-900; }
+  .sidebar-nav-item.active svg { @apply text-ember-400 dark:text-ember-500; }
+
+  .dash-surface-card {
+    background-color: var(--ks-surface);
+    border: 1px solid var(--ks-border);
+    @apply rounded-2xl shadow-soft;
+  }
+  .ks-stat-label { @apply text-xs font-bold uppercase tracking-wider text-ink dark:text-slate-400; }
+
+  /* Mobile bottom tab bar */
+  .ks-tabbar {
+    background-color: color-mix(in srgb, var(--ks-surface) 94%, transparent);
+    border-top: 1px solid var(--ks-border);
+    padding-bottom: env(safe-area-inset-bottom);
+    backdrop-filter: blur(12px);
+  }
+  .mobile-dash-tab-btn {
+    @apply flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-semibold transition;
+    color: var(--ks-muted);
+  }
+  .mobile-dash-tab-btn svg { @apply h-6 w-6; }
+  .mobile-dash-tab-btn.active { @apply text-ember-500; }
+
+  /* Phone mockup */
+  .ks-phone {
+    @apply relative mx-auto w-full max-w-[290px] rounded-[2.5rem] bg-navy-900 p-3 shadow-chip;
+  }
+  .ks-phone-screen { @apply rounded-[2rem] bg-cream-50 p-4 dark:bg-night-900 min-h-[300px]; }
+  .ks-bubble { @apply rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-navy-900 shadow-soft dark:bg-night-800 dark:text-slate-100; }
+
+  /* FAQ */
+  .ks-faq summary { @apply flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-base sm:text-lg font-bold text-navy-900 dark:text-white; }
+  .ks-faq summary::-webkit-details-marker { display: none; }
+  .ks-faq summary .ks-faq-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-full bg-cream-100 text-ember-500 transition dark:bg-white/5; }
+  .ks-faq[open] summary .ks-faq-icon { transform: rotate(45deg); }
+  .ks-faq p { @apply pb-5 -mt-1 text-ink dark:text-slate-300 leading-relaxed; }
+}
+
+@layer utilities {
+  .ks-hero-bg {
+    background:
+      radial-gradient(1200px 600px at 85% 10%, rgba(255, 138, 42, .28), transparent 60%),
+      radial-gradient(900px 500px at 0% 100%, rgba(255, 106, 0, .14), transparent 60%),
+      linear-gradient(180deg, #FFFBF7 0%, #FFEBDA 100%);
+  }
+  [data-theme="dark"] .ks-hero-bg {
+    background:
+      radial-gradient(1000px 520px at 85% 10%, rgba(255, 122, 26, .22), transparent 60%),
+      radial-gradient(900px 500px at 0% 100%, rgba(31, 95, 214, .25), transparent 60%),
+      linear-gradient(180deg, #0A1A3A 0%, #071430 100%);
+  }
+  .ks-pattern { position: relative; isolation: isolate; }
+  .ks-pattern::before {
+    content: '';
+    position: absolute; inset: 0; z-index: -1;
+    background-image: url('illustrations/bubble-pattern.svg');
+    background-size: 260px 220px;
+    opacity: .06;
+    pointer-events: none;
+  }
+  [data-theme="dark"] .ks-pattern::before { filter: invert(1); opacity: .05; }
+  .ks-cream-band { background-color: var(--ks-cream); }
+  [data-theme="dark"] .ks-cream-band { background-color: #0A1A3A; }
+  .ks-navy-band { background: radial-gradient(800px 400px at 100% 0%, rgba(31, 95, 214, .55), transparent 60%), #0A2A66; }
+  .ks-text-gradient { @apply bg-gradient-to-r from-ember-500 to-ember-400 bg-clip-text text-transparent; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .ks-float { animation: ks-float 6s ease-in-out infinite; }
+  .ks-float-delay { animation: ks-float 6s ease-in-out 1.5s infinite; }
+  @keyframes ks-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+}
+
+/* Hide the desktop sidebar and landing nav on phones */
+@media (max-width: 767px) {
+  .dashboard-sidebar { display: none !important; }
+  #landing-nav-links { display: none !important; }
+}
+
+/* --------------------------------------------------------------------------
+   SCROLL-DRIVEN MOTION
+   -------------------------------------------------------------------------- */
+.scroll-reveal, .scroll-reveal-left, .scroll-reveal-right {
+  opacity: 0;
+  transition: opacity .7s cubic-bezier(.16, 1, .3, 1), transform .7s cubic-bezier(.16, 1, .3, 1);
+  will-change: opacity, transform;
+}
+.scroll-reveal { transform: translateY(28px); }
+.scroll-reveal-left { transform: translateX(-32px); }
+.scroll-reveal-right { transform: translateX(32px); }
+.scroll-reveal.is-visible, .scroll-reveal-left.is-visible, .scroll-reveal-right.is-visible { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .scroll-reveal, .scroll-reveal-left, .scroll-reveal-right { opacity: 1; transform: none; transition: none; }
+  .ks-float, .ks-float-delay { animation: none; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--ks-bg); }
+::-webkit-scrollbar-thumb { background: #E2D3C3; border-radius: 8px; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #1A3367; }
+::-webkit-scrollbar-thumb:hover { background: var(--ks-orange); }

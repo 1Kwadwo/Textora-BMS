@@ -1,0 +1,58 @@
+<svg viewBox="0 0 600 720" class="person" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="halo" cx=".5" cy=".45" r=".55"><stop offset="0" stop-color="#FFB066"/><stop offset="1" stop-color="#FF7A1A"/></radialGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F4F7FD"/><stop offset="1" stop-color="#E3EBFA"/></linearGradient>
+    <clipPath id="circ"><circle cx="300" cy="360" r="285"/><rect x="0" y="0" width="600" height="360"/></clipPath>
+  </defs>
+  <circle cx="300" cy="360" r="285" fill="url(#halo)"/>
+  <circle cx="300" cy="360" r="285" fill="none" stroke="#fff" stroke-width="10" opacity=".7"/>
+  <g clip-path="url(#circ)">
+    <!-- hair (afro) -->
+    <g fill="#1B1110">
+      <circle cx="300" cy="190" r="125"/><circle cx="205" cy="225" r="88"/><circle cx="395" cy="225" r="88"/>
+      <circle cx="225" cy="150" r="78"/><circle cx="375" cy="150" r="78"/><circle cx="300" cy="105" r="80"/>
+      <circle cx="190" cy="300" r="55"/><circle cx="410" cy="300" r="55"/>
+    </g>
+    <!-- body -->
+    <path d="M70 740C78 560 160 490 245 475H355C440 490 522 560 530 740Z" fill="#1F5FD6"/>
+    <path d="M150 740C150 620 175 555 205 535" stroke="#174BB0" stroke-width="6" fill="none" opacity=".6"/>
+    <!-- neck -->
+    <path d="M266 390V470Q300 505 334 470V390Z" fill="#8A5434"/>
+    <path d="M266 400Q300 445 334 400V392H266Z" fill="#6B3E24"/>
+    <path d="M245 475L300 555L355 475Q300 500 245 475Z" fill="#8A5434"/>
+    <path d="M245 475L300 555L355 475" fill="none" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+    <!-- ears + earrings -->
+    <ellipse cx="207" cy="300" rx="17" ry="26" fill="#6B3E24"/><ellipse cx="393" cy="300" rx="17" ry="26" fill="#6B3E24"/>
+    <circle cx="205" cy="342" r="13" fill="none" stroke="#F5B400" stroke-width="5"/>
+    <circle cx="395" cy="342" r="13" fill="none" stroke="#F5B400" stroke-width="5"/>
+    <!-- head -->
+    <ellipse cx="300" cy="295" rx="94" ry="116" fill="#8A5434"/>
+    <path d="M206 262C212 172 388 172 394 262C372 220 335 206 300 210C262 206 228 220 206 262Z" fill="#1B1110"/>
+    <!-- face -->
+    <g stroke="#1B1110" stroke-width="7" stroke-linecap="round" fill="none">
+      <path d="M244 258Q262 246 281 254"/><path d="M319 254Q338 246 356 258"/>
+    </g>
+    <g stroke="#24140D" stroke-width="5.5" stroke-linecap="round" fill="none">
+      <path d="M247 290Q262 274 278 290"/><path d="M322 290Q338 274 353 290"/>
+    </g>
+    <path d="M300 296Q297 318 289 326Q300 334 312 326" stroke="#6B3E24" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+    <ellipse cx="250" cy="327" rx="17" ry="10" fill="#E0785A" opacity=".35"/>
+    <ellipse cx="350" cy="327" rx="17" ry="10" fill="#E0785A" opacity=".35"/>
+    <path d="M258 346Q300 398 342 346Q300 360 258 346Z" fill="#5B1D1D"/>
+    <path d="M264 349Q300 362 336 349L333 357Q300 368 267 357Z" fill="#fff"/>
+    <path d="M280 378Q300 388 320 378Q300 372 280 378Z" fill="#C2554F"/>
+    <!-- raised arm holding phone --><g transform="translate(-40 -10)">
+    <path d="M500 740L540 740L520 600Q505 545 470 540L440 560Q470 600 480 650Z" fill="#1F5FD6"/>
+    <g transform="rotate(-12 455 470)">
+      <rect x="400" y="352" width="118" height="214" rx="20" fill="#0A2A66"/>
+      <rect x="409" y="366" width="100" height="186" rx="12" fill="url(#screen)"/>
+      <rect x="418" y="384" width="72" height="20" rx="10" fill="#1F5FD6"/>
+      <rect x="430" y="412" width="70" height="20" rx="10" fill="#FF7A1A"/>
+      <rect x="418" y="440" width="60" height="20" rx="10" fill="#1F5FD6"/>
+      <circle cx="459" cy="505" r="22" fill="#12B3A1"/>
+      <path d="M448 505L456 513L471 497" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <path d="M440 560Q420 530 432 505Q445 492 470 500L498 520Q508 548 488 566Q462 578 440 560Z" fill="#8A5434"/>
+    <path d="M425 512Q414 495 428 486L452 492" fill="#8A5434" stroke="#6B3E24" stroke-width="3"/></g>
+  </g>
+</svg>

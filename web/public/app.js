@@ -4,11 +4,27 @@
  */
 
 let currentUser = null;
-let currentAuthToken = localStorage.getItem('textora_auth_token') || null;
+// Storage keys (renamed from the old Textora brand; old values are migrated once)
+const AUTH_TOKEN_KEY = 'kebsend_auth_token';
+const THEME_KEY = 'kebsend_theme';
+migrateLegacyStorage();
+let currentAuthToken = localStorage.getItem(AUTH_TOKEN_KEY) || null;
 let currentCustomSenderIdFee = 8.0;
+
+function migrateLegacyStorage() {
+  try {
+    [['textora_auth_token', 'kebsend_auth_token'], ['textora_theme', 'kebsend_theme']].forEach(([oldKey, newKey]) => {
+      const oldVal = localStorage.getItem(oldKey);
+      if (oldVal !== null && localStorage.getItem(newKey) === null) localStorage.setItem(newKey, oldVal);
+      if (oldVal !== null) localStorage.removeItem(oldKey);
+    });
+  } catch (e) { /* storage unavailable */ }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  initPasswordToggles();
+  initComposerPreview();
   initRouter();
   initAuthForms();
   initDashboardWorkspace();
@@ -28,7 +44,7 @@ function initTheme() {
   const iconSun = document.getElementById('theme-icon-sun');
   const iconMoon = document.getElementById('theme-icon-moon');
 
-  const savedTheme = localStorage.getItem('textora_theme') || 'light';
+  const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
   updateThemeIcons(savedTheme);
 
@@ -37,7 +53,7 @@ function initTheme() {
       const current = document.documentElement.getAttribute('data-theme') || 'light';
       const next = current === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('textora_theme', next);
+      localStorage.setItem(THEME_KEY, next);
       updateThemeIcons(next);
     });
   }
@@ -92,7 +108,7 @@ function initRouter() {
   const btnLogout = document.getElementById('btn-logout');
   if (btnLogout) {
     btnLogout.addEventListener('click', () => {
-      localStorage.removeItem('textora_auth_token');
+      localStorage.removeItem(AUTH_TOKEN_KEY);
       currentAuthToken = null;
       currentUser = null;
       updateNavAuthState();
@@ -273,7 +289,7 @@ function initAuthForms() {
         }
 
         currentAuthToken = data.token;
-        localStorage.setItem('textora_auth_token', currentAuthToken);
+        localStorage.setItem(AUTH_TOKEN_KEY, currentAuthToken);
         currentUser = data.user;
         updateNavAuthState();
         navigate('dashboard');
@@ -307,7 +323,7 @@ function initAuthForms() {
         }
 
         currentAuthToken = data.token;
-        localStorage.setItem('textora_auth_token', currentAuthToken);
+        localStorage.setItem(AUTH_TOKEN_KEY, currentAuthToken);
         currentUser = data.user;
         updateNavAuthState();
         navigate('dashboard');
@@ -362,7 +378,7 @@ async function checkPendingSenderIdPayment() {
         setTimeout(() => {
           const sidFeedback = document.getElementById('dash-sid-feedback');
           if (sidFeedback) {
-            sidFeedback.className = 'text-xs font-mono p-2.5 rounded border bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border-emerald-200 dark:border-emerald-900';
+            sidFeedback.className = 'rounded-xl border border-teal-500/30 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-700 dark:bg-teal-500/10 dark:text-teal-300';
             sidFeedback.textContent = data.message || 'Payment confirmed! Sender ID submitted for review.';
             sidFeedback.classList.remove('hidden');
           }
@@ -432,11 +448,9 @@ function initDashboardWorkspace() {
     // Sync mobile pill tabs
     mobileTabBtns.forEach(btn => {
       if (btn.getAttribute('data-dash-tab') === targetTab) {
-        btn.classList.add('active', 'bg-blue-600', 'text-white', 'shadow-sm');
-        btn.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400');
+        btn.classList.add('active');
       } else {
-        btn.classList.remove('active', 'bg-blue-600', 'text-white', 'shadow-sm');
-        btn.classList.add('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400');
+        btn.classList.remove('active');
       }
     });
 
@@ -502,7 +516,7 @@ function initDashboardWorkspace() {
     btnGenKey.addEventListener('click', () => {
       if (!currentAuthToken) return;
       if (genKeyStatus) {
-        genKeyStatus.className = 'hidden text-xs font-mono p-2.5 rounded border';
+        genKeyStatus.className = 'hidden rounded-xl px-4 py-3 text-sm';
         genKeyStatus.textContent = '';
       }
       if (genKeyNameInput) {
@@ -518,7 +532,7 @@ function initDashboardWorkspace() {
       const keyName = genKeyNameInput ? genKeyNameInput.value.trim() : 'Production Server Key';
       if (!keyName) {
         if (genKeyStatus) {
-          genKeyStatus.className = 'text-xs font-mono p-2.5 rounded border bg-red-50 dark:bg-red-950/40 text-red-600 border-red-200 dark:border-red-900';
+          genKeyStatus.className = 'rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-medium text-error';
           genKeyStatus.textContent = 'Please enter a name for your API key.';
         }
         return;
@@ -543,13 +557,13 @@ function initDashboardWorkspace() {
           loadDashboardData();
         } else {
           if (genKeyStatus) {
-            genKeyStatus.className = 'text-xs font-mono p-2.5 rounded border bg-red-50 dark:bg-red-950/40 text-red-600 border-red-200 dark:border-red-900';
+            genKeyStatus.className = 'rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-medium text-error';
             genKeyStatus.textContent = data.message || 'Failed to generate key.';
           }
         }
       } catch (err) {
         if (genKeyStatus) {
-          genKeyStatus.className = 'text-xs font-mono p-2.5 rounded border bg-red-50 dark:bg-red-950/40 text-red-600 border-red-200 dark:border-red-900';
+          genKeyStatus.className = 'rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-medium text-error';
           genKeyStatus.textContent = 'Error: ' + err.message;
         }
       } finally {
@@ -759,9 +773,12 @@ function initDashboardWorkspace() {
         return;
       }
 
+      const costText = (document.getElementById('dash-sms-total-cost') || {}).textContent || '';
+      if (!confirm(`Send this message to ${valid.length} ${valid.length === 1 ? 'person' : 'people'} from ${senderId}?${costText ? `\n\nCost: ${costText}` : ''}`)) return;
+
       const originalBtnText = btnSendSms.textContent;
       btnSendSms.disabled = true;
-      btnSendSms.textContent = `Dispatching to ${valid.length} Contact${valid.length === 1 ? '' : 's'}...`;
+      btnSendSms.textContent = `Sending to ${valid.length} ${valid.length === 1 ? 'person' : 'people'}...`;
       if (outputEl) outputEl.textContent = 'Sending your messages...';
 
       try {
@@ -801,7 +818,7 @@ function initDashboardWorkspace() {
 
       if (!sid || sid.length < 3 || sid.length > 11) {
         if (sidFeedback) {
-          sidFeedback.className = 'text-xs font-mono p-2.5 rounded border bg-red-50 dark:bg-red-950/40 text-red-600 border-red-200 dark:border-red-900';
+          sidFeedback.className = 'rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-medium text-error';
           sidFeedback.textContent = 'Sender ID must be 3-11 alphanumeric characters.';
           sidFeedback.classList.remove('hidden');
         }
@@ -834,7 +851,7 @@ function initDashboardWorkspace() {
           if (data.paymentRequired && data.checkout_url) {
             // Paystack checkout redirect
             if (sidFeedback) {
-              sidFeedback.className = 'text-xs font-mono p-2.5 rounded border bg-blue-50 dark:bg-blue-950/40 text-blue-600 border-blue-200 dark:border-blue-900';
+              sidFeedback.className = 'rounded-xl border border-blue-500/30 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-200';
               sidFeedback.textContent = `Redirecting to Paystack for ₵${currentCustomSenderIdFee.toFixed(2)} registration fee...`;
               sidFeedback.classList.remove('hidden');
             }
@@ -843,7 +860,7 @@ function initDashboardWorkspace() {
           }
 
           if (sidFeedback) {
-            sidFeedback.className = 'text-xs font-mono p-2.5 rounded border bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border-emerald-200 dark:border-emerald-900';
+            sidFeedback.className = 'rounded-xl border border-teal-500/30 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-700 dark:bg-teal-500/10 dark:text-teal-300';
             sidFeedback.textContent = data.message || `Sender ID "${sid}" submitted for review. Registration fee (₵${currentCustomSenderIdFee.toFixed(2)}) deducted from your wallet balance.`;
             sidFeedback.classList.remove('hidden');
           }
@@ -852,14 +869,14 @@ function initDashboardWorkspace() {
           loadDashboardData();
         } else {
           if (sidFeedback) {
-            sidFeedback.className = 'text-xs font-mono p-2.5 rounded border bg-red-50 dark:bg-red-950/40 text-red-600 border-red-200 dark:border-red-900';
+            sidFeedback.className = 'rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-medium text-error';
             sidFeedback.textContent = data.message || 'Payment or submission failed.';
             sidFeedback.classList.remove('hidden');
           }
         }
       } catch (err) {
         if (sidFeedback) {
-          sidFeedback.className = 'text-xs font-mono p-2.5 rounded border bg-red-50 dark:bg-red-950/40 text-red-600 border-red-200 dark:border-red-900';
+          sidFeedback.className = 'rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-medium text-error';
           sidFeedback.textContent = 'Error: ' + err.message;
           sidFeedback.classList.remove('hidden');
         }
@@ -903,7 +920,7 @@ async function loadDashboardData() {
     const sideBal = document.getElementById('sidebar-balance');
     if (sideBal) sideBal.textContent = `${currentUser.balance.toFixed(2)} Credits`;
     const cardBal = document.getElementById('card-balance');
-    if (cardBal) cardBal.innerHTML = `${currentUser.balance.toFixed(2)} <span class="text-sm font-normal text-blue-200">Credits</span>`;
+    if (cardBal) cardBal.innerHTML = `${currentUser.balance.toFixed(2)} <span class="text-base font-semibold text-blue-200">Credits</span>`;
     const composerBalEl = document.getElementById('dash-composer-balance-tag');
     if (composerBalEl) composerBalEl.textContent = `Balance: ${currentUser.balance.toFixed(2)} Credits`;
     const sidBalEl = document.getElementById('sid-wallet-balance');
@@ -922,20 +939,20 @@ async function loadDashboardData() {
     const keysContainer = document.getElementById('dash-api-keys-list');
     if (keysContainer) {
       if (data.apiKeys.length === 0) {
-        keysContainer.innerHTML = '<div class="text-xs text-slate-500 font-mono py-2">No active API keys found. Click "+ Generate New Key" above.</div>';
+        keysContainer.innerHTML = '<div class="rounded-2xl bg-cream-100 px-4 py-6 text-center text-sm text-ink dark:bg-night-900 dark:text-slate-400">No API keys yet. Click <b>+ New API key</b> to create one.</div>';
       } else {
         keysContainer.innerHTML = data.apiKeys.map(k => `
-          <div class="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-cream-100 p-4 dark:bg-night-900">
             <div>
-              <div class="font-bold text-sm text-slate-900 dark:text-white">${escapeHtml(k.name)}</div>
-              <div class="font-mono text-xs text-blue-600 dark:text-blue-400 mt-1">${k.key}</div>
-              <div class="text-[10px] text-slate-500 font-mono mt-0.5">Created: ${new Date(k.createdAt).toLocaleDateString()}</div>
+              <div class="font-bold text-navy-900 dark:text-white">${escapeHtml(k.name)}</div>
+              <div class="mt-1 break-all font-mono text-xs text-blue-600 dark:text-blue-300">${k.key}</div>
+              <div class="mt-0.5 text-xs text-ink dark:text-slate-400">Created: ${new Date(k.createdAt).toLocaleDateString()}</div>
             </div>
             <div class="flex items-center gap-2">
-              <button class="btn btn-xs btn-outline border-slate-300 dark:border-slate-700 font-mono copy-direct-btn" data-key="${k.key}">
+              <button class="ks-btn-ghost btn-sm copy-direct-btn" data-key="${k.key}">
                 Copy Key
               </button>
-              <button class="btn btn-xs btn-error btn-outline font-mono revoke-key-btn" data-id="${k._id || k.id}">
+              <button class="btn btn-sm btn-ghost font-semibold text-error hover:bg-error/10 revoke-key-btn" data-id="${k._id || k.id}">
                 Revoke
               </button>
             </div>
@@ -972,8 +989,8 @@ async function loadDashboardData() {
     }
     if (sidBadges && currentUser.senderIds) {
       sidBadges.innerHTML = currentUser.senderIds.map(s => `
-        <span class="badge badge-primary font-mono text-xs">
-          ${s} (Active)
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
+          <span class="h-1.5 w-1.5 rounded-full bg-teal-500"></span>${escapeHtml(s)}
         </span>
       `).join('');
     }
@@ -982,26 +999,26 @@ async function loadDashboardData() {
     if (sidRequestsTable) {
       const requests = data.senderIdRequests || [];
       if (requests.length === 0) {
-        sidRequestsTable.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-500">No custom sender ID requests yet.</td></tr>';
+        sidRequestsTable.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-ink">No requests yet.</td></tr>';
       } else {
         sidRequestsTable.innerHTML = requests.map(req => {
           let statusBadge = '';
           if (req.status === 'approved') {
-            statusBadge = '<span class="badge badge-success badge-sm font-mono text-white">Approved</span>';
+            statusBadge = '<span class="badge badge-success badge-sm font-semibold">Approved</span>';
           } else if (req.status === 'rejected') {
-            statusBadge = '<span class="badge badge-error badge-sm font-mono text-white">Rejected</span>';
+            statusBadge = '<span class="badge badge-error badge-sm font-semibold">Rejected</span>';
           } else {
-            statusBadge = '<span class="badge badge-warning badge-sm font-mono">Pending</span>';
+            statusBadge = '<span class="badge badge-warning badge-sm font-semibold">Pending</span>';
           }
 
           const feeFormatted = `₵${Number(req.feeAmountGHS || 1).toFixed(2)} (${req.paymentMethod === 'paystack' ? 'Paystack' : 'Wallet'})`;
 
           return `
-            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-              <td class="text-slate-500">${new Date(req.createdAt).toLocaleDateString()}</td>
-              <td class="font-bold text-blue-600 dark:text-blue-400 font-mono">${escapeHtml(req.senderId)}</td>
-              <td class="text-slate-600 dark:text-slate-400">${escapeHtml(req.purpose || 'Business Broadcast')}</td>
-              <td class="text-xs font-mono text-slate-700 dark:text-slate-300">${feeFormatted}</td>
+            <tr class="hover:bg-cream-50 dark:hover:bg-white/5">
+              <td class="text-ink">${new Date(req.createdAt).toLocaleDateString()}</td>
+              <td class="font-bold">${escapeHtml(req.senderId)}</td>
+              <td class="text-ink dark:text-slate-400">${escapeHtml(req.purpose || 'Business Broadcast')}</td>
+              <td>${feeFormatted}</td>
               <td>${statusBadge}</td>
             </tr>
           `;
@@ -1013,16 +1030,16 @@ async function loadDashboardData() {
     const logsBody = document.getElementById('dash-logs-table-body');
     if (logsBody) {
       if (!data.logs || data.logs.length === 0) {
-        logsBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-500">No message logs recorded yet.</td></tr>';
+        logsBody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-ink">No messages sent yet.</td></tr>';
       } else {
         logsBody.innerHTML = data.logs.map(log => `
-          <tr class="hover:bg-slate-100/50 dark:hover:bg-slate-800/50">
+          <tr class="hover:bg-cream-50 dark:hover:bg-white/5">
             <td>${new Date(log.createdAt).toLocaleString()}</td>
             <td>${Array.isArray(log.recipients) ? log.recipients.join(', ') : log.recipients}</td>
-            <td><span class="badge badge-ghost badge-sm font-mono">${escapeHtml(log.senderId || 'TXTORA')}</span></td>
+            <td class="font-semibold">${escapeHtml(log.senderId || 'TXTORA')}</td>
             <td class="max-w-xs truncate">${escapeHtml(log.message)}</td>
-            <td class="text-blue-600 dark:text-blue-400 font-bold">-${log.unitsDebited}</td>
-            <td><span class="badge badge-success badge-sm text-white font-bold">${log.status}</span></td>
+            <td class="font-bold text-ember-600 dark:text-ember-400">-${log.unitsDebited}</td>
+            <td><span class="badge badge-success badge-sm font-semibold">${escapeHtml(log.status)}</span></td>
           </tr>
         `).join('');
       }
@@ -1041,13 +1058,14 @@ async function loadDashboardData() {
       ];
 
       dashPlansGrid.innerHTML = plans.map(p => `
-        <div class="dash-surface-card p-4 flex flex-col justify-between ${p.popular ? 'border-2 border-blue-600' : ''}">
+        <div class="relative flex flex-col justify-between rounded-2xl border-2 p-4 ${p.popular ? 'border-ember-500 bg-ember-50/60 dark:bg-ember-500/10' : 'border-transparent bg-cream-100 dark:bg-night-900'}">
+        ${p.popular ? '<span class="absolute -top-2.5 left-3 rounded-full bg-ember-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Popular</span>' : ''}
           <div>
-            <div class="text-[10px] font-mono text-slate-500 uppercase font-bold">${p.tag}</div>
-            <div class="text-lg font-black text-slate-900 dark:text-white mt-0.5">GH₵ ${p.priceGHS}</div>
-            <div class="text-xs text-blue-600 font-bold font-mono mt-1">${p.credits.toLocaleString()} Credits</div>
+            <div class="text-xs font-bold uppercase tracking-wider text-ink dark:text-slate-400">${p.tag}</div>
+            <div class="mt-0.5 text-xl font-black text-navy-900 dark:text-white">GH₵ ${p.priceGHS}</div>
+            <div class="mt-1 text-sm font-bold text-teal-600 dark:text-teal-400">${p.credits.toLocaleString()} credits</div>
           </div>
-          <button class="btn btn-xs ${p.popular ? 'btn-primary bg-blue-600' : 'btn-outline border-slate-300 dark:border-slate-700'} btn-block mt-3 pay-dash-plan-btn" data-plan="${p.id}">
+          <button class="btn btn-sm btn-block mt-3 ${p.popular ? 'ks-btn-primary' : 'ks-btn-navy'} pay-dash-plan-btn" data-plan="${p.id}">
             Buy Plan
           </button>
         </div>
@@ -1083,13 +1101,14 @@ function renderTopupModal() {
   ];
 
   container.innerHTML = plans.map(p => `
-    <div class="dash-surface-card p-4 flex flex-col justify-between ${p.popular ? 'border-2 border-blue-600' : ''}">
+    <div class="relative flex flex-col justify-between rounded-2xl border-2 p-4 ${p.popular ? 'border-ember-500 bg-ember-50/60 dark:bg-ember-500/10' : 'border-transparent bg-cream-100 dark:bg-night-900'}">
+        ${p.popular ? '<span class="absolute -top-2.5 left-3 rounded-full bg-ember-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Popular</span>' : ''}
       <div>
-        <div class="text-[10px] font-mono text-slate-500 uppercase font-bold">${p.tag}</div>
-        <div class="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">GH₵ ${p.priceGHS}</div>
-        <div class="text-xs text-blue-600 font-bold font-mono mt-1">${p.credits.toLocaleString()} SMS Credits</div>
+        <div class="text-xs font-bold uppercase tracking-wider text-ink dark:text-slate-400">${p.tag}</div>
+        <div class="mt-0.5 text-xl font-black text-navy-900 dark:text-white">GH₵ ${p.priceGHS}</div>
+        <div class="mt-1 text-sm font-bold text-teal-600 dark:text-teal-400">${p.credits.toLocaleString()} credits</div>
       </div>
-      <button class="btn btn-xs ${p.popular ? 'btn-primary bg-blue-600' : 'btn-outline border-slate-300 dark:border-slate-700'} btn-block mt-3 pay-modal-btn" data-plan="${p.id}">
+      <button class="btn btn-sm btn-block mt-3 ${p.popular ? 'ks-btn-primary' : 'ks-btn-navy'} pay-modal-btn" data-plan="${p.id}">
         Pay GH₵ ${p.priceGHS}
       </button>
     </div>
@@ -1127,7 +1146,7 @@ async function triggerPaystackRecharge(planId) {
     });
     const data = await res.json();
     if (data.ok && data.checkout_url) {
-      statusEl.innerHTML = `Checkout ready. <a href="${data.checkout_url}" target="_blank" class="text-blue-600 font-bold underline">Click here to complete payment</a>`;
+      statusEl.innerHTML = `Checkout ready. <a href="${data.checkout_url}" target="_blank" class="font-bold text-ember-600 underline">Click here to complete payment</a>`;
       
       setTimeout(async () => {
         const vRes = await fetch(`/api/dashboard/verify-payment?reference=${data.reference}`, {
@@ -1135,7 +1154,7 @@ async function triggerPaystackRecharge(planId) {
         });
         const vData = await vRes.json();
         if (vData.ok) {
-          statusEl.innerHTML = `<span class="text-emerald-600 font-bold">Payment successful! Added ${vData.creditsAdded} credits.</span>`;
+          statusEl.innerHTML = `<span class="font-bold text-teal-600">Payment successful! Added ${vData.creditsAdded} credits.</span>`;
           loadDashboardData();
         }
       }, 2000);
@@ -1245,13 +1264,13 @@ async function loadPublicPlans() {
   ];
 
   container.innerHTML = plans.map(plan => `
-    <div class="blueprint-card p-6 rounded-lg ${plan.popular ? 'border-2 border-blue-600 shadow-lg' : 'border border-slate-200 dark:border-slate-800'}">
-      ${plan.popular ? '<div class="badge badge-primary text-xs font-bold uppercase mb-2">Most Popular</div>' : ''}
-      <div class="text-xs font-mono text-slate-500 uppercase tracking-wide">${plan.tag}</div>
-      <div class="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">GH₵ ${plan.priceGHS}</div>
-      <div class="text-sm font-semibold text-blue-600 mt-1">${plan.credits.toLocaleString()} Credits</div>
+    <div class="ks-card relative flex flex-col p-5 sm:p-6 ${plan.popular ? '!border-2 !border-ember-500' : ''}">
+      ${plan.popular ? '<span class="absolute -top-3 left-5 rounded-full bg-ember-500 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">Most popular</span>' : ''}
+      <div class="text-xs font-bold uppercase tracking-wider text-ink dark:text-slate-400">${plan.tag}</div>
+      <div class="mt-1 text-3xl font-black text-navy-900 dark:text-white">GH₵ ${plan.priceGHS}</div>
+      <div class="mt-1 text-sm font-bold text-teal-600 dark:text-teal-400">${plan.credits.toLocaleString()} credits</div>
       <p class="text-xs text-slate-500 mt-2">Instant top-up via Mobile Money or Card.</p>
-      <button class="cta-gate-register btn btn-block ${plan.popular ? 'btn-primary bg-blue-600 hover:bg-blue-700' : 'btn-outline border-slate-300 dark:border-slate-700'} btn-sm mt-5">
+      <button class="cta-gate-register btn-block btn-sm mt-auto ${plan.popular ? 'ks-btn-primary' : 'ks-btn-ghost'}" style="margin-top:1.25rem">
         Buy Credits
       </button>
     </div>
@@ -1296,11 +1315,11 @@ function initSenderIdValidator() {
 
     if (issues.length === 0) {
       statusBadge.textContent = 'Valid Sender ID';
-      statusBadge.className = 'badge badge-success text-white font-bold py-3 px-4 font-mono text-xs';
-      feedbackList.innerHTML = '<li class="text-emerald-600 font-medium">Ready for submission in your dashboard.</li>';
+      statusBadge.className = 'badge badge-success font-bold py-3 px-4 text-xs';
+      feedbackList.innerHTML = '<li class="font-semibold text-teal-600 dark:text-teal-400">Looks good! You can request it from your dashboard.</li>';
     } else {
       statusBadge.textContent = 'Needs changes';
-      statusBadge.className = 'badge badge-warning font-bold py-3 px-4 font-mono text-xs';
+      statusBadge.className = 'badge badge-warning font-bold py-3 px-4 text-xs';
       feedbackList.innerHTML = issues.map(i => `<li class="text-slate-600 dark:text-slate-400">• ${i}</li>`).join('');
     }
   });
@@ -1316,6 +1335,7 @@ function initApiCodeSnippets() {
       tab.classList.add('tab-active', 'bg-blue-600', 'text-white');
 
       const targetLang = tab.getAttribute('data-lang');
+      document.querySelectorAll('.copy-btn').forEach(b => b.setAttribute('data-target', `code-display-${targetLang}`));
       codeBlocks.forEach(block => {
         if (block.getAttribute('data-lang') === targetLang) {
           block.classList.remove('hidden');
@@ -1351,4 +1371,45 @@ function initScrollAnimations() {
 
 function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* --------------------------------------------------------------------------
+   PASSWORD SHOW / HIDE
+   -------------------------------------------------------------------------- */
+function initPasswordToggles() {
+  document.querySelectorAll('.ks-toggle-password').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.getAttribute('data-target'));
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'Hide' : 'Show';
+    });
+  });
+}
+
+/* --------------------------------------------------------------------------
+   LIVE PHONE PREVIEW IN THE SMS COMPOSER
+   -------------------------------------------------------------------------- */
+function initComposerPreview() {
+  const messageInput = document.getElementById('dash-sms-message');
+  const senderSelect = document.getElementById('dash-sms-sender-id');
+  const previewText = document.getElementById('dash-sms-preview-text');
+  const previewSender = document.getElementById('dash-sms-preview-sender');
+  if (!messageInput || !previewText) return;
+
+  const placeholder = 'Your message will appear here.';
+  const update = () => {
+    const text = messageInput.value.trim();
+    previewText.textContent = text || placeholder;
+    previewText.classList.toggle('text-ink', !text);
+    if (previewSender && senderSelect) previewSender.textContent = senderSelect.value || 'TXTORA';
+  };
+  messageInput.addEventListener('input', update);
+  if (senderSelect) {
+    senderSelect.addEventListener('change', update);
+    // Sender IDs are loaded after sign-in; keep the preview in sync when options change.
+    new MutationObserver(update).observe(senderSelect, { childList: true });
+  }
+  update();
 }
