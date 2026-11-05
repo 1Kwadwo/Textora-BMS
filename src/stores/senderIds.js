@@ -88,12 +88,30 @@ function createSenderIdStore({ senderIdStorePath, pendingSenderIdStorePath }) {
     syncPendingSenderIdSessions()
     pendingSenderIdSessions[requestId] = session
     writeJsonFile(pendingSenderIdStorePath, pendingSenderIdSessions)
+
+    try {
+      const { mongoose, getMongoStatus } = require('../../web/src/db')
+      if (getMongoStatus && getMongoStatus()) {
+        mongoose.connection.db.collection('bot_pending_sender_id_sessions').updateOne(
+          { requestId },
+          { $set: { requestId, session, updatedAt: new Date() } },
+          { upsert: true }
+        ).catch(e => {})
+      }
+    } catch (e) {}
   }
 
   function forgetPendingSenderIdSession(requestId) {
     syncPendingSenderIdSessions()
     delete pendingSenderIdSessions[requestId]
     writeJsonFile(pendingSenderIdStorePath, pendingSenderIdSessions)
+
+    try {
+      const { mongoose, getMongoStatus } = require('../../web/src/db')
+      if (getMongoStatus && getMongoStatus()) {
+        mongoose.connection.db.collection('bot_pending_sender_id_sessions').deleteOne({ requestId }).catch(e => {})
+      }
+    } catch (e) {}
   }
 
   return {

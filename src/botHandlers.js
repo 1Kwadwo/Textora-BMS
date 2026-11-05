@@ -938,8 +938,18 @@ Textora will validate Ghana numbers, convert them to 233 format, remove repeated
     const requestId =
       ctx.match[1]
 
-    const session =
+    let session =
       pendingSenderIdSessions[requestId]
+
+    if (!session) {
+      try {
+        const { mongoose, getMongoStatus } = require('../web/src/db')
+        if (getMongoStatus && getMongoStatus()) {
+          const doc = await mongoose.connection.db.collection('bot_pending_sender_id_sessions').findOne({ requestId })
+          if (doc && doc.session) session = doc.session
+        }
+      } catch (e) {}
+    }
 
     if (!session) {
       return ctx.reply('Sender ID request was not found or has already been handled.')
@@ -987,8 +997,18 @@ Creating your final checkout now...`
     const requestId =
       ctx.match[1]
 
-    const session =
+    let session =
       pendingSenderIdSessions[requestId]
+
+    if (!session) {
+      try {
+        const { mongoose, getMongoStatus } = require('../web/src/db')
+        if (getMongoStatus && getMongoStatus()) {
+          const doc = await mongoose.connection.db.collection('bot_pending_sender_id_sessions').findOne({ requestId })
+          if (doc && doc.session) session = doc.session
+        }
+      } catch (e) {}
+    }
 
     if (!session) {
       return ctx.reply('Sender ID request was not found or has already been handled.')
