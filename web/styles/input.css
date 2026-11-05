@@ -303,3 +303,10 @@
 .ks-sms-delivered { @apply pt-3 text-[11px] font-semibold text-teal-600; }
 .ks-sms-foot { @apply border-t border-slate-100 px-4 py-3.5 text-center text-xs text-slate-400; }
 @media (prefers-reduced-motion: reduce) { .ks-aud-panel { animation: none; } }
+
+/* Final CTA contact card */
+.ks-contact-card { @apply rounded-3xl border border-navy-900/10 bg-white p-5 dark:border-white/10 dark:bg-night-950 sm:p-6; }
+.ks-contact-row { @apply mt-3 flex items-center gap-4 rounded-2xl border border-navy-900/10 px-4 py-4 transition hover:border-navy-900/25 hover:bg-cream-50 dark:border-white/10 dark:hover:bg-white/5; min-height: 44px; }
+.ks-contact-ic { @apply grid h-11 w-11 shrink-0 place-items-center rounded-xl; }
+.ks-contact-go { @apply text-xl text-ink/60 transition; }
+.ks-contact-row:hover .ks-contact-go { @apply translate-x-0.5 text-ember-500; }
