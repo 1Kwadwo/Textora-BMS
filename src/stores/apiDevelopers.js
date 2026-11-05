@@ -19,58 +19,65 @@ async function writeJsonFileAsync(filePath, value) {
 
 function createApiDevelopersStore({ apiDevelopersStorePath }) {
 
-  function getMongoDb() {
+  async function getMongoDb() {
     try {
-      const { mongoose, getMongoStatus } = require('../../web/src/db')
-      if (getMongoStatus && getMongoStatus() && mongoose.connection?.db) {
-        return mongoose.connection.db
+      const { mongoose, connectDB, getMongoStatus } = require('../../web/src/db')
+      if (!getMongoStatus || !getMongoStatus() || mongoose.connection?.readyState !== 1) {
+        await connectDB().catch(() => {})
       }
+      return mongoose.connection.db || mongoose.connection.client?.db() || null
     } catch (e) {}
     return null
   }
 
   async function getDeveloperByApiKey(apiKey) {
     return await withLock(lockName, async () => {
-      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
-      if (data.api_keys && data.api_keys[apiKey]) {
-        return data.api_keys[apiKey]
-      }
-      const db = getMongoDb()
+      const db = await getMongoDb()
       if (db) {
         try {
           const dev = await db.collection('bot_api_developers').findOne({ apiKey })
           if (dev) {
-            data.api_keys[apiKey] = dev
-            data.users[String(dev.userId)] = dev
-            await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
             return dev
+          }
+          // Also check web apikeys collection if someone used their web key on the bot gateway
+          const keyDoc = await db.collection('apikeys').findOne({ key: apiKey })
+          if (keyDoc) {
+            const userDoc = await db.collection('users').findOne({ _id: keyDoc.userId })
+            if (userDoc) {
+              return {
+                userId: String(userDoc._id),
+                apiKey,
+                balance: userDoc.balance || 0,
+                name: userDoc.name,
+                isWebUser: true
+              }
+            }
           }
         } catch (e) {}
       }
-      return null
+
+      // Offline / local fallback
+      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
+      return data.api_keys ? data.api_keys[apiKey] || null : null
     })
   }
 
   async function getDeveloperByUserId(userId) {
     return await withLock(lockName, async () => {
-      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
       const key = String(userId)
-      if (data.users && data.users[key]) {
-        return data.users[key]
-      }
-      const db = getMongoDb()
+      const db = await getMongoDb()
       if (db) {
         try {
           const dev = await db.collection('bot_api_developers').findOne({ userId: key })
           if (dev) {
-            data.users[key] = dev
-            if (dev.apiKey) data.api_keys[dev.apiKey] = dev
-            await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
             return dev
           }
         } catch (e) {}
       }
-      return null
+
+      // Offline / local fallback
+      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
+      return data.users ? data.users[key] || null : null
     })
   }
 
@@ -81,7 +88,7 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       if (data.users && data.users[key]) {
         return data.users[key]
       }
-      const db = getMongoDb()
+      const db = await getMongoDb()
       if (db) {
         try {
           const existing = await db.collection('bot_api_developers').findOne({ userId: key })
@@ -134,7 +141,7 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       data.api_keys[newApiKey] = dev
       await writeJsonFileAsync(apiDevelopersStorePath, data)
 
-      const db = getMongoDb()
+      const db = await getMongoDb()
       if (db) {
         try {
           await db.collection('bot_api_developers').updateOne(
@@ -155,7 +162,7 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       if (!data.api_keys) data.api_keys = {}
       const key = String(userId)
       let dev = data.users[key]
-      const db = getMongoDb()
+      const db = await getMongoDb()
 
       if (!dev && db) {
         try {
@@ -198,11 +205,30 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
     return await withLock(lockName, async () => {
       const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
       let dev = data.api_keys[apiKey]
-      const db = getMongoDb()
+      const db = await getMongoDb()
 
       if (!dev && db) {
         try {
           dev = await db.collection('bot_api_developers').findOne({ apiKey })
+        } catch (e) {}
+      }
+
+      if (!dev && db) {
+        try {
+          // Check web apikeys
+          const keyDoc = await db.collection('apikeys').findOne({ key: apiKey })
+          if (keyDoc) {
+            const userDoc = await db.collection('users').findOne({ _id: keyDoc.userId })
+            if (userDoc) {
+              dev = {
+                userId: String(userDoc._id),
+                apiKey,
+                balance: userDoc.balance || 0,
+                name: userDoc.name,
+                isWebUser: true
+              }
+            }
+          }
         } catch (e) {}
       }
 
@@ -212,6 +238,18 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       if (dev.balance < amount) {
         return { ok: false, balance: dev.balance, message: 'Insufficient prepaid credits' }
       }
+
+      if (dev.isWebUser && db) {
+        try {
+          const { ObjectId } = require('mongodb')
+          await db.collection('users').updateOne(
+            { _id: new ObjectId(dev.userId) },
+            { $inc: { balance: -amount } }
+          )
+          return { ok: true, balance: Number((dev.balance - amount).toFixed(2)) }
+        } catch (e) {}
+      }
+
       dev.balance = Number((dev.balance - Number(amount)).toFixed(2))
       data.users[dev.userId] = dev
       data.api_keys[apiKey] = dev

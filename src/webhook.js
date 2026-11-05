@@ -90,11 +90,17 @@ function startPaystackWebhookServer({
                   const doc = await mongoose.connection.db.collection('bot_sender_ids').findOne({ userId: targetUserId })
                   if (doc && Array.isArray(doc.senderIds) && doc.senderIds.length > 0) {
                     senderIds = doc.senderIds
+                  } else {
+                    const { ObjectId } = require('mongodb')
+                    if (ObjectId.isValid(targetUserId)) {
+                      const userDoc = await mongoose.connection.db.collection('users').findOne({ _id: new ObjectId(targetUserId) })
+                      if (userDoc?.senderIds) senderIds = userDoc.senderIds
+                    }
                   }
                 }
               } catch (e) {}
             }
-            return json(200, { ok: true, senderIds })
+            return json(200, { ok: true, senderIds: senderIds.length > 0 ? senderIds : ['TXTORA'] })
           }
 
           if (req.method === 'POST' && requestPath === '/api/v1/send-sms') {

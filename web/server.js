@@ -138,15 +138,52 @@ const server = http.createServer(async (req, res) => {
       const auth = req.headers['authorization']
       if (auth && auth.startsWith('Bearer ')) {
         const t = auth.substring(7).trim()
-        // Accept both the new (ksnd_) and legacy (txt_) key prefixes
         if (t.startsWith('ksnd_') || t.startsWith('txt_')) key = t
       }
     }
     if (!key) return null
+
+    // 1. Check web ApiKeyRepo
     const apiKeyDoc = await ApiKeyRepo.findByKey(key)
-    if (!apiKeyDoc) return null
-    const user = await UserRepo.findById(apiKeyDoc.userId)
-    return { apiKeyDoc, user }
+    if (apiKeyDoc) {
+      const user = await UserRepo.findById(apiKeyDoc.userId)
+      if (user) return { apiKeyDoc, user, isBotDev: false }
+    }
+
+    // 2. Cross-check bot_api_developers in MongoDB Atlas
+    try {
+      const { mongoose, connectDB, getMongoStatus } = require('./src/db')
+      if (!getMongoStatus || !getMongoStatus() || mongoose.connection?.readyState !== 1) {
+        await connectDB().catch(() => {})
+      }
+      const db = mongoose.connection.db || mongoose.connection.client?.db()
+      if (db) {
+        const botDev = await db.collection('bot_api_developers').findOne({ apiKey: key })
+        if (botDev) {
+          const sidsDoc = await db.collection('bot_sender_ids').findOne({ userId: String(botDev.userId) })
+          const syntheticUser = {
+            _id: 'bot_' + botDev.userId,
+            id: 'bot_' + botDev.userId,
+            userId: String(botDev.userId),
+            name: botDev.name || 'Bot Developer',
+            email: `tg_${botDev.userId}@t.me`,
+            balance: botDev.balance || 0,
+            senderIds: (sidsDoc && Array.isArray(sidsDoc.senderIds) && sidsDoc.senderIds.length > 0) ? sidsDoc.senderIds : ['TXTORA'],
+            isBotDev: true
+          }
+          return {
+            apiKeyDoc: { key, userId: syntheticUser.id, name: botDev.name },
+            user: syntheticUser,
+            isBotDev: true,
+            botDev
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[authenticateApiKey cross-check failed]', e.message)
+    }
+
+    return null
   }
 
   // --------------------------------------------------------------------------
@@ -854,7 +891,21 @@ const server = http.createServer(async (req, res) => {
         }
         totalCreditsNeeded = Number(totalCreditsNeeded.toFixed(2))
 
-        const debitRes = await UserRepo.debitBalance(userId, totalCreditsNeeded)
+        let debitRes
+        if (auth.isBotDev) {
+          const { mongoose } = require('./src/db')
+          const coll = mongoose.connection.db.collection('bot_api_developers')
+          const currentDev = await coll.findOne({ apiKey: auth.apiKeyDoc.key })
+          if (!currentDev || (currentDev.balance || 0) < totalCreditsNeeded) {
+            return json(400, { ok: false, message: 'Insufficient balance', balance: currentDev?.balance || 0 })
+          }
+          const newBal = Number(((currentDev.balance || 0) - totalCreditsNeeded).toFixed(2))
+          await coll.updateOne({ apiKey: auth.apiKeyDoc.key }, { $set: { balance: newBal, updatedAt: new Date() } })
+          debitRes = { ok: true, balance: newBal }
+        } else {
+          debitRes = await UserRepo.debitBalance(userId, totalCreditsNeeded)
+        }
+
         if (!debitRes.ok) {
           return json(400, { ok: false, message: debitRes.message || 'Insufficient balance', balance: debitRes.balance })
         }
@@ -863,7 +914,15 @@ const server = http.createServer(async (req, res) => {
         try {
           sendRes = await sendSMS({ to: recipients, message, senderId: sId })
         } catch (err) {
-          await UserRepo.creditBalance(userId, totalCreditsNeeded)
+          if (auth.isBotDev) {
+            const { mongoose } = require('./src/db')
+            await mongoose.connection.db.collection('bot_api_developers').updateOne(
+              { apiKey: auth.apiKeyDoc.key },
+              { $inc: { balance: totalCreditsNeeded } }
+            )
+          } else {
+            await UserRepo.creditBalance(userId, totalCreditsNeeded)
+          }
           return json(500, { ok: false, message: 'Carrier failure: ' + err.message })
         }
 

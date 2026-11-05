@@ -44,14 +44,17 @@ function createSenderIdStore({ senderIdStorePath, pendingSenderIdStorePath }) {
     setTimeout(async () => {
       try {
         if (getMongoStatus && getMongoStatus()) {
-          const docs = await mongoose.connection.db.collection('bot_sender_ids').find({}).toArray()
-          docs.forEach(doc => {
-            if (doc.userId && Array.isArray(doc.senderIds) && doc.senderIds.length > 0) {
-              const current = verifiedSenderIds[String(doc.userId)] || []
-              const merged = Array.from(new Set([...current, ...doc.senderIds]))
-              verifiedSenderIds[String(doc.userId)] = merged
-            }
-          })
+          const db = mongoose.connection.db || mongoose.connection.client?.db()
+          if (db) {
+            const docs = await db.collection('bot_sender_ids').find({}).toArray()
+            docs.forEach(doc => {
+              if (doc.userId && Array.isArray(doc.senderIds) && doc.senderIds.length > 0) {
+                const current = verifiedSenderIds[String(doc.userId)] || []
+                const merged = Array.from(new Set([...current, ...doc.senderIds]))
+                verifiedSenderIds[String(doc.userId)] = merged
+              }
+            })
+          }
         }
       } catch (err) {}
     }, 1500).unref()
