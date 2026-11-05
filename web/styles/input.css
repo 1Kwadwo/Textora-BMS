@@ -262,3 +262,7 @@
   border: 1px solid var(--ks-border);
   box-shadow: 0 30px 60px -20px rgba(10, 42, 102, .35);
 }
+
+/* Customer strip: scrolls the other way, text tiles for names without a logo file */
+.ks-marquee-reverse { animation-direction: reverse; animation-duration: 45s; }
+.ks-name-card { flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; gap: .15rem; }
