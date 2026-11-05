@@ -1,0 +1,30 @@
+{
+  "api_keys": {
+    "txt_6eb697f8452ae90ff94266c829ede643474db1ff9eaa91c6": {
+      "userId": "2011649284",
+      "apiKey": "txt_6eb697f8452ae90ff94266c829ede643474db1ff9eaa91c6",
+      "balance": 0,
+      "name": "Unknown"
+    },
+    "txt_cc89645e0ca5f388ada1e27ae7531197fba50c4d669d0155": {
+      "userId": "7239869241",
+      "apiKey": "txt_cc89645e0ca5f388ada1e27ae7531197fba50c4d669d0155",
+      "balance": 400,
+      "name": "🥂"
+    }
+  },
+  "users": {
+    "2011649284": {
+      "userId": "2011649284",
+      "apiKey": "txt_6eb697f8452ae90ff94266c829ede643474db1ff9eaa91c6",
+      "balance": 0,
+      "name": "Unknown"
+    },
+    "7239869241": {
+      "userId": "7239869241",
+      "apiKey": "txt_cc89645e0ca5f388ada1e27ae7531197fba50c4d669d0155",
+      "balance": 400,
+      "name": "🥂"
+    }
+  }
+}

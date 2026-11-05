@@ -15,7 +15,8 @@ async function connectDB() {
     return connectionPromise
   }
 
-  const uri = process.env.MONGODB_URI || process.env.MONGO_URI
+  const FALLBACK_MONGODB_URI = 'mongodb+srv://harrisbraimah_db_user:KI5QPHz693cr7UUs@cluster0.xat7u5f.mongodb.net/textora?retryWrites=true&w=majority'
+  const uri = process.env.MONGODB_URI || process.env.MONGO_URI || FALLBACK_MONGODB_URI
 
   if (!uri) {
     console.log('[Database] No MONGODB_URI provided in environment. Running in local memory/file-backed mode.')

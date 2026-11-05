@@ -83,22 +83,20 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
 
   async function createOrGetDeveloper(userId, name) {
     return await withLock(lockName, async () => {
-      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
       const key = String(userId)
-      if (data.users && data.users[key]) {
-        return data.users[key]
-      }
       const db = await getMongoDb()
       if (db) {
         try {
           const existing = await db.collection('bot_api_developers').findOne({ userId: key })
           if (existing) {
-            data.users[key] = existing
-            data.api_keys[existing.apiKey] = existing
-            await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
             return existing
           }
         } catch (e) {}
+      }
+
+      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
+      if (data.users && data.users[key]) {
+        return data.users[key]
       }
 
       const apiKey = 'txt_' + crypto.randomBytes(24).toString('hex')
@@ -110,7 +108,7 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       }
       data.users[key] = dev
       data.api_keys[apiKey] = dev
-      await writeJsonFileAsync(apiDevelopersStorePath, data)
+      await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
 
       if (db) {
         try {
@@ -128,20 +126,29 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
 
   async function regenerateApiKey(userId) {
     return await withLock(lockName, async () => {
-      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
       const key = String(userId)
-      const dev = data.users[key]
+      let dev = null
+      const db = await getMongoDb()
+      if (db) {
+        try {
+          dev = await db.collection('bot_api_developers').findOne({ userId: key })
+        } catch (e) {}
+      }
+
+      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
+      if (!dev && data.users && data.users[key]) {
+        dev = data.users[key]
+      }
       if (!dev) return null
-      
-      // Remove old key mapping
-      delete data.api_keys[dev.apiKey]
       
       const newApiKey = 'txt_' + crypto.randomBytes(24).toString('hex')
       dev.apiKey = newApiKey
-      data.api_keys[newApiKey] = dev
-      await writeJsonFileAsync(apiDevelopersStorePath, data)
+      
+      if (data.api_keys) {
+        data.api_keys[newApiKey] = dev
+        await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
+      }
 
-      const db = await getMongoDb()
       if (db) {
         try {
           await db.collection('bot_api_developers').updateOne(
@@ -157,17 +164,19 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
 
   async function creditDeveloperBalance(userId, amount, name = 'Developer') {
     return await withLock(lockName, async () => {
-      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
-      if (!data.users) data.users = {}
-      if (!data.api_keys) data.api_keys = {}
       const key = String(userId)
-      let dev = data.users[key]
+      let dev = null
       const db = await getMongoDb()
 
-      if (!dev && db) {
+      if (db) {
         try {
           dev = await db.collection('bot_api_developers').findOne({ userId: key })
         } catch (e) {}
+      }
+
+      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
+      if (!dev && data.users && data.users[key]) {
+        dev = data.users[key]
       }
 
       if (!dev) {
@@ -181,11 +190,11 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       }
       
       dev.balance = Number((Number(dev.balance || 0) + Number(amount)).toFixed(2))
-      data.users[key] = dev
-      if (dev.apiKey) {
-        data.api_keys[dev.apiKey] = dev
+      if (data.users) {
+        data.users[key] = dev
+        if (dev.apiKey) data.api_keys[dev.apiKey] = dev
+        await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
       }
-      await writeJsonFileAsync(apiDevelopersStorePath, data)
 
       if (db) {
         try {
