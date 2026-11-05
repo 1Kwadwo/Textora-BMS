@@ -556,6 +556,8 @@ ${ctx.chat.id}`
     }
 
     const userId = ctx.from.id
+    const name = `${ctx.from.first_name || ''} ${ctx.from.last_name || ''}`.trim()
+    await apiDevelopersStore.createOrGetDeveloper(userId, name)
     const price = plan.priceGHS.toFixed(2)
     const credits = plan.credits
 
@@ -614,17 +616,18 @@ ${ctx.chat.id}`
       return ctx.reply('Recharge session was not found or has already been approved.')
     }
 
-    await apiDevelopersStore.creditDeveloperBalance(session.userId, session.credits)
+    const dev = await apiDevelopersStore.creditDeveloperBalance(session.userId, session.credits)
     await paymentSessionStore.forgetSession(reference)
 
-    const updatedDev = await apiDevelopersStore.getDeveloperByUserId(session.userId)
-    const newBalance = updatedDev ? updatedDev.balance : 'unknown'
+    const newBalance = dev ? dev.balance : session.credits
+    const apiKey = dev ? dev.apiKey : ''
 
     await ctx.editMessageText(
       `✅ *Recharge Approved!*\n\n` +
       `Developer ID: \`${session.userId}\`\n` +
       `Credited: ${session.credits} units\n` +
-      `New Prepaid Balance: ${newBalance} units`,
+      `New Prepaid Balance: ${newBalance} units\n` +
+      (apiKey ? `API Key: \`${apiKey}\`` : ''),
       { parse_mode: 'Markdown' }
     )
 
@@ -633,11 +636,63 @@ ${ctx.chat.id}`
         session.chatId,
         `🎉 *API Recharge Successful!*\n\n` +
         `Your account has been credited with *${session.credits}* SMS credits.\n` +
-        `New Prepaid Balance: *${newBalance}* units.\n\n` +
+        `New Prepaid Balance: *${newBalance}* units.\n` +
+        (apiKey ? `API Key: \`${apiKey}\`\n\n` : '\n') +
         `Thank you for using Textora API!`
       )
     } catch (err) {
       console.log('Failed to notify developer of approved recharge:', err.message)
+    }
+  })
+
+  bot.command('credit', async (ctx) => {
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only Textora admins can credit developer balances.')
+    }
+
+    const text = (ctx.message?.text || '').trim()
+    const parts = text.split(/\s+/)
+    if (parts.length < 3) {
+      return ctx.reply(
+        `ℹ️ *Usage:* \`/credit <Developer_ID> <credits>\`\n\n` +
+        `Example:\n\`/credit 7239869241 400\``,
+        { parse_mode: 'Markdown' }
+      )
+    }
+
+    const targetUserId = parts[1].trim()
+    const amount = Number(parts[2])
+    if (isNaN(amount) || amount <= 0) {
+      return ctx.reply('❌ Amount must be a positive number of credits.')
+    }
+
+    const dev = await apiDevelopersStore.creditDeveloperBalance(targetUserId, amount)
+    if (!dev) {
+      return ctx.reply(`❌ Could not credit developer \`${targetUserId}\`.`, { parse_mode: 'Markdown' })
+    }
+
+    await ctx.reply(
+      `✅ *Successfully Credited!*\n\n` +
+      `Developer ID: \`${dev.userId}\`\n` +
+      `Amount Credited: *${amount}* units\n` +
+      `New Prepaid Balance: *${dev.balance}* units\n` +
+      `API Key: \`${dev.apiKey}\``,
+      { parse_mode: 'Markdown' }
+    )
+
+    try {
+      await bot.telegram.sendMessage(
+        targetUserId,
+        `🎉 *API Account Credited!*\n\n` +
+        `Your account has been credited with *${amount}* SMS units by Textora Admin.\n` +
+        `New Prepaid Balance: *${dev.balance}* units.\n` +
+        `API Key: \`${dev.apiKey}\`\n\n` +
+        `Base URL: \`https://textora-bmsv2.onrender.com\`\n` +
+        `Endpoint: \`POST /api/v1/send-sms\``,
+        { parse_mode: 'Markdown' }
+      )
+    } catch (err) {
+      console.log('Failed to notify developer of admin credit:', err.message)
     }
   })
 

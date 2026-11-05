@@ -72,15 +72,30 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
     })
   }
 
-  async function creditDeveloperBalance(userId, amount) {
+  async function creditDeveloperBalance(userId, amount, name = 'Developer') {
     return await withLock(lockName, async () => {
       const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
+      if (!data.users) data.users = {}
+      if (!data.api_keys) data.api_keys = {}
       const key = String(userId)
-      const dev = data.users[key]
-      if (!dev) return null
+      let dev = data.users[key]
+      if (!dev) {
+        // Auto-create developer profile if it does not exist yet
+        const apiKey = 'txt_' + crypto.randomBytes(24).toString('hex')
+        dev = {
+          userId: key,
+          apiKey,
+          balance: 0,
+          name: name || 'Developer'
+        }
+        data.users[key] = dev
+        data.api_keys[apiKey] = dev
+      }
       
-      dev.balance = Number((dev.balance + Number(amount)).toFixed(2))
-      data.api_keys[dev.apiKey].balance = dev.balance
+      dev.balance = Number((Number(dev.balance || 0) + Number(amount)).toFixed(2))
+      if (data.api_keys[dev.apiKey]) {
+        data.api_keys[dev.apiKey].balance = dev.balance
+      }
       await writeJsonFileAsync(apiDevelopersStorePath, data)
       return dev
     })
