@@ -38,6 +38,25 @@ function createSenderIdStore({ senderIdStorePath, pendingSenderIdStorePath }) {
   syncVerifiedSenderIds()
   syncPendingSenderIdSessions()
 
+  // Sync from MongoDB Atlas if available
+  try {
+    const { mongoose, getMongoStatus } = require('../../web/src/db')
+    setTimeout(async () => {
+      try {
+        if (getMongoStatus && getMongoStatus()) {
+          const docs = await mongoose.connection.db.collection('bot_sender_ids').find({}).toArray()
+          docs.forEach(doc => {
+            if (doc.userId && Array.isArray(doc.senderIds) && doc.senderIds.length > 0) {
+              const current = verifiedSenderIds[String(doc.userId)] || []
+              const merged = Array.from(new Set([...current, ...doc.senderIds]))
+              verifiedSenderIds[String(doc.userId)] = merged
+            }
+          })
+        }
+      } catch (err) {}
+    }, 1500).unref()
+  } catch (e) {}
+
   function getVerifiedSenderIds(userId) {
     syncVerifiedSenderIds()
     return verifiedSenderIds[String(userId)] || []
@@ -52,6 +71,17 @@ function createSenderIdStore({ senderIdStorePath, pendingSenderIdStorePath }) {
       verifiedSenderIds[key] = [...current, senderId]
       writeJsonFile(senderIdStorePath, verifiedSenderIds)
     }
+
+    try {
+      const { mongoose, getMongoStatus } = require('../../web/src/db')
+      if (getMongoStatus && getMongoStatus()) {
+        mongoose.connection.db.collection('bot_sender_ids').updateOne(
+          { userId: key },
+          { $addToSet: { senderIds: senderId }, $set: { updatedAt: new Date() } },
+          { upsert: true }
+        ).catch(e => console.warn('[Mongo SenderID Update Error]', e.message))
+      }
+    } catch (e) {}
   }
 
   function rememberPendingSenderIdSession(requestId, session) {

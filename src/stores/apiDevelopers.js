@@ -19,17 +19,58 @@ async function writeJsonFileAsync(filePath, value) {
 
 function createApiDevelopersStore({ apiDevelopersStorePath }) {
 
+  function getMongoDb() {
+    try {
+      const { mongoose, getMongoStatus } = require('../../web/src/db')
+      if (getMongoStatus && getMongoStatus() && mongoose.connection?.db) {
+        return mongoose.connection.db
+      }
+    } catch (e) {}
+    return null
+  }
+
   async function getDeveloperByApiKey(apiKey) {
     return await withLock(lockName, async () => {
       const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
-      return data.api_keys[apiKey] || null
+      if (data.api_keys && data.api_keys[apiKey]) {
+        return data.api_keys[apiKey]
+      }
+      const db = getMongoDb()
+      if (db) {
+        try {
+          const dev = await db.collection('bot_api_developers').findOne({ apiKey })
+          if (dev) {
+            data.api_keys[apiKey] = dev
+            data.users[String(dev.userId)] = dev
+            await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
+            return dev
+          }
+        } catch (e) {}
+      }
+      return null
     })
   }
 
   async function getDeveloperByUserId(userId) {
     return await withLock(lockName, async () => {
       const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
-      return data.users[String(userId)] || null
+      const key = String(userId)
+      if (data.users && data.users[key]) {
+        return data.users[key]
+      }
+      const db = getMongoDb()
+      if (db) {
+        try {
+          const dev = await db.collection('bot_api_developers').findOne({ userId: key })
+          if (dev) {
+            data.users[key] = dev
+            if (dev.apiKey) data.api_keys[dev.apiKey] = dev
+            await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
+            return dev
+          }
+        } catch (e) {}
+      }
+      return null
     })
   }
 
@@ -37,9 +78,22 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
     return await withLock(lockName, async () => {
       const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
       const key = String(userId)
-      if (data.users[key]) {
+      if (data.users && data.users[key]) {
         return data.users[key]
       }
+      const db = getMongoDb()
+      if (db) {
+        try {
+          const existing = await db.collection('bot_api_developers').findOne({ userId: key })
+          if (existing) {
+            data.users[key] = existing
+            data.api_keys[existing.apiKey] = existing
+            await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
+            return existing
+          }
+        } catch (e) {}
+      }
+
       const apiKey = 'txt_' + crypto.randomBytes(24).toString('hex')
       const dev = {
         userId: key,
@@ -50,6 +104,17 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       data.users[key] = dev
       data.api_keys[apiKey] = dev
       await writeJsonFileAsync(apiDevelopersStorePath, data)
+
+      if (db) {
+        try {
+          await db.collection('bot_api_developers').updateOne(
+            { userId: key },
+            { $set: dev },
+            { upsert: true }
+          )
+        } catch (e) {}
+      }
+
       return dev
     })
   }
@@ -68,6 +133,17 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       dev.apiKey = newApiKey
       data.api_keys[newApiKey] = dev
       await writeJsonFileAsync(apiDevelopersStorePath, data)
+
+      const db = getMongoDb()
+      if (db) {
+        try {
+          await db.collection('bot_api_developers').updateOne(
+            { userId: key },
+            { $set: { apiKey: newApiKey, updatedAt: new Date() } }
+          )
+        } catch (e) {}
+      }
+
       return dev
     })
   }
@@ -79,8 +155,15 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       if (!data.api_keys) data.api_keys = {}
       const key = String(userId)
       let dev = data.users[key]
+      const db = getMongoDb()
+
+      if (!dev && db) {
+        try {
+          dev = await db.collection('bot_api_developers').findOne({ userId: key })
+        } catch (e) {}
+      }
+
       if (!dev) {
-        // Auto-create developer profile if it does not exist yet
         const apiKey = 'txt_' + crypto.randomBytes(24).toString('hex')
         dev = {
           userId: key,
@@ -88,15 +171,25 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
           balance: 0,
           name: name || 'Developer'
         }
-        data.users[key] = dev
-        data.api_keys[apiKey] = dev
       }
       
       dev.balance = Number((Number(dev.balance || 0) + Number(amount)).toFixed(2))
-      if (data.api_keys[dev.apiKey]) {
-        data.api_keys[dev.apiKey].balance = dev.balance
+      data.users[key] = dev
+      if (dev.apiKey) {
+        data.api_keys[dev.apiKey] = dev
       }
       await writeJsonFileAsync(apiDevelopersStorePath, data)
+
+      if (db) {
+        try {
+          await db.collection('bot_api_developers').updateOne(
+            { userId: key },
+            { $set: { balance: dev.balance, apiKey: dev.apiKey, name: dev.name, updatedAt: new Date() } },
+            { upsert: true }
+          )
+        } catch (e) {}
+      }
+
       return dev
     })
   }
@@ -104,7 +197,15 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
   async function debitDeveloperBalance(apiKey, amount) {
     return await withLock(lockName, async () => {
       const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
-      const dev = data.api_keys[apiKey]
+      let dev = data.api_keys[apiKey]
+      const db = getMongoDb()
+
+      if (!dev && db) {
+        try {
+          dev = await db.collection('bot_api_developers').findOne({ apiKey })
+        } catch (e) {}
+      }
+
       if (!dev) {
         return { ok: false, message: 'Developer not found' }
       }
@@ -112,8 +213,19 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
         return { ok: false, balance: dev.balance, message: 'Insufficient prepaid credits' }
       }
       dev.balance = Number((dev.balance - Number(amount)).toFixed(2))
-      data.users[dev.userId].balance = dev.balance
+      data.users[dev.userId] = dev
+      data.api_keys[apiKey] = dev
       await writeJsonFileAsync(apiDevelopersStorePath, data)
+
+      if (db) {
+        try {
+          await db.collection('bot_api_developers').updateOne(
+            { userId: String(dev.userId) },
+            { $set: { balance: dev.balance, updatedAt: new Date() } }
+          )
+        } catch (e) {}
+      }
+
       return { ok: true, balance: dev.balance }
     })
   }

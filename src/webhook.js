@@ -81,8 +81,19 @@ function startPaystackWebhookServer({
 
           if (req.method === 'GET' && requestPath === '/api/v1/sender-ids') {
             const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
-            const targetUserId = urlObj.searchParams.get('userId') || developer.userId
-            const senderIds = getVerifiedSenderIds ? getVerifiedSenderIds(targetUserId) : []
+            const targetUserId = String(urlObj.searchParams.get('userId') || developer.userId)
+            let senderIds = getVerifiedSenderIds ? getVerifiedSenderIds(targetUserId) : []
+            if ((!senderIds || senderIds.length === 0)) {
+              try {
+                const { mongoose, getMongoStatus } = require('../web/src/db')
+                if (getMongoStatus && getMongoStatus()) {
+                  const doc = await mongoose.connection.db.collection('bot_sender_ids').findOne({ userId: targetUserId })
+                  if (doc && Array.isArray(doc.senderIds) && doc.senderIds.length > 0) {
+                    senderIds = doc.senderIds
+                  }
+                }
+              } catch (e) {}
+            }
             return json(200, { ok: true, senderIds })
           }
 
