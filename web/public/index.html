@@ -31,7 +31,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
   <link rel="apple-touch-icon" href="kebsend-icon.png">
   <!-- Compiled Tailwind + DaisyUI + KebSEND theme (source: web/styles/input.css) -->
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body class="min-h-screen">
 
@@ -159,13 +159,18 @@
       </div>
     </section>
 
-    <!-- TRUST STRIP -->
-    <section class="border-y border-navy-900/5 bg-white dark:border-white/5 dark:bg-night-900">
-      <div class="ks-container grid grid-cols-2 gap-x-4 gap-y-5 py-6 text-sm font-semibold text-navy-900 md:grid-cols-4 dark:text-slate-200">
-        <div class="flex items-center gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cream-100 text-ember-500 dark:bg-white/5"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg></span>All Ghana networks</div>
-        <div class="flex items-center gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cream-100 text-ember-500 dark:bg-white/5"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg></span>Mobile Money &amp; card</div>
-        <div class="flex items-center gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cream-100 text-ember-500 dark:bg-white/5"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></span>Secured by Paystack</div>
-        <div class="flex items-center gap-3"><span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cream-100 text-ember-500 dark:bg-white/5"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>190+ countries</div>
+    <!-- NETWORKS & PAYMENTS (rolling logos) -->
+    <section class="border-y border-navy-900/5 bg-white py-8 dark:border-white/5 dark:bg-night-900" aria-labelledby="networks-title">
+      <div class="ks-container mb-6 flex flex-col items-center justify-between gap-2 text-center md:flex-row md:text-left">
+        <h2 id="networks-title" class="text-base font-extrabold text-navy-900 sm:text-lg dark:text-white">Delivers to every network in Ghana</h2>
+        <p class="text-sm font-semibold text-ink dark:text-slate-400">MTN · Telecel · AirtelTigo · plus 190+ countries. Pay with MoMo or card.</p>
+      </div>
+      <div class="ks-marquee" role="presentation">
+        <ul class="ks-marquee-track">
+          <li class="ks-logo-card"><img src="logos/mtn.svg" alt="MTN" class="h-11 w-auto" loading="lazy" /></li><li class="ks-logo-card"><img src="logos/telecel.png" alt="Telecel" class="h-12 w-auto" loading="lazy" /></li><li class="ks-logo-card"><img src="logos/airteltigo.png" alt="AirtelTigo" class="h-9 w-auto" loading="lazy" /></li><li class="ks-logo-card"><img src="logos/visa.svg" alt="Visa" class="h-6 w-auto" loading="lazy" /></li><li class="ks-logo-card"><img src="logos/mastercard.svg" alt="Mastercard" class="h-9 w-auto" loading="lazy" /></li><li class="ks-logo-card"><img src="logos/paystack.svg" alt="Paystack" class="h-7 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/mtn.svg" alt="" class="h-11 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/telecel.png" alt="" class="h-12 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/airteltigo.png" alt="" class="h-9 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/visa.svg" alt="" class="h-6 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/mastercard.svg" alt="" class="h-9 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/paystack.svg" alt="" class="h-7 w-auto" loading="lazy" /></li>
+          <!-- second half (duplicate for a seamless loop) -->
+          <li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/mtn.svg" alt="" class="h-11 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/telecel.png" alt="" class="h-12 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/airteltigo.png" alt="" class="h-9 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/visa.svg" alt="" class="h-6 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/mastercard.svg" alt="" class="h-9 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/paystack.svg" alt="" class="h-7 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/mtn.svg" alt="" class="h-11 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/telecel.png" alt="" class="h-12 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/airteltigo.png" alt="" class="h-9 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/visa.svg" alt="" class="h-6 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/mastercard.svg" alt="" class="h-9 w-auto" loading="lazy" /></li><li class="ks-logo-card ks-dup" aria-hidden="true"><img src="logos/paystack.svg" alt="" class="h-7 w-auto" loading="lazy" /></li>
+        </ul>
       </div>
     </section>
 
@@ -217,21 +222,78 @@
         </div>
         <ol class="grid gap-5 md:grid-cols-3">
           <li class="ks-card relative p-7 scroll-reveal">
+            <div class="ks-step-art" aria-hidden="true">
+              <div class="w-full max-w-[220px] rounded-2xl bg-white p-4 shadow-soft dark:bg-night-800">
+                <div class="mb-3 flex items-center gap-2"><img src="kebsend-icon.svg" alt="" class="h-6 w-6"><span class="text-xs font-extrabold text-navy-900 dark:text-white">Create account</span></div>
+                <div class="mb-2 h-7 rounded-lg border px-2 text-[11px] leading-7 text-ink" style="border-color:var(--ks-border)">Ama Mensah</div>
+                <div class="mb-3 h-7 rounded-lg border px-2 text-[11px] leading-7 text-ink" style="border-color:var(--ks-border)">024 400 0123</div>
+                <div class="h-7 rounded-lg bg-ember-500 text-center text-[11px] font-bold leading-7 text-white">Create free account</div>
+              </div>
+              <span class="ks-chip absolute -top-3 right-2 !px-3 !py-2 !text-xs"><span class="ks-chip-dot !h-6 !w-6 bg-teal-500 text-[11px]">+5</span>Free credits</span>
+            </div>
             <span class="text-6xl font-black text-ember-500/20">01</span>
             <h3 class="mt-2 text-xl font-extrabold text-navy-900 dark:text-white">Create your free account</h3>
             <p class="mt-2 text-ink dark:text-slate-300">Sign up with your email and phone. You get 5 free credits to test right away.</p>
           </li>
           <li class="ks-card relative p-7 scroll-reveal delay-100">
+            <div class="ks-step-art" aria-hidden="true">
+              <div class="w-full max-w-[220px] rounded-2xl bg-white p-4 shadow-soft dark:bg-night-800">
+                <div class="mb-3 flex items-center justify-between"><img src="logos/mtn.svg" alt="" class="h-7 w-auto"><span class="text-[11px] font-bold text-ink">MoMo payment</span></div>
+                <div class="text-[11px] font-semibold text-ink">Amount</div>
+                <div class="text-2xl font-black text-navy-900 dark:text-white">GH₵ 100.00</div>
+                <div class="mt-3 flex items-center gap-2 rounded-lg bg-teal-50 px-2 py-1.5 text-[11px] font-bold text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 12l5 5L20 7"/></svg>2,000 credits added</div>
+              </div>
+            </div>
             <span class="text-6xl font-black text-ember-500/20">02</span>
             <h3 class="mt-2 text-xl font-extrabold text-navy-900 dark:text-white">Top up with MoMo or card</h3>
             <p class="mt-2 text-ink dark:text-slate-300">Pay with MTN MoMo, Telecel Cash, AT Money, Visa or Mastercard. Credits land instantly.</p>
           </li>
           <li class="ks-card relative p-7 scroll-reveal delay-200">
+            <div class="ks-step-art" aria-hidden="true">
+              <div class="w-full max-w-[220px] space-y-2">
+                <div class="ks-bubble !py-2 !text-[12px]">Weekend sale starts Saturday! 20% off.</div>
+                <div class="ks-bubble ml-6 !py-2 !text-[12px]">Weekend sale starts Saturday! 20% off.</div>
+                <div class="flex items-center justify-between pl-1 text-[11px] font-bold"><span class="text-teal-600 dark:text-teal-400">✓ Delivered</span><span class="rounded-full bg-navy-900 px-2 py-0.5 text-white">1,240 sent</span></div>
+              </div>
+            </div>
             <span class="text-6xl font-black text-ember-500/20">03</span>
             <h3 class="mt-2 text-xl font-extrabold text-navy-900 dark:text-white">Paste numbers and send</h3>
             <p class="mt-2 text-ink dark:text-slate-300">Paste a list or upload a CSV, write your message, and hit send. Ghana numbers are formatted for you.</p>
           </li>
         </ol>
+      </div>
+    </section>
+
+    <!-- SEE IT IN ACTION (product screenshots) -->
+    <section id="product" class="ks-section overflow-hidden">
+      <div class="ks-container grid items-center gap-12 lg:grid-cols-12">
+        <div class="min-w-0 lg:col-span-4 scroll-reveal-left">
+          <div class="ks-kicker mb-3">See it in action</div>
+          <h2 class="ks-h2">Your whole campaign on one screen</h2>
+          <p class="ks-lead mt-4">Pick your sender name, paste your list and write your message. You see the cost and a live preview before anything goes out.</p>
+          <ul class="mt-6 space-y-3 font-semibold text-navy-900 dark:text-slate-200">
+            <li class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-300"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 12l5 5L20 7"/></svg></span>Repeated and invalid numbers are filtered out</li>
+            <li class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-300"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 12l5 5L20 7"/></svg></span>Exact cost shown before you send</li>
+            <li class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-300"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 12l5 5L20 7"/></svg></span>Works just as well on your phone</li>
+          </ul>
+          <button class="cta-gate-register ks-btn-primary btn-lg mt-8 h-14 rounded-2xl px-8">Try it free</button>
+        </div>
+
+        <div class="relative min-w-0 lg:col-span-8 scroll-reveal-right">
+          <figure class="mx-auto block w-[250px] overflow-hidden rounded-[2rem] border-[6px] border-navy-900 bg-white shadow-chip sm:hidden">
+            <img src="images/phone-send.jpg" alt="KebSEND on a phone: composing an SMS" class="block w-full" loading="lazy" width="780" height="1560" />
+          </figure>
+          <figure class="ks-browser hidden sm:block">
+            <div class="flex items-center gap-1.5 border-b px-4 py-3" style="border-color:var(--ks-border)">
+              <span class="h-3 w-3 rounded-full bg-[#FF5F57]"></span><span class="h-3 w-3 rounded-full bg-[#FEBC2E]"></span><span class="h-3 w-3 rounded-full bg-[#28C840]"></span>
+              <span class="ml-3 hidden truncate rounded-full bg-cream-100 px-3 py-1 text-xs font-semibold text-ink sm:block dark:bg-night-900">kebsend · Send SMS</span>
+            </div>
+            <img src="images/dashboard-send.jpg" alt="KebSEND dashboard: composing an SMS to 5 customers with a live phone preview" class="block w-full" loading="lazy" width="1920" height="1230" />
+          </figure>
+          <figure class="absolute -bottom-10 -left-6 hidden w-[200px] overflow-hidden rounded-[2rem] border-[6px] border-navy-900 bg-white shadow-chip xl:block">
+            <img src="images/phone-send.jpg" alt="KebSEND on a phone" class="block w-full" loading="lazy" width="780" height="1560" />
+          </figure>
+        </div>
       </div>
     </section>
 
