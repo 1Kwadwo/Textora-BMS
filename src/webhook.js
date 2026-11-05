@@ -237,13 +237,20 @@ function startPaystackWebhookServer({
       (req.method === 'GET' || req.method === 'HEAD') &&
       (requestPath === '/' || requestPath === '/health')
     ) {
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(
-        req.method === 'HEAD'
-          ? undefined
-          : JSON.stringify({ ok: true, service: 'textora-bot' })
-      )
-      return
+      let isConnected = false
+      let readyState = 0
+      try {
+        const { mongoose, getMongoStatus } = require('../web/src/db')
+        isConnected = Boolean(getMongoStatus && getMongoStatus())
+        readyState = mongoose?.connection?.readyState || 0
+      } catch (e) {}
+
+      return json(200, {
+        ok: true,
+        service: 'textora-bot',
+        mongoConnected: isConnected,
+        mongoReadyState: readyState
+      })
     }
 
     if (req.method === 'GET' && requestPath === paystackWebhookPath) {

@@ -21,12 +21,16 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
 
   async function getMongoDb() {
     try {
-      const { mongoose, connectDB, getMongoStatus } = require('../../web/src/db')
+      const path = require('path')
+      const dbPath = path.resolve(__dirname, '../../web/src/db')
+      const { mongoose, connectDB, getMongoStatus } = require(dbPath)
       if (!getMongoStatus || !getMongoStatus() || mongoose.connection?.readyState !== 1) {
-        await connectDB().catch(() => {})
+        await connectDB().catch(e => console.warn('[apiDevelopers getMongoDb connectDB warn]', e.message))
       }
       return mongoose.connection.db || mongoose.connection.client?.db() || null
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[apiDevelopers getMongoDb catch]', e.message)
+    }
     return null
   }
 
