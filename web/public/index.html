@@ -31,7 +31,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
   <link rel="apple-touch-icon" href="kebsend-icon.png">
   <!-- Compiled Tailwind + DaisyUI + KebSEND theme (source: web/styles/input.css) -->
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body class="min-h-screen">
 
@@ -702,25 +702,34 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
     </section>
 
     <!-- FINAL CTA -->
-    <section id="docs-preview" class="pb-16 sm:pb-24">
-      <div class="ks-container">
-        <div class="ks-navy-band relative overflow-hidden rounded-[2rem] px-6 py-12 text-white shadow-chip sm:px-12 sm:py-16">
-          <div class="grid items-center gap-10 lg:grid-cols-2">
-            <div>
-              <h2 class="text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl">Start sending <span class="text-ember-400">today.</span></h2>
-              <p class="mt-4 text-lg text-blue-100">Businesses · Schools · Churches · Events · NGOs</p>
-              <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-                <button class="cta-gate-register ks-btn-primary btn-lg h-14 rounded-2xl px-8">Create free account</button>
-                <a href="https://t.me/textorasmsbot" target="_blank" rel="noopener" class="btn btn-lg h-14 rounded-2xl border border-white/25 bg-white/10 px-6 font-bold text-white hover:bg-white/20">Chat with our bot</a>
-              </div>
-            </div>
-            <div class="flex flex-col gap-4 sm:flex-row lg:justify-end">
-              <a href="https://wa.me/233201534816" target="_blank" rel="noopener" class="flex flex-col justify-center rounded-3xl bg-gradient-to-b from-ember-400 to-ember-500 px-8 py-6 shadow-ember transition hover:brightness-105">
-                <span class="text-xs font-bold uppercase tracking-[0.2em] text-white/90">Call / WhatsApp</span>
-                <span class="mt-1 text-3xl font-black tracking-tight">020 153 4816</span>
-              </a>
-            </div>
+    <section id="docs-preview" class="border-t border-navy-900/5 bg-cream-200/60 py-16 dark:border-white/5 dark:bg-night-900 sm:py-20">
+      <div class="ks-container grid items-start gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
+        <div>
+          <p class="ks-kicker">Get started</p>
+          <h2 class="ks-h2 mt-2">Send your first SMS today, or talk to us first.</h2>
+          <p class="mt-4 max-w-xl text-lg text-ink dark:text-slate-300">Opening an account is free. Top up with MoMo or card and pay GH₵ 0.05 per SMS, only for what you send. Questions about sender IDs or importing your contact list? Call or WhatsApp us and we&rsquo;ll walk you through it.</p>
+          <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+            <button class="cta-gate-register ks-btn-primary btn-lg h-14 px-8">Create free account</button>
+            <a href="#calculator" class="btn btn-lg h-14 rounded-2xl border border-navy-900/15 bg-white px-6 font-bold text-navy-900 shadow-none hover:border-navy-900/30 hover:bg-white dark:border-white/15 dark:bg-transparent dark:text-white">See pricing</a>
           </div>
+        </div>
+        <div class="ks-contact-card">
+          <p class="text-sm font-semibold text-ink dark:text-slate-400">Talk to the KebSEND team</p>
+          <a href="tel:+233201534816" class="ks-contact-row">
+            <span class="ks-contact-ic bg-navy-900/5 text-navy-900 dark:bg-white/10 dark:text-white" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></span>
+            <span class="min-w-0 flex-1"><span class="block text-sm text-ink dark:text-slate-400">Call us</span><span class="block text-xl font-extrabold tracking-tight text-navy-900 dark:text-white">020 153 4816</span></span>
+            <span class="ks-contact-go" aria-hidden="true">&rarr;</span>
+          </a>
+          <a href="https://wa.me/233201534816" target="_blank" rel="noopener" class="ks-contact-row">
+            <span class="ks-contact-ic bg-[#25D366]/15 text-[#128C7E]" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5"><path d="M17.5 14.4c-.3-.1-1.8-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.4-.5c.2-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5 2.5 1 3 .8 3.6.7.6-.1 1.8-.7 2-1.5.2-.7.2-1.4.2-1.5-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg></span>
+            <span class="min-w-0 flex-1"><span class="block text-sm text-ink dark:text-slate-400">WhatsApp</span><span class="block text-lg font-bold text-navy-900 dark:text-white">Chat on WhatsApp</span></span>
+            <span class="ks-contact-go" aria-hidden="true">&rarr;</span>
+          </a>
+          <a href="https://t.me/textorasmsbot" target="_blank" rel="noopener" class="ks-contact-row">
+            <span class="ks-contact-ic bg-[#229ED9]/15 text-[#229ED9]" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5"><path d="M21.9 4.3 18.7 19.4c-.2 1.1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-5 9.1-8.2c.4-.4-.1-.5-.6-.2L6.1 13 1.3 11.5c-1-.3-1.1-1 .2-1.5L20.5 2.7c.9-.3 1.7.2 1.4 1.6z"/></svg></span>
+            <span class="min-w-0 flex-1"><span class="block text-sm text-ink dark:text-slate-400">Telegram</span><span class="block text-lg font-bold text-navy-900 dark:text-white">Use our SMS bot</span></span>
+            <span class="ks-contact-go" aria-hidden="true">&rarr;</span>
+          </a>
         </div>
       </div>
     </section>
