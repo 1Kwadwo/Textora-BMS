@@ -1,6 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert')
 const http = require('node:http')
+const { UserRepo } = require('../web/src/models')
 
 test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t) => {
   process.env.NODE_ENV = 'test'
@@ -42,11 +43,12 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
   let authToken = ''
   let createdUserId = ''
   let generatedApiKey = ''
+  const testEmail = `test_${Date.now()}@kebsend.test`
 
   await t.test('1. User Registration: Creates account with initial balance', async () => {
     const res = await request('POST', '/api/auth/register', {
       name: 'Harrison Kwadwo',
-      email: 'harrison.dev@kebsend.test',
+      email: testEmail,
       password: 'SecurePassword2026',
       phone: '0244123456'
     })
@@ -54,7 +56,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(res.statusCode, 200)
     assert.strictEqual(res.data.ok, true)
     assert.ok(res.data.token)
-    assert.strictEqual(res.data.user.email, 'harrison.dev@kebsend.test')
+    assert.strictEqual(res.data.user.email, testEmail)
     assert.strictEqual(res.data.user.balance, 5) // Free 5 starter credits
     assert.ok(res.data.initialApiKey.startsWith('ksnd_live_'))
 
@@ -66,7 +68,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
   await t.test('2. User Registration: Blocks duplicate email', async () => {
     const res = await request('POST', '/api/auth/register', {
       name: 'Duplicate Guy',
-      email: 'harrison.dev@kebsend.test',
+      email: testEmail,
       password: 'AnotherPassword'
     })
 
@@ -77,7 +79,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
 
   await t.test('3. User Login: Validates credentials and returns JWT', async () => {
     const res = await request('POST', '/api/auth/login', {
-      email: 'harrison.dev@kebsend.test',
+      email: testEmail,
       password: 'SecurePassword2026'
     })
 
@@ -94,7 +96,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
 
     assert.strictEqual(res.statusCode, 200)
     assert.strictEqual(res.data.ok, true)
-    assert.strictEqual(res.data.user.email, 'harrison.dev@kebsend.test')
+    assert.strictEqual(res.data.user.email, testEmail)
   })
 
   await t.test('5. API Key Generation: Generates secondary key via Dashboard', async () => {
@@ -118,12 +120,12 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(res.statusCode, 200)
     assert.strictEqual(res.data.ok, true)
     assert.strictEqual(res.data.balance, 5)
-    assert.strictEqual(res.data.user_email, 'harrison.dev@kebsend.test')
+    assert.strictEqual(res.data.user_email, testEmail)
   })
 
   await t.test('7. Developer Public API: Dispatches SMS and debits balance', async () => {
     const res = await request('POST', '/api/v1/send-sms', {
-      to: ['0244001122', '0501122334'],
+      to: ['0244123456', '0501122334'],
       message: 'Testing KebSEND Developer API delivery!',
       senderId: 'TXTORA'
     }, {
@@ -188,6 +190,42 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(res.data.senderIdRequest.senderId, 'MYSHOP')
   })
 
+  await t.test('11. Forgot Password: Requests password reset link', async () => {
+    const res = await request('POST', '/api/auth/forgot-password', {
+      email: testEmail
+    })
+    assert.strictEqual(res.statusCode, 200)
+    assert.strictEqual(res.data.ok, true)
+
+    const user = await UserRepo.findByEmail(testEmail)
+    assert.ok(user.resetToken)
+    assert.ok(user.resetTokenExpiry)
+  })
+
+  await t.test('12. Reset Password: Uses token to update password and log in', async () => {
+    const user = await UserRepo.findByEmail(testEmail)
+    const token = user.resetToken
+    const newPassword = 'NewSecretPassword2026!'
+
+    const resetRes = await request('POST', '/api/auth/reset-password', {
+      token,
+      password: newPassword
+    })
+    assert.strictEqual(resetRes.statusCode, 200)
+    assert.strictEqual(resetRes.data.ok, true)
+
+    // Verify user can now log in with the new password
+    const loginRes = await request('POST', '/api/auth/login', {
+      email: testEmail,
+      password: newPassword
+    })
+    assert.strictEqual(loginRes.statusCode, 200)
+    assert.strictEqual(loginRes.data.ok, true)
+    assert.ok(loginRes.data.token)
+  })
+
+  if (server.closeAllConnections) server.closeAllConnections()
   server.close()
   await require('mongoose').disconnect().catch(() => {})
+  setTimeout(() => process.exit(0), 100).unref()
 })

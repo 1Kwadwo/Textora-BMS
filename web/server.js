@@ -12,6 +12,7 @@ const { hashPassword, comparePassword, generateToken, verifyToken, extractBearer
 const { isGhanaNumber, normalizeNumber, calculateSMSUnits, sendSMS } = require('./src/services/sms')
 const { initializePayment, verifyPayment } = require('./src/services/paystack')
 const { sendTelegramSenderIdAlert } = require('./src/services/telegramAlert')
+const { sendPasswordResetEmail } = require('./src/services/email')
 
 const PORT = Number(process.env.PORT || process.env.WEB_PORT || 4000)
 const PUBLIC_DIR = path.join(__dirname, 'public')
@@ -234,6 +235,49 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       console.error('[login error]', err)
       return json(500, { ok: false, message: 'Something went wrong signing you in.' })
+    }
+  }
+
+  // ── Forgot Password ──────────────────────────────────────────────────────
+  if (urlPath === '/api/auth/forgot-password' && req.method === 'POST') {
+    try {
+      const rl = rateLimit('forgot:' + clientIp(req), 10, 15 * 60 * 1000)
+      if (!rl.ok) return json(429, { ok: false, message: 'Too many reset requests. Please wait a few minutes.' })
+      const body = await parseBody()
+      const { email } = body
+      if (!email) return json(400, { ok: false, message: 'Email is required.' })
+      const user = await UserRepo.findByEmail(email)
+      // Always respond ok to prevent email enumeration
+      if (user) {
+        const token = crypto.randomBytes(32).toString('hex')
+        const expiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+        await UserRepo.setResetToken(email, token, expiry)
+        await sendPasswordResetEmail({ to: user.email, name: user.name, resetToken: token })
+      }
+      return json(200, { ok: true, message: 'If that email is registered, a reset link has been sent.' })
+    } catch (err) {
+      console.error('[Forgot Password Error]', err.message)
+      return json(500, { ok: false, message: 'Something went wrong. Please try again.' })
+    }
+  }
+
+  // ── Reset Password ───────────────────────────────────────────────────────
+  if (urlPath === '/api/auth/reset-password' && req.method === 'POST') {
+    try {
+      const rl = rateLimit('reset:' + clientIp(req), 10, 15 * 60 * 1000)
+      if (!rl.ok) return json(429, { ok: false, message: 'Too many reset attempts. Please wait a few minutes.' })
+      const body = await parseBody()
+      const { token, password } = body
+      if (!token || !password) return json(400, { ok: false, message: 'Token and new password are required.' })
+      if (password.length < 6) return json(400, { ok: false, message: 'Password must be at least 6 characters.' })
+      const user = await UserRepo.findByResetToken(token)
+      if (!user) return json(400, { ok: false, message: 'This reset link is invalid or has expired.' })
+      const passwordHash = await hashPassword(password)
+      await UserRepo.updatePassword(user._id || user.id, passwordHash)
+      return json(200, { ok: true, message: 'Password updated successfully. You can now sign in.' })
+    } catch (err) {
+      console.error('[Reset Password Error]', err.message)
+      return json(500, { ok: false, message: 'Something went wrong. Please try again.' })
     }
   }
 
@@ -775,7 +819,7 @@ const server = http.createServer(async (req, res) => {
 
   // Static files
   let safePath = path.normalize(decodeURIComponent(urlPath)).replace(/^(\.\.[\/\\])+/, '')
-  if (safePath === '/' || safePath === '') safePath = '/index.html'
+  if (safePath === '/' || safePath === '' || safePath === '/reset-password') safePath = '/index.html'
 
   const filePath = path.join(PUBLIC_DIR, safePath)
   // Containment: never serve anything resolving outside the public directory.

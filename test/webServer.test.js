@@ -59,6 +59,8 @@ test('KebSEND Web Server runs and serves the landing page, plans, and documentat
     assert.ok(res.body.includes('<svg'))
   })
 
+  if (server.closeAllConnections) server.closeAllConnections()
   server.close()
   await require('mongoose').disconnect().catch(() => {})
+  setTimeout(() => process.exit(0), 100).unref()
 })

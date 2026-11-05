@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   balance: { type: Number, default: 0, min: 0 },
   senderIds: { type: [String], default: ['TXTORA'] },
+  resetToken: { type: String, default: null },
+  resetTokenExpiry: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now }
 })
 
@@ -249,6 +251,51 @@ const UserRepo = {
         user.senderIds.push(cleanSid)
         saveStore(store)
       }
+    }
+  },
+
+  async setResetToken(email, token, expiry) {
+    if (getMongoStatus()) {
+      await UserModel.findOneAndUpdate(
+        { email: email.toLowerCase() },
+        { resetToken: token, resetTokenExpiry: expiry }
+      )
+    }
+    const store = loadStore()
+    const user = store.users.find(u => u.email === email.toLowerCase())
+    if (user) {
+      user.resetToken = token
+      user.resetTokenExpiry = expiry
+      saveStore(store)
+    }
+  },
+
+  async findByResetToken(token) {
+    if (getMongoStatus()) {
+      const user = await UserModel.findOne({ resetToken: token, resetTokenExpiry: { $gt: new Date() } })
+      if (user) return user.toObject()
+      return null
+    }
+    const store = loadStore()
+    const now = new Date()
+    return store.users.find(u => u.resetToken === token && u.resetTokenExpiry && new Date(u.resetTokenExpiry) > now) || null
+  },
+
+  async updatePassword(userId, passwordHash) {
+    if (getMongoStatus()) {
+      await UserModel.findByIdAndUpdate(userId, {
+        passwordHash,
+        resetToken: null,
+        resetTokenExpiry: null
+      })
+    }
+    const store = loadStore()
+    const user = store.users.find(u => String(u._id) === String(userId) || String(u.id) === String(userId))
+    if (user) {
+      user.passwordHash = passwordHash
+      user.resetToken = null
+      user.resetTokenExpiry = null
+      saveStore(store)
     }
   }
 }

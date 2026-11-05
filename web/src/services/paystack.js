@@ -5,7 +5,7 @@ async function initializePayment({ email, amountGHS, reference, callbackUrl }) {
   const secretKey = process.env.PAYSTACK_SECRET_KEY
   const amountInKobo = Math.round(Number(amountGHS) * 100)
 
-  if (!secretKey) {
+  if (process.env.NODE_ENV === 'test' || !secretKey) {
     // Fail closed in production: never fabricate a checkout without a real gateway key.
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Payment gateway is not configured (PAYSTACK_SECRET_KEY missing).')

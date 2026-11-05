@@ -708,6 +708,8 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
 
           <div class="border-t pt-5 text-center text-sm text-ink dark:text-slate-400" style="border-color:var(--ks-border)">
             New to KebSEND? <button class="switch-auth-btn font-bold text-ember-600 hover:underline dark:text-ember-400" data-target="register">Create a free account</button>
+            <span class="mx-1.5 opacity-40">·</span>
+            <button class="switch-auth-btn text-blue-600 hover:underline dark:text-blue-400" data-target="forgot">Forgot password?</button>
           </div>
         </div>
 
@@ -748,6 +750,58 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
 
           <div class="border-t pt-5 text-center text-sm text-ink dark:text-slate-400" style="border-color:var(--ks-border)">
             Already have an account? <button class="switch-auth-btn font-bold text-ember-600 hover:underline dark:text-ember-400" data-target="login">Sign in</button>
+          </div>
+        </div>
+
+        <!-- Forgot password -->
+        <div id="auth-panel-forgot" class="hidden space-y-6">
+          <div>
+            <img src="kebsend-icon.svg" alt="" class="mb-5 h-12 w-12" />
+            <h2 class="text-3xl font-black tracking-tight text-navy-900 dark:text-white">Reset password</h2>
+            <p class="mt-1.5 text-ink dark:text-slate-400">Enter your email and we'll send you a password reset link.</p>
+          </div>
+
+          <form id="form-auth-forgot" class="space-y-4">
+            <div>
+              <label for="auth-forgot-email" class="ks-label">Email</label>
+              <input id="auth-forgot-email" type="email" autocomplete="email" required placeholder="you@company.com" class="ks-input">
+            </div>
+
+            <div id="auth-forgot-msg" class="hidden rounded-xl border px-4 py-3 text-sm font-medium"></div>
+
+            <button type="submit" class="ks-btn-primary btn-block h-12 rounded-xl text-base">Send reset link</button>
+          </form>
+
+          <div class="border-t pt-5 text-center text-sm text-ink dark:text-slate-400" style="border-color:var(--ks-border)">
+            <button class="switch-auth-btn font-bold text-ember-600 hover:underline dark:text-ember-400" data-target="login">&larr; Back to sign in</button>
+          </div>
+        </div>
+
+        <!-- Reset password (from email link) -->
+        <div id="auth-panel-reset" class="hidden space-y-6">
+          <div>
+            <img src="kebsend-icon.svg" alt="" class="mb-5 h-12 w-12" />
+            <h2 class="text-3xl font-black tracking-tight text-navy-900 dark:text-white">New password</h2>
+            <p class="mt-1.5 text-ink dark:text-slate-400">Choose a new password for your account.</p>
+          </div>
+
+          <form id="form-auth-reset" class="space-y-4">
+            <div>
+              <label for="auth-reset-password" class="ks-label">New password <span class="font-normal text-ink dark:text-slate-400">(at least 6 characters)</span></label>
+              <input id="auth-reset-password" type="password" autocomplete="new-password" required minlength="6" placeholder="New password" class="ks-input">
+            </div>
+            <div>
+              <label for="auth-reset-confirm" class="ks-label">Confirm new password</label>
+              <input id="auth-reset-confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="Repeat new password" class="ks-input">
+            </div>
+
+            <div id="auth-reset-msg" class="hidden rounded-xl border px-4 py-3 text-sm font-medium"></div>
+
+            <button type="submit" class="ks-btn-primary btn-block h-12 rounded-xl text-base">Update password</button>
+          </form>
+
+          <div class="border-t pt-5 text-center text-sm text-ink dark:text-slate-400" style="border-color:var(--ks-border)">
+            <button class="switch-auth-btn font-bold text-ember-600 hover:underline dark:text-ember-400" data-target="login">&larr; Back to sign in</button>
           </div>
         </div>
 

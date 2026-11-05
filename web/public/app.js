@@ -118,8 +118,14 @@ function initRouter() {
 }
 
 function handleRoute() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetToken = urlParams.get('token');
+  if (window.location.pathname === '/reset-password' || resetToken) {
+    navigate('reset', false);
+    return;
+  }
   const hash = window.location.hash.replace('#', '') || 'landing';
-  if (['landing', 'login', 'register', 'dashboard'].includes(hash)) {
+  if (['landing', 'login', 'register', 'forgot', 'reset', 'dashboard'].includes(hash)) {
     navigate(hash, false);
   }
 }
@@ -152,6 +158,8 @@ function navigate(viewName, updateHash = true) {
 
   const authLoginPanel = document.getElementById('auth-panel-login');
   const authRegPanel = document.getElementById('auth-panel-register');
+  const authForgotPanel = document.getElementById('auth-panel-forgot');
+  const authResetPanel = document.getElementById('auth-panel-reset');
 
   const mobileDashSubnav = document.getElementById('mobile-dash-subnav');
   if (mobileDashSubnav) {
@@ -186,6 +194,8 @@ function navigate(viewName, updateHash = true) {
     if (authView) authView.classList.remove('hidden');
     if (authLoginPanel) authLoginPanel.classList.remove('hidden');
     if (authRegPanel) authRegPanel.classList.add('hidden');
+    if (authForgotPanel) authForgotPanel.classList.add('hidden');
+    if (authResetPanel) authResetPanel.classList.add('hidden');
     if (landingNav) {
       landingNav.classList.add('hidden', 'hidden-nav');
       landingNav.style.display = 'none';
@@ -194,6 +204,28 @@ function navigate(viewName, updateHash = true) {
     if (authView) authView.classList.remove('hidden');
     if (authLoginPanel) authLoginPanel.classList.add('hidden');
     if (authRegPanel) authRegPanel.classList.remove('hidden');
+    if (authForgotPanel) authForgotPanel.classList.add('hidden');
+    if (authResetPanel) authResetPanel.classList.add('hidden');
+    if (landingNav) {
+      landingNav.classList.add('hidden', 'hidden-nav');
+      landingNav.style.display = 'none';
+    }
+  } else if (viewName === 'forgot') {
+    if (authView) authView.classList.remove('hidden');
+    if (authLoginPanel) authLoginPanel.classList.add('hidden');
+    if (authRegPanel) authRegPanel.classList.add('hidden');
+    if (authForgotPanel) authForgotPanel.classList.remove('hidden');
+    if (authResetPanel) authResetPanel.classList.add('hidden');
+    if (landingNav) {
+      landingNav.classList.add('hidden', 'hidden-nav');
+      landingNav.style.display = 'none';
+    }
+  } else if (viewName === 'reset') {
+    if (authView) authView.classList.remove('hidden');
+    if (authLoginPanel) authLoginPanel.classList.add('hidden');
+    if (authRegPanel) authRegPanel.classList.add('hidden');
+    if (authForgotPanel) authForgotPanel.classList.add('hidden');
+    if (authResetPanel) authResetPanel.classList.remove('hidden');
     if (landingNav) {
       landingNav.classList.add('hidden', 'hidden-nav');
       landingNav.style.display = 'none';
@@ -330,6 +362,132 @@ function initAuthForms() {
       } catch (err) {
         regError.textContent = 'Connection error: ' + err.message;
         regError.classList.remove('hidden');
+      }
+    });
+  }
+
+  const formForgot = document.getElementById('form-auth-forgot');
+  const forgotMsg = document.getElementById('auth-forgot-msg');
+  if (formForgot) {
+    formForgot.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (forgotMsg) {
+        forgotMsg.classList.add('hidden');
+        forgotMsg.className = 'text-xs font-mono';
+      }
+      const email = document.getElementById('auth-forgot-email').value.trim();
+      const btn = formForgot.querySelector('button[type="submit"]');
+      const originalText = btn ? btn.textContent : 'Send Reset Link';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+      }
+
+      try {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (forgotMsg) {
+          forgotMsg.textContent = data.message || 'If that email is registered, a reset link has been sent.';
+          forgotMsg.classList.remove('hidden');
+          forgotMsg.classList.add(res.ok && data.ok ? 'text-green-600' : 'text-red-600');
+        }
+        if (res.ok && data.ok) {
+          formForgot.reset();
+        }
+      } catch (err) {
+        if (forgotMsg) {
+          forgotMsg.textContent = 'Connection error: ' + err.message;
+          forgotMsg.classList.remove('hidden');
+          forgotMsg.classList.add('text-red-600');
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      }
+    });
+  }
+
+  const formReset = document.getElementById('form-auth-reset');
+  const resetMsg = document.getElementById('auth-reset-msg');
+  if (formReset) {
+    formReset.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (resetMsg) {
+        resetMsg.classList.add('hidden');
+        resetMsg.className = 'text-xs font-mono';
+      }
+      const password = document.getElementById('auth-reset-password').value;
+      const confirm = document.getElementById('auth-reset-confirm').value;
+
+      if (password !== confirm) {
+        if (resetMsg) {
+          resetMsg.textContent = 'Passwords do not match.';
+          resetMsg.classList.remove('hidden');
+          resetMsg.classList.add('text-red-600');
+        }
+        return;
+      }
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token') || (new URLSearchParams(window.location.hash.split('?')[1] || '')).get('token');
+      if (!token) {
+        if (resetMsg) {
+          resetMsg.textContent = 'Missing reset token. Please use the link sent to your email.';
+          resetMsg.classList.remove('hidden');
+          resetMsg.classList.add('text-red-600');
+        }
+        return;
+      }
+
+      const btn = formReset.querySelector('button[type="submit"]');
+      const originalText = btn ? btn.textContent : 'Update Password';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+      }
+
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          if (resetMsg) {
+            resetMsg.textContent = data.message || 'Password reset failed.';
+            resetMsg.classList.remove('hidden');
+            resetMsg.classList.add('text-red-600');
+          }
+          return;
+        }
+
+        if (resetMsg) {
+          resetMsg.textContent = data.message || 'Password updated successfully! Redirecting to sign in...';
+          resetMsg.classList.remove('hidden');
+          resetMsg.classList.add('text-green-600');
+        }
+        formReset.reset();
+        setTimeout(() => {
+          navigate('login');
+        }, 2000);
+      } catch (err) {
+        if (resetMsg) {
+          resetMsg.textContent = 'Connection error: ' + err.message;
+          resetMsg.classList.remove('hidden');
+          resetMsg.classList.add('text-red-600');
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
       }
     });
   }
