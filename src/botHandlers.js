@@ -696,6 +696,54 @@ ${ctx.chat.id}`
     }
   })
 
+  bot.command('addsender', async (ctx) => {
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only Textora admins can add custom sender IDs.')
+    }
+
+    const text = (ctx.message?.text || '').trim()
+    const parts = text.split(/\s+/)
+    if (parts.length < 3) {
+      return ctx.reply(
+        `ℹ️ *Usage:* \`/addsender <Developer_ID> <Sender_ID>\`\n\n` +
+        `Example:\n\`/addsender 7239869241 BRANDNAME\``,
+        { parse_mode: 'Markdown' }
+      )
+    }
+
+    const targetUserId = parts[1].trim()
+    const cleanSenderId = parts[2].trim().toUpperCase()
+
+    const { validateSenderId } = require('./senderIds')
+    const validation = validateSenderId(cleanSenderId)
+    if (!validation.valid) {
+      return ctx.reply(`❌ Invalid Sender ID: ${validation.message}`)
+    }
+
+    rememberVerifiedSenderId(targetUserId, cleanSenderId)
+
+    await ctx.reply(
+      `✅ *Sender ID Assigned!*\n\n` +
+      `Developer ID: \`${targetUserId}\`\n` +
+      `Sender ID: \`${cleanSenderId}\`\n\n` +
+      `The developer can now pass \`"senderId": "${cleanSenderId}"\` in their API requests.`,
+      { parse_mode: 'Markdown' }
+    )
+
+    try {
+      await bot.telegram.sendMessage(
+        targetUserId,
+        `🎉 *Sender ID Approved!*\n\n` +
+        `Your custom Sender ID *${cleanSenderId}* is now active on your API account.\n\n` +
+        `You can use it in your API requests by including:\n` +
+        `\`"senderId": "${cleanSenderId}"\` in your JSON payload to \`POST /api/v1/send-sms\`.`,
+        { parse_mode: 'Markdown' }
+      )
+    } catch (err) {
+      console.log('Failed to notify developer of approved sender ID:', err.message)
+    }
+  })
+
   bot.action(/^reject_recharge_(.+)$/, async (ctx) => {
     await answerCallback(ctx)
 
