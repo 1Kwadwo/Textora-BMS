@@ -6,11 +6,20 @@ function getResendClient() {
   return new Resend(apiKey)
 }
 
-const FROM_EMAIL = process.env.EMAIL_FROM || 'Textora <onboarding@resend.dev>'
+function getFromEmail() {
+  const envFrom = process.env.EMAIL_FROM
+  if (envFrom) {
+    return envFrom.replace(/Textora/gi, 'KebSEND')
+  }
+  return 'KebSEND <onboarding@resend.dev>'
+}
+
 const APP_URL = process.env.APP_URL || 'https://textora-bms-website.onrender.com'
 
 async function sendPasswordResetEmail({ to, name, resetToken }) {
   const resetUrl = `${APP_URL}/reset-password?token=${resetToken}`
+  const logoUrl = `${APP_URL}/kebsend-logo.png`
+  const fromEmail = getFromEmail()
 
   const resend = getResendClient()
   if (!resend) {
@@ -20,36 +29,74 @@ async function sendPasswordResetEmail({ to, name, resetToken }) {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: fromEmail,
       to,
-      subject: 'Reset your Textora password',
+      subject: 'Reset your KebSEND password',
       html: `
         <!DOCTYPE html>
-        <html>
-        <body style="font-family: Arial, sans-serif; background: #f4f4f5; margin: 0; padding: 0;">
-          <div style="max-width: 520px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-            <div style="background: #2563eb; padding: 32px 40px;">
-              <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 700;">Textora</h1>
-              <p style="color: #bfdbfe; margin: 6px 0 0; font-size: 13px;">Bulk SMS Platform</p>
-            </div>
-            <div style="padding: 36px 40px;">
-              <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 20px;">Reset your password</h2>
-              <p style="color: #475569; margin: 0 0 24px; font-size: 15px;">Hi ${name || 'there'},</p>
-              <p style="color: #475569; margin: 0 0 28px; font-size: 15px; line-height: 1.6;">
-                We received a request to reset your Textora password. Click the button below to choose a new password. This link expires in <strong>1 hour</strong>.
-              </p>
-              <a href="${resetUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 13px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
-                Reset Password
-              </a>
-              <p style="color: #94a3b8; margin: 28px 0 0; font-size: 13px; line-height: 1.6;">
-                If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.<br><br>
-                Or copy this link: <a href="${resetUrl}" style="color: #2563eb; word-break: break-all;">${resetUrl}</a>
-              </p>
-            </div>
-            <div style="background: #f8fafc; padding: 20px 40px; border-top: 1px solid #e2e8f0;">
-              <p style="color: #94a3b8; margin: 0; font-size: 12px;">© ${new Date().getFullYear()} Textora · Bulk SMS for Ghana</p>
-            </div>
-          </div>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Reset Password - KebSEND</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 40px 16px; -webkit-font-smoothing: antialiased;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);">
+            <!-- Header with Logo -->
+            <tr>
+              <td style="padding: 36px 36px 20px 36px; text-align: center;">
+                <img src="${logoUrl}" alt="KebSEND" width="60" height="60" style="display: block; margin: 0 auto 14px auto; border-radius: 14px; border: 0;" />
+                <h1 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">KebSEND</h1>
+                <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">Bulk SMS & Developer API Gateway</p>
+              </td>
+            </tr>
+
+            <!-- Divider -->
+            <tr>
+              <td style="padding: 0 36px;">
+                <div style="border-top: 1px solid #f1f5f9;"></div>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td style="padding: 28px 36px 36px 36px;">
+                <h2 style="color: #0f172a; margin: 0 0 12px 0; font-size: 19px; font-weight: 700;">Password Reset Request</h2>
+                <p style="color: #475569; margin: 0 0 20px 0; font-size: 15px; line-height: 1.6;">
+                  Hi ${name || 'there'},
+                </p>
+                <p style="color: #475569; margin: 0 0 28px 0; font-size: 15px; line-height: 1.6;">
+                  We received a request to reset the password for your KebSEND account. Click the button below to choose a new password:
+                </p>
+
+                <!-- Action Button -->
+                <div style="text-align: center; margin: 0 0 28px 0;">
+                  <a href="${resetUrl}" style="display: inline-block; background: #0284c7; color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; letter-spacing: 0.2px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);">
+                    Reset Password
+                  </a>
+                </div>
+
+                <div style="background-color: #f8fafc; border-radius: 10px; padding: 14px 18px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+                  <p style="color: #64748b; margin: 0; font-size: 13px; line-height: 1.5;">
+                    ⏱️ This password reset link is valid for <strong>1 hour</strong>. If you did not request this, you can safely ignore this email.
+                  </p>
+                </div>
+
+                <p style="color: #94a3b8; margin: 0; font-size: 12px; line-height: 1.6;">
+                  If the button does not work, copy and paste this link in your browser:<br>
+                  <a href="${resetUrl}" style="color: #0284c7; word-break: break-all;">${resetUrl}</a>
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="background-color: #f8fafc; padding: 22px 36px; border-top: 1px solid #e2e8f0; text-align: center;">
+                <p style="color: #64748b; margin: 0 0 4px 0; font-size: 12px; font-weight: 600;">KebSEND Technologies</p>
+                <p style="color: #94a3b8; margin: 0; font-size: 12px;">Fast, Reliable SMS Delivery for Ghana · Accra, Ghana</p>
+              </td>
+            </tr>
+          </table>
         </body>
         </html>
       `
@@ -70,6 +117,9 @@ async function sendPasswordResetEmail({ to, name, resetToken }) {
 }
 
 async function sendVerificationEmail({ to, name, code }) {
+  const logoUrl = `${APP_URL}/kebsend-logo.png`
+  const fromEmail = getFromEmail()
+
   const resend = getResendClient()
   if (!resend) {
     console.warn(`[Email] RESEND_API_KEY is not set. Verification code for ${to}: ${code}`)
@@ -78,35 +128,74 @@ async function sendVerificationEmail({ to, name, code }) {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: fromEmail,
       to,
       subject: `${code} is your KebSEND verification code`,
       html: `
         <!DOCTYPE html>
-        <html>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f4f4f5; margin: 0; padding: 0;">
-          <div style="max-width: 520px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-            <div style="background: #2563eb; padding: 32px 40px;">
-              <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 700;">KebSEND</h1>
-              <p style="color: #bfdbfe; margin: 6px 0 0; font-size: 13px;">Enterprise Bulk SMS Platform</p>
-            </div>
-            <div style="padding: 36px 40px;">
-              <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 20px;">Verify your email address</h2>
-              <p style="color: #475569; margin: 0 0 20px; font-size: 15px;">Hi ${name || 'there'},</p>
-              <p style="color: #475569; margin: 0 0 24px; font-size: 15px; line-height: 1.6;">
-                Welcome to KebSEND! Use the 6-digit confirmation code below to verify your email and activate your account:
-              </p>
-              <div style="background: #f1f5f9; border-radius: 8px; padding: 18px 24px; text-align: center; margin-bottom: 24px; border: 1px dashed #cbd5e1;">
-                <span style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #1e293b; font-family: monospace;">${code}</span>
-              </div>
-              <p style="color: #64748b; margin: 0 0 12px; font-size: 14px;">
-                This code will expire in <strong>15 minutes</strong>. If you did not sign up for KebSEND, please ignore this email.
-              </p>
-            </div>
-            <div style="background: #f8fafc; padding: 20px 40px; border-top: 1px solid #e2e8f0;">
-              <p style="color: #94a3b8; margin: 0; font-size: 12px;">© ${new Date().getFullYear()} KebSEND · Ghana SMS Gateway</p>
-            </div>
-          </div>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Verify your email - KebSEND</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 40px 16px; -webkit-font-smoothing: antialiased;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);">
+            <!-- Header with Logo -->
+            <tr>
+              <td style="padding: 36px 36px 20px 36px; text-align: center;">
+                <img src="${logoUrl}" alt="KebSEND" width="60" height="60" style="display: block; margin: 0 auto 14px auto; border-radius: 14px; border: 0;" />
+                <h1 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">KebSEND</h1>
+                <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px; font-weight: 500;">Bulk SMS & Developer API Gateway</p>
+              </td>
+            </tr>
+
+            <!-- Divider -->
+            <tr>
+              <td style="padding: 0 36px;">
+                <div style="border-top: 1px solid #f1f5f9;"></div>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td style="padding: 28px 36px 36px 36px;">
+                <h2 style="color: #0f172a; margin: 0 0 12px 0; font-size: 19px; font-weight: 700;">Confirm your email address</h2>
+                <p style="color: #475569; margin: 0 0 20px 0; font-size: 15px; line-height: 1.6;">
+                  Hi ${name || 'there'},
+                </p>
+                <p style="color: #475569; margin: 0 0 24px 0; font-size: 15px; line-height: 1.6;">
+                  Welcome to KebSEND! Please use the 6-digit confirmation code below to verify your email address and activate your account:
+                </p>
+
+                <!-- Code Card -->
+                <div style="background-color: #f8fafc; border-radius: 12px; padding: 24px 20px; text-align: center; margin: 0 0 24px 0; border: 1px solid #e2e8f0;">
+                  <span style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #0284c7; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; display: inline-block; padding-left: 10px;">${code}</span>
+                  <p style="color: #64748b; margin: 10px 0 0 0; font-size: 13px; font-weight: 500;">
+                    Valid for 15 minutes · Do not share this code
+                  </p>
+                </div>
+
+                <div style="background-color: #f0fdf4; border-radius: 10px; padding: 14px 18px; border: 1px solid #bbf7d0; margin-bottom: 24px;">
+                  <p style="color: #166534; margin: 0; font-size: 13px; line-height: 1.5;">
+                    🎁 <strong>5 Free Test Credits:</strong> Once verified, your account will be instantly credited with 5 complimentary starter SMS units to test live delivery.
+                  </p>
+                </div>
+
+                <p style="color: #94a3b8; margin: 0; font-size: 13px; line-height: 1.5;">
+                  If you did not create an account on KebSEND, you can safely ignore this email.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="background-color: #f8fafc; padding: 22px 36px; border-top: 1px solid #e2e8f0; text-align: center;">
+                <p style="color: #64748b; margin: 0 0 4px 0; font-size: 12px; font-weight: 600;">KebSEND Technologies</p>
+                <p style="color: #94a3b8; margin: 0; font-size: 12px;">Enterprise Bulk SMS Platform for Ghana & West Africa · Accra, Ghana</p>
+              </td>
+            </tr>
+          </table>
         </body>
         </html>
       `
