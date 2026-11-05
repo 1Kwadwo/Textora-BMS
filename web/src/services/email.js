@@ -176,12 +176,6 @@ async function sendVerificationEmail({ to, name, code }) {
                   </p>
                 </div>
 
-                <div style="background-color: #f0fdf4; border-radius: 10px; padding: 14px 18px; border: 1px solid #bbf7d0; margin-bottom: 24px;">
-                  <p style="color: #166534; margin: 0; font-size: 13px; line-height: 1.5;">
-                    🎁 <strong>5 Free Test Credits:</strong> Once verified, your account will be instantly credited with 5 complimentary starter SMS units to test live delivery.
-                  </p>
-                </div>
-
                 <p style="color: #94a3b8; margin: 0; font-size: 13px; line-height: 1.5;">
                   If you did not create an account on KebSEND, you can safely ignore this email.
                 </p>

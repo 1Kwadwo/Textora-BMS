@@ -81,7 +81,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(badCodeRes.statusCode, 400)
     assert.strictEqual(badCodeRes.data.ok, false)
 
-    // Entering valid 6-digit code activates account and awards 5 free credits
+    // Entering valid 6-digit code activates account and keeps balance at 0 (top-up required)
     const verifyRes = await request('POST', '/api/auth/verify-code', {
       email: testEmail,
       code: unverifiedUser.verificationCode
@@ -90,7 +90,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(verifyRes.data.ok, true)
     assert.ok(verifyRes.data.token)
     assert.strictEqual(verifyRes.data.user.email, testEmail)
-    assert.strictEqual(verifyRes.data.user.balance, 5) // Free 5 starter credits awarded upon verification!
+    assert.strictEqual(verifyRes.data.user.balance, 0) // No free starter credits; top-up required
     assert.ok(verifyRes.data.initialApiKey.startsWith('ksnd_live_'))
 
     authToken = verifyRes.data.token
@@ -145,18 +145,18 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(res.data.apiKey.name, 'Production Server Key')
   })
 
-  await t.test('6. Developer Public API: Authenticates with generated ksnd_live key', async () => {
+  await t.test('6. Developer Public API: Authenticates with generated ksnd_live key and reports 0 balance', async () => {
     const res = await request('GET', '/api/v1/balance', null, {
       Authorization: `Bearer ${generatedApiKey}`
     })
 
     assert.strictEqual(res.statusCode, 200)
     assert.strictEqual(res.data.ok, true)
-    assert.strictEqual(res.data.balance, 5)
+    assert.strictEqual(res.data.balance, 0)
     assert.strictEqual(res.data.user_email, testEmail)
   })
 
-  await t.test('7. Developer Public API: Dispatches SMS and debits balance', async () => {
+  await t.test('7. Developer Public API: Blocks SMS when balance is zero', async () => {
     const res = await request('POST', '/api/v1/send-sms', {
       to: ['0244123456', '0501122334'],
       message: 'Testing KebSEND Developer API delivery!',
@@ -165,28 +165,12 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
       Authorization: `Bearer ${generatedApiKey}`
     })
 
-    assert.strictEqual(res.statusCode, 200)
-    assert.strictEqual(res.data.ok, true)
-    assert.strictEqual(res.data.total_units_debited, 2)
-    assert.strictEqual(res.data.remaining_balance, 3) // 5 - 2 = 3 credits
+    assert.strictEqual(res.statusCode, 400)
+    assert.strictEqual(res.data.ok, false)
+    assert.ok(res.data.message.includes('Insufficient'))
   })
 
-  await t.test('8. Dashboard Web SMS: Dispatches SMS and verifies logs', async () => {
-    const res = await request('POST', '/api/dashboard/send-sms', {
-      to: '233240009988',
-      message: 'Web dashboard broadcast SMS',
-      senderId: 'TXTORA'
-    }, {
-      Authorization: `Bearer ${authToken}`
-    })
-
-    assert.strictEqual(res.statusCode, 200)
-    assert.strictEqual(res.data.ok, true)
-    assert.strictEqual(res.data.units_debited, 1)
-    assert.strictEqual(res.data.remaining_balance, 2) // 3 - 1 = 2 credits
-  })
-
-  await t.test('9. Wallet Top-up: Creates Paystack checkout and verifies credit increment', async () => {
+  await t.test('8. Wallet Top-up: Creates Paystack checkout and verifies credit increment', async () => {
     // 1. Initialize recharge
     const rechargeRes = await request('POST', '/api/dashboard/recharge', {
       planId: 2 // GH₵ 50 = 1,000 Credits
@@ -207,10 +191,40 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(verifyRes.statusCode, 200)
     assert.strictEqual(verifyRes.data.ok, true)
     assert.strictEqual(verifyRes.data.creditsAdded, 1000)
-    assert.strictEqual(verifyRes.data.newBalance, 1002) // 2 + 1000 = 1002 credits
+    assert.strictEqual(verifyRes.data.newBalance, 1000) // 0 + 1000 = 1000 credits
   })
 
-  await t.test('10. Custom Sender ID: Registers new brand name', async () => {
+  await t.test('9. Developer Public API: Dispatches SMS and debits balance after top-up', async () => {
+    const res = await request('POST', '/api/v1/send-sms', {
+      to: ['0244123456', '0501122334'],
+      message: 'Testing KebSEND Developer API delivery!',
+      senderId: 'TXTORA'
+    }, {
+      Authorization: `Bearer ${generatedApiKey}`
+    })
+
+    assert.strictEqual(res.statusCode, 200)
+    assert.strictEqual(res.data.ok, true)
+    assert.strictEqual(res.data.total_units_debited, 2)
+    assert.strictEqual(res.data.remaining_balance, 998) // 1000 - 2 = 998 credits
+  })
+
+  await t.test('10. Dashboard Web SMS: Dispatches SMS and verifies logs', async () => {
+    const res = await request('POST', '/api/dashboard/send-sms', {
+      to: '233240009988',
+      message: 'Web dashboard broadcast SMS',
+      senderId: 'TXTORA'
+    }, {
+      Authorization: `Bearer ${authToken}`
+    })
+
+    assert.strictEqual(res.statusCode, 200)
+    assert.strictEqual(res.data.ok, true)
+    assert.strictEqual(res.data.units_debited, 1)
+    assert.strictEqual(res.data.remaining_balance, 997) // 998 - 1 = 997 credits
+  })
+
+  await t.test('11. Custom Sender ID: Registers new brand name', async () => {
     const res = await request('POST', '/api/dashboard/sender-id', {
       senderId: 'MYSHOP',
       purpose: 'Order status alerts'
@@ -223,7 +237,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(res.data.senderIdRequest.senderId, 'MYSHOP')
   })
 
-  await t.test('11. Forgot Password: Requests password reset link', async () => {
+  await t.test('12. Forgot Password: Requests password reset link', async () => {
     const res = await request('POST', '/api/auth/forgot-password', {
       email: testEmail
     })
@@ -235,7 +249,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.ok(user.resetTokenExpiry)
   })
 
-  await t.test('12. Reset Password: Uses token to update password and log in', async () => {
+  await t.test('13. Reset Password: Uses token to update password and log in', async () => {
     const user = await UserRepo.findByEmail(testEmail)
     const token = user.resetToken
     const newPassword = 'NewSecretPassword2026!'

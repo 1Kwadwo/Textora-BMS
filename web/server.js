@@ -241,7 +241,7 @@ const server = http.createServer(async (req, res) => {
       const token = generateToken(user)
       return json(200, {
         ok: true,
-        message: 'Email verified successfully! You have received 5 starter credits.',
+        message: 'Email verified successfully! Please top up your wallet to start sending SMS.',
         token,
         user: {
           id: user._id || user.id,

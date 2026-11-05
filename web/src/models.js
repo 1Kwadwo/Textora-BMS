@@ -379,9 +379,6 @@ const UserRepo = {
       user.isVerified = true
       user.verificationCode = null
       user.verificationCodeExpiry = null
-      if (!user.balance || user.balance < 5) {
-        user.balance = 5 // Credit 5 free starter SMS units only upon verified email
-      }
       await user.save()
       return { ok: true, user: user.toObject() }
     }
@@ -400,9 +397,6 @@ const UserRepo = {
     user.isVerified = true
     user.verificationCode = null
     user.verificationCodeExpiry = null
-    if (!user.balance || user.balance < 5) {
-      user.balance = 5
-    }
     saveStore(store)
     return { ok: true, user }
   }
