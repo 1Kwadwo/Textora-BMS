@@ -4,6 +4,7 @@ const fs = require('fs')
 
 let isMongoConnected = false
 let connectionPromise = null
+let lastMongoError = null
 
 async function connectDB() {
   if (mongoose.connection?.readyState === 1) {
@@ -18,6 +19,7 @@ async function connectDB() {
   const uri = process.env.MONGODB_URI || process.env.MONGO_URI
 
   if (!uri) {
+    lastMongoError = 'No MONGODB_URI or MONGO_URI in process.env'
     console.log('[Database] No MONGODB_URI provided in environment. Running in local memory/file-backed mode.')
     return false
   }
@@ -29,9 +31,11 @@ async function connectDB() {
         connectTimeoutMS: 10000
       })
       isMongoConnected = true
+      lastMongoError = null
       console.log('[Database] 🚀 Connected to MongoDB successfully.')
       return true
     } catch (err) {
+      lastMongoError = err.message
       console.warn(`[Database] MongoDB connection error (${err.message}). Using local store fallback.`)
       isMongoConnected = false
       return false
@@ -41,6 +45,10 @@ async function connectDB() {
   })()
 
   return connectionPromise
+}
+
+function getMongoError() {
+  return lastMongoError
 }
 
 mongoose.connection.on('disconnected', () => {
@@ -55,5 +63,6 @@ function getMongoStatus() {
 module.exports = {
   connectDB,
   getMongoStatus,
+  getMongoError,
   mongoose
 }

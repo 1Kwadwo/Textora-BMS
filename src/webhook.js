@@ -239,17 +239,28 @@ function startPaystackWebhookServer({
     ) {
       let isConnected = false
       let readyState = 0
+      let mongoError = null
+      let hasMongoUri = false
       try {
-        const { mongoose, getMongoStatus } = require('../web/src/db')
+        const { mongoose, connectDB, getMongoStatus, getMongoError } = require('../web/src/db')
+        hasMongoUri = Boolean(process.env.MONGODB_URI || process.env.MONGO_URI)
+        if (!getMongoStatus() && hasMongoUri) {
+          await connectDB().catch(() => {})
+        }
         isConnected = Boolean(getMongoStatus && getMongoStatus())
         readyState = mongoose?.connection?.readyState || 0
-      } catch (e) {}
+        mongoError = getMongoError ? getMongoError() : null
+      } catch (e) {
+        mongoError = e.message
+      }
 
       return json(200, {
         ok: true,
         service: 'textora-bot',
+        hasMongoUri,
         mongoConnected: isConnected,
-        mongoReadyState: readyState
+        mongoReadyState: readyState,
+        mongoError
       })
     }
 
