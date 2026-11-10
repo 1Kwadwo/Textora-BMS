@@ -5,6 +5,7 @@ const { UserRepo } = require('../web/src/models')
 
 test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t) => {
   process.env.NODE_ENV = 'test'
+  delete process.env.MONGODB_URI
   process.env.WEB_PORT = '4008'
   const server = require('../web/server.js')
 
