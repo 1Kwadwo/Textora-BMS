@@ -32,92 +32,6 @@
   <link rel="apple-touch-icon" href="kebsend-icon.png">
   <!-- Compiled Tailwind + DaisyUI + KebSEND theme (source: web/styles/input.css) -->
   <link rel="stylesheet" href="style.css?v=15">
-  <style>
-    /* Modern UI/UX Enhancements for KebSEND */
-    .hero-glow-bg {
-      position: absolute;
-      width: 480px;
-      height: 480px;
-      background: radial-gradient(circle, rgba(255, 106, 0, 0.22) 0%, rgba(31, 95, 214, 0.16) 50%, transparent 70%);
-      filter: blur(55px);
-      z-index: 0;
-      pointer-events: none;
-    }
-    .hero-showcase-frame {
-      position: relative;
-      border-radius: 2rem;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.75) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.85);
-      box-shadow: 0 25px 60px -15px rgba(10, 42, 102, 0.16), 0 0 0 1px rgba(10, 42, 102, 0.04);
-      backdrop-filter: blur(16px);
-      overflow: hidden;
-    }
-    [data-theme="dark"] .hero-showcase-frame {
-      background: linear-gradient(135deg, rgba(15, 37, 80, 0.9) 0%, rgba(10, 26, 58, 0.75) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
-    }
-    .hero-real-photo {
-      width: 100%;
-      height: 400px;
-      object-fit: cover;
-      object-position: center 25%;
-      display: block;
-      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .hero-showcase-frame:hover .hero-real-photo {
-      transform: scale(1.025);
-    }
-    .glass-pill-float {
-      backdrop-filter: blur(12px);
-      background: rgba(255, 255, 255, 0.94);
-      border: 1px solid rgba(255, 255, 255, 0.85);
-      box-shadow: 0 12px 30px -6px rgba(10, 42, 102, 0.16);
-    }
-    [data-theme="dark"] .glass-pill-float {
-      background: rgba(12, 31, 69, 0.92);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 12px 30px -6px rgba(0, 0, 0, 0.45);
-    }
-    .pulse-dot-green {
-      width: 8px;
-      height: 8px;
-      border-radius: 9999px;
-      background: #10B981;
-      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-      animation: pulse-green 2s infinite;
-      display: inline-block;
-    }
-    @keyframes pulse-green {
-      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
-    .trust-badge-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 0.875rem;
-      border-radius: 9999px;
-      font-size: 0.8125rem;
-      font-weight: 700;
-      background: rgba(255, 255, 255, 0.8);
-      border: 1px solid rgba(10, 42, 102, 0.08);
-      box-shadow: 0 2px 8px rgba(10, 42, 102, 0.04);
-    }
-    [data-theme="dark"] .trust-badge-pill {
-      background: rgba(15, 37, 80, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-    .use-case-banner-img {
-      height: 120px;
-      width: 100%;
-      object-fit: cover;
-      border-radius: 1rem;
-      display: block;
-    }
-  </style>
 </head>
 <body class="min-h-screen">
 
@@ -191,97 +105,54 @@
   <main id="view-landing" class="view-panel">
 
     <!-- HERO -->
-    <section id="hero" class="ks-hero-bg ks-pattern overflow-hidden relative">
-      <div class="ks-container grid items-center gap-10 pb-16 pt-10 sm:pb-24 sm:pt-14 lg:grid-cols-12 lg:gap-10">
-        <div class="space-y-6 lg:col-span-6 z-10">
-          <div class="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-teal-800 dark:text-teal-300">
-            <span class="pulse-dot-green"></span>
-            Direct Ghana Carrier Delivery (MTN · Telecel · AT)
-          </div>
+    <section id="hero" class="ks-hero-bg ks-pattern overflow-hidden">
+      <div class="ks-container grid items-center gap-10 pb-16 pt-10 sm:pb-24 sm:pt-16 lg:grid-cols-12 lg:gap-8">
+        <div class="space-y-6 lg:col-span-6">
+          <span class="ks-eyebrow"><span class="h-1.5 w-1.5 rounded-full bg-teal-400"></span>Bulk SMS made simple</span>
 
-          <h1 class="text-[2.75rem] font-black leading-[0.98] tracking-tight text-navy-900 sm:text-7xl lg:text-[4.75rem] dark:text-white">
+          <h1 class="text-[2.75rem] font-black leading-[0.98] tracking-tight text-navy-900 sm:text-7xl lg:text-[5.25rem] dark:text-white">
             Reach thousands <span class="block text-ember-500">in seconds.</span>
           </h1>
 
           <p class="max-w-xl text-lg leading-relaxed text-ink sm:text-xl dark:text-slate-300">
-            Send high-converting promotions, school fee notices, church reminders, and automated OTPs across Ghana. Pay with MoMo or card with instant delivery confirmation.
+            Send promotions, alerts and reminders to thousands of people with one click. Fast, affordable and reliable, built for Ghana.
           </p>
 
           <div class="flex flex-col gap-3 pt-1 sm:flex-row">
-            <button class="cta-gate-register ks-btn-primary btn-lg h-14 rounded-2xl px-8 text-base shadow-ember hover:shadow-lg transition-all">
-              Start sending now
+            <button class="cta-gate-register ks-btn-primary btn-lg h-14 rounded-2xl px-8 text-base">
+              Start sending free
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5-5 5M6 12h12"/></svg>
             </button>
-            <a href="https://t.me/textorasmsbot" target="_blank" rel="noopener" class="ks-btn-ghost btn-lg h-14 rounded-2xl px-6 text-base border border-navy-900/15 dark:border-white/15">
+            <a href="https://t.me/textorasmsbot" target="_blank" rel="noopener" class="ks-btn-ghost btn-lg h-14 rounded-2xl px-6 text-base">
               <svg viewBox="0 0 24 24" class="h-6 w-6" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#29A9EB"/><path d="M5.5 11.6l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-2.9 5.3-4.8c.2-.2 0-.3-.3-.1l-6.6 4.1-2.8-.9c-.6-.2-.6-.6.1-.9z" fill="#fff"/></svg>
-              Use Telegram bot
+              Use our Telegram bot
             </a>
           </div>
 
-          <!-- Trust Badges Strip -->
-          <div class="flex flex-wrap items-center gap-2 pt-2">
-            <span class="trust-badge-pill text-navy-900 dark:text-slate-200">
-              <svg class="h-4 w-4 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-              99.4% Delivery
-            </span>
-            <span class="trust-badge-pill text-navy-900 dark:text-slate-200">
-              <svg class="h-4 w-4 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-              &lt; 3s Delivery Speed
-            </span>
-            <span class="trust-badge-pill text-navy-900 dark:text-slate-200">
-              <svg class="h-4 w-4 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-              GH₵ 0.05 Flat / SMS
-            </span>
-            <span class="trust-badge-pill text-navy-900 dark:text-slate-200">
-              <svg class="h-4 w-4 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-              Instant MoMo Top-up
-            </span>
-          </div>
+          <ul class="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-sm font-semibold text-navy-900/80 dark:text-slate-300">
+            <li class="flex items-center gap-2"><svg class="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>Fast, instant activation</li>
+            <li class="flex items-center gap-2"><svg class="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>No monthly fees</li>
+            <li class="flex items-center gap-2"><svg class="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>Top up with MoMo</li>
+          </ul>
         </div>
 
-        <!-- Hero art showcase with authentic photography -->
-        <div class="relative mx-auto w-full max-w-[500px] lg:col-span-6 z-10">
-          <div class="hero-glow-bg top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
-          
-          <div class="hero-showcase-frame">
-            <img src="images/hero-entrepreneur.jpg" alt="Ghanaian entrepreneur using KebSEND Bulk SMS" class="hero-real-photo" />
+        <!-- Hero art -->
+        <div class="relative mx-auto w-full max-w-[520px] lg:col-span-6">
+          <div class="relative aspect-square">
+            <div class="absolute inset-[6%] rounded-full bg-gradient-to-br from-ember-300 via-ember-400 to-ember-500 ring-8 ring-white/70 dark:ring-white/10"></div>
+            <img src="illustrations/hero-person.svg" alt="Smiling woman holding a phone receiving an SMS" class="absolute inset-x-0 bottom-0 mx-auto h-[100%] w-auto [clip-path:circle(47%_at_50%_50%)]" />
 
-            <div class="p-4 bg-white/95 dark:bg-night-900/95 backdrop-blur-md border-t border-navy-900/5 dark:border-white/10 flex items-center justify-between">
-              <div>
-                <div class="text-[11px] font-bold uppercase tracking-wider text-ink dark:text-slate-400">Carrier Routes</div>
-                <div class="text-sm font-black text-navy-900 dark:text-white">MTN · Telecel · AirtelTigo</div>
-              </div>
-              <div class="text-right">
-                <div class="text-[11px] font-bold uppercase tracking-wider text-ink dark:text-slate-400">Rate</div>
-                <div class="text-sm font-black text-ember-500">GH₵ 0.05 / SMS</div>
-              </div>
+            <div class="ks-chip ks-float absolute left-0 top-[30%] sm:-left-6">
+              <span class="ks-chip-dot bg-teal-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 12l5 5L20 7"/></svg></span>
+              <div>10,000 SMS delivered<small>Just now</small></div>
             </div>
-
-            <!-- Floating Top Delivery Alert -->
-            <div class="glass-pill-float ks-float-delay absolute top-4 right-4 rounded-2xl px-3.5 py-2 flex items-center gap-2.5">
-              <div class="h-8 w-8 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-              </div>
-              <div>
-                <div class="text-xs font-black text-navy-900 dark:text-white">10,000 Delivered</div>
-                <div class="text-[10px] font-semibold text-teal-600 dark:text-teal-400">All networks · 2.1s</div>
-              </div>
+            <div class="ks-chip ks-float-delay absolute right-0 top-[4%] sm:-right-4">
+              <span class="ks-chip-dot bg-blue-600"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M21 3L3 10.5l7 2.5 2.5 7L21 3z"/></svg></span>
+              <div>Sale starts today!<small>Sent to 2,450 customers</small></div>
             </div>
-
-            <!-- Floating Bottom SMS Popover -->
-            <div class="glass-pill-float ks-float absolute bottom-20 left-4 right-4 sm:right-auto sm:max-w-[320px] rounded-2xl p-3">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="h-5 w-5 rounded-full bg-ember-500 text-white text-[10px] font-black flex items-center justify-center">M</span>
-                <span class="text-xs font-black text-navy-900 dark:text-white">MAAMEFABRIC</span>
-                <span class="text-[10px] text-slate-400 font-medium ml-auto">Just now</span>
-              </div>
-              <p class="text-[11px] text-slate-700 dark:text-slate-200 font-medium leading-relaxed">
-                Akwaaba! New Ankara &amp; Kente prints arrived at our Makola store. Flash 10% off until Saturday!
-              </p>
-              <div class="mt-1 flex items-center justify-between text-[10px] font-bold text-ink dark:text-slate-400">
-                <span>Sent to 2,450 customers</span>
-                <span class="text-teal-600 dark:text-teal-400">✓ Delivered</span>
-              </div>
+            <div class="ks-chip ks-float absolute bottom-[8%] right-0 sm:-right-2">
+              <span class="ks-chip-dot bg-ember-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg></span>
+              <div>GH₵ 0.05 per SMS<small>Pay only for what you send</small></div>
             </div>
           </div>
         </div>
@@ -338,12 +209,6 @@
             <div class="ks-android-status"><span>9:41</span><span class="flex items-center gap-1"><svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h20V2z"/></svg><svg class="h-3 w-4" viewBox="0 0 28 14" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="1" width="22" height="12" rx="3"/><rect x="4" y="4" width="14" height="6" rx="1" fill="currentColor" stroke="none"/><path d="M26 5v4"/></svg></span></div>
             <div class="ks-android-screen">
                 <div role="tabpanel" id="aud-panel-business" aria-labelledby="aud-tab-business" data-audience-panel="business" class="ks-aud-panel">
-                  <div class="relative overflow-hidden rounded-2xl mb-3 border border-slate-200/80 shadow-sm dark:border-white/10">
-                    <img src="images/retail-shop.jpg" alt="Makola shop owner" class="h-28 w-full object-cover" />
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex items-end p-2.5">
-                      <span class="text-xs font-bold text-white">🛍️ Makola, Osu &amp; Kumasi Retailers</span>
-                    </div>
-                  </div>
                   <div class="ks-sms-head">
                     <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#FF6A00">M</span>
@@ -358,12 +223,6 @@
                   </div>
                   <div class="ks-sms-foot">You can't reply to this sender</div>
                 </div><div role="tabpanel" id="aud-panel-schools" aria-labelledby="aud-tab-schools" data-audience-panel="schools" class="ks-aud-panel hidden">
-                  <div class="relative overflow-hidden rounded-2xl mb-3 border border-slate-200/80 shadow-sm dark:border-white/10">
-                    <img src="images/students-campus.jpg" alt="Campus students" class="h-28 w-full object-cover" />
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex items-end p-2.5">
-                      <span class="text-xs font-bold text-white">🎓 Universities, Colleges &amp; Schools</span>
-                    </div>
-                  </div>
                   <div class="ks-sms-head">
                     <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#1F5FD6">B</span>
@@ -378,12 +237,6 @@
                   </div>
                   <div class="ks-sms-foot">You can't reply to this sender</div>
                 </div><div role="tabpanel" id="aud-panel-halls" aria-labelledby="aud-tab-halls" data-audience-panel="halls" class="ks-aud-panel hidden">
-                  <div class="relative overflow-hidden rounded-2xl mb-3 border border-slate-200/80 shadow-sm dark:border-white/10">
-                    <img src="images/students-campus.jpg" alt="University hall residents" class="h-28 w-full object-cover" />
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex items-end p-2.5">
-                      <span class="text-xs font-bold text-white">🏛️ UG, KNUST &amp; UCC Hall Executives</span>
-                    </div>
-                  </div>
                   <div class="ks-sms-head">
                     <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#0A2A66">H</span>
@@ -398,12 +251,6 @@
                   </div>
                   <div class="ks-sms-foot">You can't reply to this sender</div>
                 </div><div role="tabpanel" id="aud-panel-churches" aria-labelledby="aud-tab-churches" data-audience-panel="churches" class="ks-aud-panel hidden">
-                  <div class="relative overflow-hidden rounded-2xl mb-3 border border-slate-200/80 shadow-sm dark:border-white/10">
-                    <img src="images/event-crowd.jpg" alt="Church congregation" class="h-28 w-full object-cover" />
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex items-end p-2.5">
-                      <span class="text-xs font-bold text-white">⛪ Faith Fellowships &amp; Churches</span>
-                    </div>
-                  </div>
                   <div class="ks-sms-head">
                     <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#12B3A1">G</span>
@@ -418,12 +265,6 @@
                   </div>
                   <div class="ks-sms-foot">You can't reply to this sender</div>
                 </div><div role="tabpanel" id="aud-panel-events" aria-labelledby="aud-tab-events" data-audience-panel="events" class="ks-aud-panel hidden">
-                  <div class="relative overflow-hidden rounded-2xl mb-3 border border-slate-200/80 shadow-sm dark:border-white/10">
-                    <img src="images/event-crowd.jpg" alt="Concert and event crowd" class="h-28 w-full object-cover" />
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex items-end p-2.5">
-                      <span class="text-xs font-bold text-white">🎟️ Accra Festivals &amp; Live Events</span>
-                    </div>
-                  </div>
                   <div class="ks-sms-head">
                     <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#E5484D">A</span>
@@ -438,12 +279,6 @@
                   </div>
                   <div class="ks-sms-foot">You can't reply to this sender</div>
                 </div><div role="tabpanel" id="aud-panel-ngos" aria-labelledby="aud-tab-ngos" data-audience-panel="ngos" class="ks-aud-panel hidden">
-                  <div class="relative overflow-hidden rounded-2xl mb-3 border border-slate-200/80 shadow-sm dark:border-white/10">
-                    <img src="images/retail-shop.jpg" alt="Community health outreach" class="h-28 w-full object-cover" />
-                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex items-end p-2.5">
-                      <span class="text-xs font-bold text-white">🩺 Community Outreach &amp; Public Health</span>
-                    </div>
-                  </div>
                   <div class="ks-sms-head">
                     <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     <span class="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white" style="background:#7C3AED">H</span>
@@ -759,19 +594,10 @@
           <p class="mt-4 text-lg leading-relaxed text-slate-300">Send OTPs, transaction alerts and notifications, and check your balance, with a few lines of code.</p>
           <ul class="mt-6 space-y-3 text-slate-200">
             <li class="flex gap-3"><svg class="mt-0.5 h-5 w-5 shrink-0 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>Create API keys from your dashboard in one click</li>
-            <li class="flex gap-3"><svg class="mt-0.5 h-5 w-5 shrink-0 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>Same prices as the dashboard, shared wallet balance</li>
-            <li class="flex gap-3"><svg class="mt-0.5 h-5 w-5 shrink-0 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>Ghana numbers like 024… are converted to 23324… automatically</li>
+            <li class="flex gap-3"><svg class="mt-0.5 h-5 w-5 shrink-0 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>Same prices as the dashboard, same wallet</li>
+            <li class="flex gap-3"><svg class="mt-0.5 h-5 w-5 shrink-0 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>Ghana numbers like 024… are converted to 23324… for you</li>
           </ul>
-
-          <div class="mt-6 flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10">
-            <img src="images/developer-code.jpg" class="h-14 w-14 rounded-xl object-cover shrink-0" alt="KebSEND Developer API" />
-            <div>
-              <div class="text-sm font-black text-white">Production REST API &amp; Webhooks</div>
-              <div class="text-xs text-slate-400 font-medium">180ms average latency · 99.9% uptime SLA · JSON payloads</div>
-            </div>
-          </div>
-
-          <button class="cta-gate-register ks-btn-primary btn-lg mt-6 h-14 rounded-2xl px-8">Get your API key</button>
+          <button class="cta-gate-register ks-btn-primary btn-lg mt-8 h-14 rounded-2xl px-8">Get your API key</button>
         </div>
 
         <div class="min-w-0 lg:col-span-7 scroll-reveal-right">
@@ -1065,8 +891,8 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
         <div id="auth-panel-verify" class="hidden space-y-6">
           <div>
             <img src="kebsend-icon.svg" alt="" class="mb-5 h-12 w-12" />
-            <h2 class="text-3xl font-black tracking-tight text-navy-900 dark:text-white">Verify your account</h2>
-            <p class="mt-1.5 text-ink dark:text-slate-400">Enter the 6-digit confirmation code sent to <b id="verify-email-display" class="text-navy-900 dark:text-white">your email</b> and your phone via SMS.</p>
+            <h2 class="text-3xl font-black tracking-tight text-navy-900 dark:text-white">Verify your email</h2>
+            <p class="mt-1.5 text-ink dark:text-slate-400">Enter the 6-digit confirmation code sent to <b id="verify-email-display" class="text-navy-900 dark:text-white">your email</b>.</p>
           </div>
 
           <form id="form-auth-verify" class="space-y-4">
