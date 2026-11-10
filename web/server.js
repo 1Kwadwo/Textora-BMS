@@ -14,6 +14,33 @@ const { initializePayment, verifyPayment } = require('./src/services/paystack')
 const { sendTelegramSenderIdAlert } = require('./src/services/telegramAlert')
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./src/services/email')
 
+async function deliverVerificationCode({ email, name, phone, code }) {
+  const promises = []
+  promises.push(
+    sendVerificationEmail({ to: email, name, code }).catch(err => {
+      console.warn('[deliverVerificationCode] Email dispatch error:', err.message)
+      return { ok: false, error: err.message }
+    })
+  )
+
+  if (phone && isGhanaNumber(phone)) {
+    promises.push(
+      sendSMS({
+        to: phone,
+        senderId: 'TXTORA',
+        message: `Your KebSEND verification code is ${code}. Valid for 15 minutes. Welcome to KebSEND!`
+      }).then(r => {
+        console.log('[deliverVerificationCode] SMS OTP sent to', phone, '| res:', r?.status || 'ok')
+      }).catch(err => {
+        console.warn('[deliverVerificationCode] SMS OTP warning:', err.message)
+        return null
+      })
+    )
+  }
+
+  await Promise.allSettled(promises)
+}
+
 const PORT = Number(process.env.PORT || process.env.WEB_PORT || 4000)
 const PUBLIC_DIR = path.join(__dirname, 'public')
 const ROOT_DIR = path.join(__dirname, '..')
@@ -215,13 +242,13 @@ const server = http.createServer(async (req, res) => {
         const expiry = new Date(Date.now() + 15 * 60 * 1000)
         const passwordHash = await hashPassword(password)
         await UserRepo.updateUnverifiedUser(existing._id || existing.id, { name, phone, passwordHash, code, expiry })
-        await sendVerificationEmail({ to: email, name, code })
+        await deliverVerificationCode({ email, name, phone, code })
 
         return json(200, {
           ok: true,
           requiresVerification: true,
           email: existing.email,
-          message: 'Account pending verification. A fresh 6-digit code has been sent to your email.'
+          message: 'Account pending verification. A fresh 6-digit code has been sent to your email and phone via SMS.'
         })
       }
 
@@ -240,13 +267,13 @@ const server = http.createServer(async (req, res) => {
         verificationCodeExpiry: expiry
       })
 
-      await sendVerificationEmail({ to: email, name, code })
+      await deliverVerificationCode({ email, name, phone, code })
 
       return json(200, {
         ok: true,
         requiresVerification: true,
         email: user.email,
-        message: 'Account created! Please enter the 6-digit verification code sent to your email.'
+        message: 'Account created! Please enter the 6-digit verification code sent to your email and phone via SMS.'
       })
     } catch (err) {
       console.error('[register error]', err)
@@ -317,9 +344,9 @@ const server = http.createServer(async (req, res) => {
       const code = Math.floor(100000 + Math.random() * 900000).toString()
       const expiry = new Date(Date.now() + 15 * 60 * 1000)
       await UserRepo.setVerificationCode(user.email, code, expiry)
-      await sendVerificationEmail({ to: user.email, name: user.name, code })
+      await deliverVerificationCode({ email: user.email, name: user.name, phone: user.phone, code })
 
-      return json(200, { ok: true, message: 'A new 6-digit verification code has been sent to your email.' })
+      return json(200, { ok: true, message: 'A new 6-digit verification code has been sent to your email and phone via SMS.' })
     } catch (err) {
       console.error('[resend-code error]', err)
       return json(500, { ok: false, message: 'Failed to resend verification code.' })
@@ -354,13 +381,13 @@ const server = http.createServer(async (req, res) => {
           expiry = new Date(Date.now() + 15 * 60 * 1000)
           await UserRepo.setVerificationCode(user.email, code, expiry)
         }
-        await sendVerificationEmail({ to: user.email, name: user.name, code })
+        await deliverVerificationCode({ email: user.email, name: user.name, phone: user.phone, code })
 
         return json(403, {
           ok: false,
           requiresVerification: true,
           email: user.email,
-          message: 'Please verify your email address to continue. A 6-digit code has been sent to your inbox.'
+          message: 'Please verify your account to continue. A 6-digit code has been sent to your email and phone via SMS.'
         })
       }
 
