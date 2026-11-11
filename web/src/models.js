@@ -20,6 +20,21 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 })
 
+// One phone number may belong to only one verified account. Unverified
+// sign-ups are left out so an abandoned sign-up never locks a number forever.
+userSchema.index(
+  { phone: 1 },
+  { unique: true, name: 'unique_verified_phone', partialFilterExpression: { isVerified: true, phone: { $gt: '' } } }
+)
+
+// Matches a stored phone in any format (0244…, 233244…, +233 24 4…, with
+// spaces or dashes) against the last 9 digits of a canonical 233XXXXXXXXX.
+function phoneMatcher(canonicalPhone) {
+  const last9 = String(canonicalPhone).replace(/\D/g, '').slice(-9)
+  if (last9.length !== 9) return null
+  return new RegExp('^\\D*(?:233)?\\D*0?\\D*' + last9.split('').join('\\D*') + '\\D*$')
+}
+
 const apiKeySchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
   key: { type: String, required: true, unique: true, index: true },
@@ -193,6 +208,35 @@ const UserRepo = {
     }
     const store = loadStore()
     return store.users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase().trim()) || null
+  },
+
+  // Every account (any email) whose stored phone is the same number.
+  async findAllByPhone(canonicalPhone) {
+    const re = phoneMatcher(canonicalPhone)
+    if (!re) return []
+    if (getMongoStatus()) {
+      const users = await UserModel.find({ phone: re })
+      return users.map(u => u.toObject())
+    }
+    const store = loadStore()
+    return store.users.filter(u => u.phone && re.test(u.phone))
+  },
+
+  // Frees a number held by an abandoned, unverified sign-up.
+  async clearPhone(userId) {
+    if (getMongoStatus()) {
+      try {
+        await UserModel.findByIdAndUpdate(userId, { phone: '' })
+      } catch (e) {
+        console.warn('[UserRepo] clearPhone failed:', e.message)
+      }
+    }
+    const store = loadStore()
+    const user = store.users.find(u => String(u._id) === String(userId) || String(u.id) === String(userId))
+    if (user) {
+      user.phone = ''
+      saveStore(store)
+    }
   },
 
   async findById(id) {

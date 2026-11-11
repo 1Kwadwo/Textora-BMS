@@ -9,10 +9,31 @@ const crypto = require('crypto')
 const { connectDB } = require('./src/db')
 const { UserRepo, ApiKeyRepo, TransactionRepo, SmsLogRepo, SenderIdRequestRepo } = require('./src/models')
 const { hashPassword, comparePassword, generateToken, verifyToken, extractBearerToken } = require('./src/auth')
-const { isGhanaNumber, normalizeNumber, calculateSMSUnits, sendSMS } = require('./src/services/sms')
+const { isGhanaNumber, normalizeNumber, toCanonicalGhanaPhone, calculateSMSUnits, sendSMS } = require('./src/services/sms')
 const { initializePayment, verifyPayment } = require('./src/services/paystack')
 const { sendTelegramSenderIdAlert } = require('./src/services/telegramAlert')
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./src/services/email')
+
+// A phone number can sit on one account only. Checks the number against every
+// other account (in any stored format) before any code is sent to it.
+// Returns null when the number is free, or a message explaining why not.
+async function checkPhoneAvailable(canonicalPhone, ownEmail) {
+  if (!canonicalPhone) return null
+  const mine = String(ownEmail || '').toLowerCase().trim()
+  const holders = (await UserRepo.findAllByPhone(canonicalPhone))
+    .filter(u => String(u.email || '').toLowerCase() !== mine)
+  if (holders.some(u => u.isVerified)) {
+    return 'This phone number is already linked to another KebSEND account. Sign in to that account, or use a different number.'
+  }
+  const now = Date.now()
+  const pending = holders.filter(u => u.verificationCodeExpiry && new Date(u.verificationCodeExpiry).getTime() > now)
+  if (pending.length) {
+    return 'This phone number is waiting to be verified on another sign-up. Use the code sent to it on that sign-up, or try again in 15 minutes.'
+  }
+  // Only abandoned, expired sign-ups hold the number: release it.
+  for (const u of holders) await UserRepo.clearPhone(u._id || u.id)
+  return null
+}
 
 async function deliverVerificationCode({ email, name, phone, code }) {
   const promises = []
@@ -224,12 +245,19 @@ const server = http.createServer(async (req, res) => {
       const rl = rateLimit('register:' + clientIp(req), 10, 60 * 60 * 1000)
       if (!rl.ok) return json(429, { ok: false, message: 'Too many sign-up attempts. Please try again later.' })
       const body = await parseBody()
-      const { name, email, password, phone } = body
+      const { name, email, password } = body
       if (!name || !email || !password) {
         return json(400, { ok: false, message: 'Name, email, and password are required.' })
       }
       if (password.length < 6) {
         return json(400, { ok: false, message: 'Password must be at least 6 characters long.' })
+      }
+      let phone = ''
+      if (body.phone && String(body.phone).trim()) {
+        phone = toCanonicalGhanaPhone(body.phone)
+        if (!phone) {
+          return json(400, { ok: false, message: 'Please enter a valid Ghana mobile number, like 024 400 0123.' })
+        }
       }
 
       const existing = await UserRepo.findByEmail(email)
@@ -237,6 +265,8 @@ const server = http.createServer(async (req, res) => {
         if (existing.isVerified) {
           return json(400, { ok: false, message: 'An account with this email already exists.' })
         }
+        const phoneProblem = await checkPhoneAvailable(phone, email)
+        if (phoneProblem) return json(409, { ok: false, message: phoneProblem })
         // Account exists but was not yet verified: refresh credentials and send a new OTP code
         const code = Math.floor(100000 + Math.random() * 900000).toString()
         const expiry = new Date(Date.now() + 15 * 60 * 1000)
@@ -251,6 +281,9 @@ const server = http.createServer(async (req, res) => {
           message: 'Account pending verification. A fresh 6-digit code has been sent to your email and phone via SMS.'
         })
       }
+
+      const phoneProblem = await checkPhoneAvailable(phone, email)
+      if (phoneProblem) return json(409, { ok: false, message: phoneProblem })
 
       const passwordHash = await hashPassword(password)
       const code = Math.floor(100000 + Math.random() * 900000).toString()
@@ -291,6 +324,20 @@ const server = http.createServer(async (req, res) => {
         return json(400, { ok: false, message: 'Email and 6-digit verification code are required.' })
       }
 
+      // Last check before the account goes live: another account may have
+      // verified this number since the code was sent.
+      const pendingUser = await UserRepo.findByEmail(email)
+      if (pendingUser && !pendingUser.isVerified && pendingUser.phone) {
+        const canonical = toCanonicalGhanaPhone(pendingUser.phone)
+        if (canonical) {
+          const taken = (await UserRepo.findAllByPhone(canonical))
+            .some(u => u.isVerified && String(u.email).toLowerCase() !== String(pendingUser.email).toLowerCase())
+          if (taken) {
+            return json(409, { ok: false, message: 'This phone number is already linked to another KebSEND account. Please sign up again with a different number.' })
+          }
+        }
+      }
+
       const result = await UserRepo.verifyUserEmail(email, code)
       if (!result.ok) {
         return json(400, { ok: false, message: result.message || 'Invalid or expired code.' })
@@ -320,6 +367,9 @@ const server = http.createServer(async (req, res) => {
         initialApiKey: initialKey?.key
       })
     } catch (err) {
+      if (err && err.code === 11000) {
+        return json(409, { ok: false, message: 'This phone number is already linked to another KebSEND account. Please sign up again with a different number.' })
+      }
       console.error('[verify-code error]', err)
       return json(500, { ok: false, message: 'Failed to verify code.' })
     }
