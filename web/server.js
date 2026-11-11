@@ -150,6 +150,57 @@ const server = http.createServer(async (req, res) => {
         const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
   const urlPath = urlObj.pathname
 
+  // --------------------------------------------------------------------------
+  // PAYSTACK WEBHOOK (INSTANT SERVER-TO-SERVER PAYMENT NOTIFICATION)
+  // --------------------------------------------------------------------------
+  if ((urlPath === '/api/webhook/paystack' || urlPath === '/paystack/webhook') && req.method === 'POST') {
+    const chunks = []
+    req.on('data', c => chunks.push(c))
+    req.on('end', async () => {
+      const rawBody = Buffer.concat(chunks)
+      const signature = req.headers['x-paystack-signature']
+      const secret = process.env.PAYSTACK_SECRET_KEY || ''
+      if (!secret) {
+        res.writeHead(500)
+        return res.end('Paystack secret unconfigured')
+      }
+      const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex')
+      if (hash !== signature) {
+        res.writeHead(401)
+        return res.end('Invalid signature')
+      }
+      res.writeHead(200)
+      res.end('OK')
+
+      try {
+        const event = JSON.parse(rawBody.toString('utf8'))
+        if (event.event === 'charge.success') {
+          const data = event.data || {}
+          const reference = data.reference
+          if (reference && reference.startsWith('web_topup_')) {
+            const tx = await TransactionRepo.findByReference(reference)
+            if (tx && tx.status !== 'success') {
+              const transitioned = await TransactionRepo.markSuccess(reference)
+              if (transitioned) {
+                await UserRepo.creditBalance(tx.userId, tx.credits)
+                console.log(`[PAYSTACK WEBHOOK] Credited ${tx.credits} SMS to user ${tx.userId} for ref ${reference}`)
+              }
+            }
+          } else if (reference && reference.startsWith('sid_fee_')) {
+            const tx = await TransactionRepo.findByReference(reference)
+            if (tx && tx.status !== 'success') {
+              await TransactionRepo.markSuccess(reference)
+              console.log(`[PAYSTACK WEBHOOK] Sender ID fee confirmed for ref ${reference}`)
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[PAYSTACK WEBHOOK ERROR]', err)
+      }
+    })
+    return
+  }
+
   function json(status, data) {
     res.writeHead(status, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(data))

@@ -126,9 +126,13 @@ function handleRoute() {
     navigate('reset', false);
     return;
   }
-  const hash = window.location.hash.replace('#', '') || 'landing';
-  if (['landing', 'login', 'register', 'forgot', 'reset', 'dashboard'].includes(hash)) {
-    navigate(hash, false);
+  const rawHash = window.location.hash.replace('#', '') || 'landing';
+  const cleanHash = rawHash.split('?')[0].split('-')[0];
+  if (['landing', 'login', 'register', 'forgot', 'reset', 'dashboard'].includes(cleanHash)) {
+    navigate(cleanHash, false);
+  }
+  if (currentAuthToken) {
+    checkPendingPayments();
   }
 }
 
@@ -645,7 +649,7 @@ async function checkAuthAndInitialize() {
         if (data.ok && data.user) {
           currentUser = data.user;
           updateNavAuthState();
-          await checkPendingSenderIdPayment();
+          await checkPendingPayments();
           if (window.location.hash.startsWith('#dashboard') || window.location.hash === '') {
             navigate('dashboard');
           }
@@ -659,15 +663,40 @@ async function checkAuthAndInitialize() {
   handleRoute();
 }
 
-async function checkPendingSenderIdPayment() {
+async function checkPendingPayments() {
   const hash = window.location.hash || '';
   const search = window.location.search || '';
   const queryStr = search ? search.substring(1) : (hash.includes('?') ? hash.split('?')[1] : '');
   if (!queryStr) return;
 
   const params = new URLSearchParams(queryStr);
-  const ref = params.get('ref');
-  if (ref && ref.startsWith('sid_fee_') && currentAuthToken) {
+  const ref = params.get('ref') || params.get('reference') || params.get('trxref');
+  if (!ref || !currentAuthToken) return;
+
+  if (ref.startsWith('web_topup_')) {
+    try {
+      const res = await fetch(`/api/dashboard/verify-payment?reference=${encodeURIComponent(ref)}`, {
+        headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const modalTopup = document.getElementById('modal-topup');
+        const statusEl = document.getElementById('topup-status');
+        if (modalTopup && statusEl) {
+          modalTopup.showModal();
+          statusEl.classList.remove('hidden');
+          statusEl.className = 'rounded-xl border border-teal-500/30 bg-teal-50 p-4 text-sm font-semibold text-teal-800 dark:bg-teal-500/10 dark:text-teal-300';
+          statusEl.innerHTML = `🎉 Payment confirmed! Added ${data.creditsAdded} SMS credits to your wallet.`;
+        }
+        if (typeof loadDashboardData === 'function') loadDashboardData();
+        window.history.replaceState(null, '', window.location.pathname + '#dashboard');
+      }
+    } catch (e) {
+      console.error('Error verifying recharge payment:', e);
+    }
+  }
+
+  if (ref.startsWith('sid_fee_')) {
     try {
       const res = await fetch(`/api/dashboard/sender-id/verify-payment?reference=${encodeURIComponent(ref)}`, {
         headers: { 'Authorization': `Bearer ${currentAuthToken}` }
@@ -681,7 +710,8 @@ async function checkPendingSenderIdPayment() {
             sidFeedback.textContent = data.message || 'Payment confirmed! Sender ID submitted for review.';
             sidFeedback.classList.remove('hidden');
           }
-          loadDashboardData();
+          if (typeof loadDashboardData === 'function') loadDashboardData();
+          window.history.replaceState(null, '', window.location.pathname + '#dashboard');
         }, 500);
       }
     } catch (e) {
@@ -1445,18 +1475,36 @@ async function triggerPaystackRecharge(planId) {
     });
     const data = await res.json();
     if (data.ok && data.checkout_url) {
-      statusEl.innerHTML = `Checkout ready. <a href="${data.checkout_url}" target="_blank" class="font-bold text-ember-600 underline">Click here to complete payment</a>`;
+      statusEl.innerHTML = `Checkout opened in new window. <a href="${data.checkout_url}" target="_blank" class="font-bold text-ember-600 underline">Click here if it didn't open</a><div class="mt-2 flex items-center gap-2 text-ink dark:text-slate-300"><span class="loading loading-spinner loading-xs text-ember-600"></span> Waiting for payment confirmation...</div>`;
       
-      setTimeout(async () => {
-        const vRes = await fetch(`/api/dashboard/verify-payment?reference=${data.reference}`, {
-          headers: { 'Authorization': `Bearer ${currentAuthToken}` }
-        });
-        const vData = await vRes.json();
-        if (vData.ok) {
-          statusEl.innerHTML = `<span class="font-bold text-teal-600">Payment successful! Added ${vData.creditsAdded} credits.</span>`;
-          loadDashboardData();
+      const payWindow = window.open(data.checkout_url, '_blank');
+
+      let pollCount = 0;
+      const pollTimer = setInterval(async () => {
+        pollCount++;
+        if (pollCount > 100) {
+          clearInterval(pollTimer);
+          return;
         }
-      }, 2000);
+        try {
+          const vRes = await fetch(`/api/dashboard/verify-payment?reference=${encodeURIComponent(data.reference)}`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+          });
+          const vData = await vRes.json();
+          if (vData.ok) {
+            clearInterval(pollTimer);
+            if (payWindow && !payWindow.closed) {
+              try { payWindow.close(); } catch (e) {}
+            }
+            statusEl.className = 'rounded-xl border border-teal-500/30 bg-teal-50 p-4 text-sm font-semibold text-teal-800 dark:bg-teal-500/10 dark:text-teal-300';
+            statusEl.innerHTML = `🎉 Payment confirmed! Added ${vData.creditsAdded} SMS credits to your wallet.`;
+            if (typeof loadDashboardData === 'function') loadDashboardData();
+            setTimeout(() => {
+              if (modalTopup && modalTopup.open) modalTopup.close();
+            }, 3500);
+          }
+        } catch (e) {}
+      }, 3000);
     }
   } catch (err) {
     statusEl.textContent = 'Error: ' + err.message;
