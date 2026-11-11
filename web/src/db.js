@@ -6,6 +6,18 @@ let isMongoConnected = false
 let connectionPromise = null
 let lastMongoError = null
 
+// Accept the common spellings people type into hosting dashboards. Keys are
+// trimmed because a stray space in the Render key name makes it invisible.
+const MONGO_KEYS = ['MONGODB_URI', 'MONGO_URI', 'MONGODB_URL', 'MONGO_URL', 'DATABASE_URL']
+function getMongoUri() {
+  for (const want of MONGO_KEYS) {
+    for (const [k, v] of Object.entries(process.env)) {
+      if (k.trim().toUpperCase() === want && v && String(v).trim().startsWith('mongodb')) return String(v).trim()
+    }
+  }
+  return ''
+}
+
 async function connectDB() {
   if (mongoose.connection?.readyState === 1) {
     isMongoConnected = true
@@ -16,10 +28,11 @@ async function connectDB() {
     return connectionPromise
   }
 
-  const uri = process.env.MONGODB_URI || process.env.MONGO_URI
+  const uri = getMongoUri()
 
   if (!uri) {
-    lastMongoError = 'No MONGODB_URI or MONGO_URI in process.env'
+    const similar = Object.keys(process.env).filter(k => /mongo|database/i.test(k))
+    lastMongoError = 'No MONGODB_URI in process.env' + (similar.length ? ` (found similar keys: ${similar.join(', ')})` : ' (no Mongo-like keys set at all)')
     console.log('[Database] No MONGODB_URI provided in environment. Running in local memory/file-backed mode.')
     return false
   }
@@ -61,6 +74,7 @@ function getMongoStatus() {
 }
 
 module.exports = {
+  getMongoUri,
   connectDB,
   getMongoStatus,
   getMongoError,

@@ -243,7 +243,7 @@ function startPaystackWebhookServer({
       let hasMongoUri = false
       try {
         const { mongoose, connectDB, getMongoStatus, getMongoError } = require('../web/src/db')
-        hasMongoUri = Boolean(process.env.MONGODB_URI || process.env.MONGO_URI)
+        hasMongoUri = Boolean(require('../web/src/db').getMongoUri())
         if (!getMongoStatus() && hasMongoUri) {
           await connectDB().catch(() => {})
         }
