@@ -1268,6 +1268,7 @@ You can request a refund for the sender ID fee or try another custom sender ID.`
           `• <b>User:</b> ${e(userDisplay)}\n` +
           `• <b>Status:</b> Rejected\n` +
           `• <b>Rejected At:</b> ${e(new Date().toLocaleString('en-GB', { timeZone: 'Africa/Accra' }))}\n` +
+          `• 🎟️ Customer gets 1 free retry for their next sender ID\n` +
           `• ${smsLine}`
 
       try {
