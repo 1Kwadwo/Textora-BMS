@@ -73,6 +73,7 @@ const senderIdRequestSchema = new mongoose.Schema({
   feeAmountGHS: { type: Number, default: 1 },
   paymentMethod: { type: String, default: 'wallet' },
   paymentReference: { type: String, default: '' },
+  reviewedAt: { type: Date },
   createdAt: { type: Date, default: Date.now }
 })
 
@@ -549,6 +550,27 @@ const TransactionRepo = {
       return tx
     }
     return null
+  },
+
+  // Pending transactions whose reference starts with prefix (optionally for one user / since a date).
+  async listPendingByPrefix(prefix, { userId, since } = {}) {
+    const escaped = String(prefix).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (getMongoStatus()) {
+      try {
+        const q = { status: 'pending', reference: { $regex: '^' + escaped } }
+        if (userId) q.userId = String(userId)
+        if (since) q.createdAt = { $gte: since }
+        const list = await TransactionModel.find(q).sort({ createdAt: -1 }).limit(50)
+        return list.map(t => t.toObject())
+      } catch (e) {}
+    }
+    const store = loadStore()
+    return store.transactions.filter(t =>
+      t.status === 'pending' &&
+      String(t.reference || '').startsWith(prefix) &&
+      (!userId || String(t.userId) === String(userId)) &&
+      (!since || new Date(t.createdAt) >= since)
+    )
   }
 }
 
@@ -667,6 +689,52 @@ const SenderIdRequestRepo = {
       return { ...item }
     }
     return null
+  },
+
+  async findByPaymentReference(reference) {
+    if (!reference) return null
+    if (getMongoStatus()) {
+      try {
+        const doc = await SenderIdRequestModel.findOne({ paymentReference: reference })
+        if (doc) return doc.toObject()
+      } catch (e) {}
+    }
+    const store = loadStore()
+    return store.senderIdRequests.find(s => s.paymentReference === reference) || null
+  },
+
+  // Moves a request out of 'pending' exactly once. Returns null if it was already reviewed.
+  async reviewPending(id, status) {
+    const reviewedAt = new Date()
+    if (getMongoStatus()) {
+      try {
+        const filter = mongoose.Types.ObjectId.isValid(id) ? { _id: id, status: 'pending' } : null
+        if (filter) {
+          const doc = await SenderIdRequestModel.findOneAndUpdate(filter, { status, reviewedAt }, { new: true })
+          if (doc) return doc.toObject()
+          const exists = await SenderIdRequestModel.findById(id)
+          if (exists) return null
+        }
+      } catch (e) {}
+    }
+    const store = loadStore()
+    const item = store.senderIdRequests.find(s => (String(s._id) === String(id) || String(s.id) === String(id)) && s.status === 'pending')
+    if (!item) return null
+    item.status = status
+    item.reviewedAt = reviewedAt.toISOString()
+    saveStore(store)
+    return { ...item }
+  },
+
+  async listPending(limit = 20) {
+    if (getMongoStatus()) {
+      try {
+        const list = await SenderIdRequestModel.find({ status: 'pending' }).sort({ createdAt: -1 }).limit(limit)
+        return list.map(s => s.toObject())
+      } catch (e) {}
+    }
+    const store = loadStore()
+    return store.senderIdRequests.filter(s => s.status === 'pending').slice(0, limit)
   },
 
   async listByUser(userId) {
