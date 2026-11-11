@@ -439,6 +439,49 @@ ${ctx.chat.id}`
     }
   })
 
+  // Admin: look up a web customer by name or email and show their sender ID
+  // requests and sender ID fee payments, whatever state they're in.
+  bot.command(['sidlookup', 'finduser'], async (ctx) => {
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only the KebSEND admin can look up customers.')
+    }
+    const q = ctx.message.text.split(' ').slice(1).join(' ').trim()
+    if (!q) return ctx.reply('Usage: /sidlookup <name or email>')
+    try {
+      const { UserRepo, TransactionRepo, SenderIdRequestRepo, escapeTelegramHtml: e, buildSenderIdAlert } = await loadWebSenderIdTools()
+      const users = await UserRepo.searchByNameOrEmail(q, 5)
+      if (users.length === 0) return ctx.reply(`No web account matches "${q}".`)
+      for (const user of users) {
+        const userId = String(user._id || user.id)
+        const requests = await SenderIdRequestRepo.listByUser(userId)
+        const txs = (await TransactionRepo.listByUser(userId, 30)).filter(t => String(t.reference || '').startsWith('sid_fee_'))
+        const lines = [
+          `👤 <b>${e(user.name)}</b> (<code>${e(user.email)}</code>)`,
+          `📱 ${e(user.phone || 'no phone')} · Balance ₵${Number(user.balance || 0).toFixed(2)}`,
+          `🆔 Active sender IDs: ${e((user.senderIds || []).join(', ') || 'none')}`,
+          '',
+          `<b>Sender ID requests:</b> ${requests.length === 0 ? 'none' : ''}`,
+          ...requests.slice(0, 10).map(r => `• <code>${e(r.senderId)}</code> · ${e(r.status)} · ${e(new Date(r.createdAt).toLocaleString('en-GB', { timeZone: 'Africa/Accra' }))}`),
+          '',
+          `<b>Sender ID fee payments:</b> ${txs.length === 0 ? 'none' : ''}`,
+          ...txs.slice(0, 10).map(t => `• ${e(String(t.paymentPurpose || '').split(':')[1] || '?')} · ₵${Number(t.amountGHS || 0).toFixed(2)} · ${e(t.status)} · ${e(new Date(t.createdAt).toLocaleString('en-GB', { timeZone: 'Africa/Accra' }))}`)
+        ]
+        await ctx.reply(lines.join('\n'), { parse_mode: 'HTML' })
+        for (const r of requests.filter(r => r.status === 'pending')) {
+          const { text, replyMarkup } = buildSenderIdAlert({
+            heading: 'PENDING SENDER ID REQUEST', user, senderId: r.senderId, purpose: r.purpose,
+            requestId: String(r._id || r.id), feeAmountGHS: r.feeAmountGHS,
+            paymentMethod: r.paymentMethod === 'paystack' ? 'Paystack MoMo / Card' : 'Wallet Balance', createdAt: r.createdAt
+          })
+          await ctx.reply(text, { parse_mode: 'HTML', reply_markup: replyMarkup })
+        }
+      }
+    } catch (err) {
+      console.error('[sidlookup Error]', err)
+      return ctx.reply(`Lookup failed: ${err.message}`)
+    }
+  })
+
   bot.command('bypass', async (ctx) => {
     if (!isDeveloperApprovalContext(ctx)) {
       return ctx.reply('Only Textora admin can bypass payment verification.')
