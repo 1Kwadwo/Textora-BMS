@@ -1148,7 +1148,7 @@ You can request a refund for the sender ID fee or try another custom sender ID.`
     if (!getMongoStatus()) {
       // Without the shared database the bot only sees its own empty local file,
       // so every lookup would wrongly say "nothing found".
-      const hasUri = Boolean(process.env.MONGODB_URI || process.env.MONGO_URI)
+      const hasUri = Boolean(require('../web/src/db').getMongoUri())
       throw new Error(
         'the bot is not connected to the KebSEND database, so it cannot see website accounts or requests. ' +
         (hasUri
