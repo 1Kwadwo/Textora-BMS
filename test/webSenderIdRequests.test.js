@@ -103,12 +103,13 @@ test('admin lookup finds a customer by part of their name', async () => {
 
 test('admin lookup finds a customer by phone in any format and by a misspelled name', async () => {
   const stamp = String(Date.now()).slice(-7)
-  const user = await UserRepo.create({ name: 'Zqxgadgetsvault' + stamp, email: `z${stamp}@kebsend.test`, phone: '233' + '20' + stamp, passwordHash: 'x', isVerified: true })
+  const tag = Array.from({ length: 6 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join('')
+  const user = await UserRepo.create({ name: tag + 'gadgetsvault' + stamp, email: `z${stamp}@kebsend.test`, phone: '233' + '20' + stamp, passwordHash: 'x', isVerified: true })
   for (const q of ['020 ' + stamp.slice(0, 3) + ' ' + stamp.slice(3), '+233 20' + stamp, '20' + stamp]) {
     const found = await UserRepo.searchByNameOrEmail(q)
     assert.ok(found.some(u => String(u._id) === String(user._id)), q)
   }
-  const typo = await UserRepo.searchByNameOrEmail('Zqxgadgetvault')
+  const typo = await UserRepo.searchByNameOrEmail(tag + 'gadgetvault')
   assert.ok(typo.some(u => String(u._id) === String(user._id)))
 })
 
@@ -117,4 +118,25 @@ test('admin lookup ignores spaces in names', async () => {
   const user = await UserRepo.create({ name: `Wvy Gadgets Vault ${stamp}`, email: `w${stamp}@kebsend.test`, phone: '23324' + stamp + '1', passwordHash: 'x', isVerified: true })
   const found = await UserRepo.searchByNameOrEmail(`WvyGadgetsVault${stamp}`)
   assert.ok(found.some(u => String(u._id) === String(user._id)))
+})
+
+test('sender IDs with emoji are rejected; admin grant links an unused paid fee and approves', async () => {
+  const { isValidWebSenderId, grantSenderId } = require('../web/src/services/senderIdRequests')
+  assert.strictEqual(isValidWebSenderId('CITIZEN💻📱'), false)
+  assert.strictEqual(isValidWebSenderId('12345'), false)
+  assert.strictEqual(isValidWebSenderId('CITIZEN'), true)
+
+  const user = await makeUser()
+  const userId = String(user._id)
+  const reference = 'sid_fee_' + Date.now() + '_grant'
+  await TransactionRepo.create({ userId, reference, amountGHS: 8, credits: 0, paymentPurpose: 'sender_id_fee:CITIZEN%F0%9F%92%BB:x' })
+  await TransactionRepo.markSuccess(reference)
+
+  const r = await grantSenderId({ userId, senderId: 'citizen' })
+  assert.strictEqual(r.ok, true)
+  assert.strictEqual(r.linkedPayment, reference)
+  assert.strictEqual(r.request.status, 'approved')
+  assert.strictEqual(r.sms.ok, true)
+  const fresh = await UserRepo.findById(userId)
+  assert.ok(fresh.senderIds.includes('CITIZEN'))
 })
