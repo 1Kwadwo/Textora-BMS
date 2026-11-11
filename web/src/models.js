@@ -230,7 +230,8 @@ const UserRepo = {
           return list.map(u => u.toObject())
         }
         for (const term of attempts) {
-          const rx = new RegExp(esc(term), 'i')
+          // Ignore spaces/dots/underscores: "Citizengadgetsvault" matches "Citizen Gadgets Vault".
+          const rx = new RegExp(term.replace(/[\s._-]+/g, '').split('').map(esc).join('[\\s._-]*'), 'i')
           const list = await UserModel.find({ $or: [{ name: rx }, { email: rx }] }).limit(limit)
           if (list.length) return list.map(u => u.toObject())
         }
@@ -240,10 +241,9 @@ const UserRepo = {
     const users = loadStore().users
     if (phoneRx) return users.filter(u => phoneRx.test(String(u.phone || ''))).slice(0, limit)
     for (const term of attempts) {
-      const low = term.toLowerCase()
-      const found = users.filter(u =>
-        String(u.name || '').toLowerCase().includes(low) || String(u.email || '').toLowerCase().includes(low)
-      ).slice(0, limit)
+      const squash = v => String(v || '').toLowerCase().replace(/[\s._-]+/g, '')
+      const low = squash(term)
+      const found = users.filter(u => squash(u.name).includes(low) || squash(u.email).includes(low)).slice(0, limit)
       if (found.length) return found
     }
     return []

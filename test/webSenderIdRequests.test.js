@@ -111,3 +111,10 @@ test('admin lookup finds a customer by phone in any format and by a misspelled n
   const typo = await UserRepo.searchByNameOrEmail('Zqxgadgetvault')
   assert.ok(typo.some(u => String(u._id) === String(user._id)))
 })
+
+test('admin lookup ignores spaces in names', async () => {
+  const stamp = String(Date.now()).slice(-6)
+  const user = await UserRepo.create({ name: `Wvy Gadgets Vault ${stamp}`, email: `w${stamp}@kebsend.test`, phone: '23324' + stamp + '1', passwordHash: 'x', isVerified: true })
+  const found = await UserRepo.searchByNameOrEmail(`WvyGadgetsVault${stamp}`)
+  assert.ok(found.some(u => String(u._id) === String(user._id)))
+})
