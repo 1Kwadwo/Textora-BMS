@@ -1314,7 +1314,7 @@ async function loadDashboardData() {
     const sidDropdown = document.getElementById('dash-sms-sender-id');
     const sidBadges = document.getElementById('dash-active-sender-ids');
     if (sidDropdown && currentUser.senderIds) {
-      sidDropdown.innerHTML = currentUser.senderIds.map(s => `<option value="${s}">${s}</option>`).join('');
+      sidDropdown.innerHTML = currentUser.senderIds.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
     }
     if (sidBadges && currentUser.senderIds) {
       sidBadges.innerHTML = currentUser.senderIds.map(s => `
@@ -1332,12 +1332,16 @@ async function loadDashboardData() {
       } else {
         sidRequestsTable.innerHTML = requests.map(req => {
           let statusBadge = '';
+          const reviewedOn = req.reviewedAt ? new Date(req.reviewedAt).toLocaleDateString() : '';
           if (req.status === 'approved') {
-            statusBadge = '<span class="badge badge-success badge-sm font-semibold">Approved</span>';
+            statusBadge = '<span class="badge badge-success badge-sm font-semibold">Approved</span>' +
+              (reviewedOn ? `<div class="mt-1 text-xs text-ink dark:text-slate-400">Active since ${escapeHtml(reviewedOn)}</div>` : '');
           } else if (req.status === 'rejected') {
-            statusBadge = '<span class="badge badge-error badge-sm font-semibold">Rejected</span>';
+            statusBadge = '<span class="badge badge-error badge-sm font-semibold">Rejected</span>' +
+              `<div class="mt-1 text-xs text-ink dark:text-slate-400">${reviewedOn ? escapeHtml(reviewedOn) + ' · ' : ''}Contact support</div>`;
           } else {
-            statusBadge = '<span class="badge badge-warning badge-sm font-semibold">Pending</span>';
+            statusBadge = '<span class="badge badge-warning badge-sm font-semibold">Pending</span>' +
+              '<div class="mt-1 text-xs text-ink dark:text-slate-400">Under review</div>';
           }
 
           const feeFormatted = `₵${Number(req.feeAmountGHS || 1).toFixed(2)} (${req.paymentMethod === 'paystack' ? 'Paystack' : 'Wallet'})`;

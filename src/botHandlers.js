@@ -391,6 +391,54 @@ ${ctx.chat.id}`
     }
   })
 
+  // Admin: list every web sender ID request still waiting for review, with
+  // approve / reject buttons. Also picks up Paystack-paid requests that never
+  // reached the bot because the customer didn't return to the website.
+  bot.command(['pendingsids', 'pendingsenderids'], async (ctx) => {
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only the KebSEND admin can view pending sender IDs.')
+    }
+    try {
+      const tools = await loadWebSenderIdTools()
+      const { TransactionRepo, SenderIdRequestRepo, UserRepo, fulfillSenderIdFee, buildSenderIdAlert, SENDER_ID_FEE_PREFIX } = tools
+
+      const since = new Date(Date.now() - 14 * 24 * 3600 * 1000)
+      const unpaid = await TransactionRepo.listPendingByPrefix(SENDER_ID_FEE_PREFIX, { since })
+      let recovered = 0
+      for (const tx of unpaid.slice(0, 20)) {
+        try {
+          const r = await fulfillSenderIdFee(tx.reference)
+          if (r.created) recovered++
+        } catch (err) {
+          console.warn('[pendingsids] verify failed', tx.reference, err.message)
+        }
+      }
+
+      const pending = await SenderIdRequestRepo.listPending(20)
+      if (pending.length === 0) {
+        return ctx.reply('No web sender ID requests are waiting for review.')
+      }
+      await ctx.reply(`📋 ${pending.length} web sender ID request(s) waiting for review${recovered ? ` (${recovered} recovered from Paystack just now)` : ''}:`)
+      for (const request of pending) {
+        const user = await UserRepo.findById(request.userId)
+        const { text, replyMarkup } = buildSenderIdAlert({
+          heading: 'PENDING SENDER ID REQUEST',
+          user: user || {},
+          senderId: request.senderId,
+          purpose: request.purpose,
+          requestId: String(request._id || request.id),
+          feeAmountGHS: request.feeAmountGHS,
+          paymentMethod: request.paymentMethod === 'paystack' ? 'Paystack MoMo / Card' : 'Wallet Balance',
+          createdAt: request.createdAt
+        })
+        await ctx.reply(text, { parse_mode: 'HTML', reply_markup: replyMarkup })
+      }
+    } catch (err) {
+      console.error('[pendingsids Error]', err)
+      return ctx.reply(`Could not load pending sender IDs: ${err.message}`)
+    }
+  })
+
   bot.command('bypass', async (ctx) => {
     if (!isDeveloperApprovalContext(ctx)) {
       return ctx.reply('Only Textora admin can bypass payment verification.')
@@ -1051,78 +1099,72 @@ You can request a refund for the sender ID fee or try another custom sender ID.`
   // --------------------------------------------------------------------------
   // WEB DASHBOARD SENDER ID TELEGRAM APPROVAL & REJECTION ACTIONS
   // --------------------------------------------------------------------------
-  bot.action(/^approve_web_sid_(.+)$/, async (ctx) => {
+  async function loadWebSenderIdTools() {
+    const { connectDB } = require('../web/src/db')
+    await connectDB()
+    return {
+      ...require('../web/src/services/senderIdRequests'),
+      ...require('../web/src/services/telegramAlert'),
+      ...require('../web/src/models')
+    }
+  }
+
+  async function reviewWebSenderId(ctx, decision) {
     await answerCallback(ctx)
     if (!isDeveloperApprovalContext(ctx)) {
-      return ctx.reply('Only the Textora admin can approve sender IDs.')
+      return ctx.reply(`Only the KebSEND admin can ${decision} sender IDs.`)
     }
 
     const requestId = ctx.match[1]
+    const label = decision === 'approve' ? 'Approval' : 'Rejection'
     try {
-      const { connectDB } = require('../web/src/db')
-      await connectDB()
-      const { UserRepo, SenderIdRequestRepo } = require('../web/src/models')
-      const reqRecord = await SenderIdRequestRepo.findById(requestId)
-      if (!reqRecord) {
-        console.warn(`[Web Sender ID Approval] Request not found for ID: ${requestId}`)
+      const { reviewSenderIdRequest, escapeTelegramHtml: e } = await loadWebSenderIdTools()
+      const result = await reviewSenderIdRequest(requestId, decision)
+
+      if (!result.ok && result.reason === 'not_found') {
+        console.warn(`[Web Sender ID ${label}] Request not found for ID: ${requestId}`)
         return ctx.reply('⚠️ Sender ID request not found or expired.')
       }
-
-      await SenderIdRequestRepo.updateStatus(requestId, 'approved')
-      await UserRepo.addSenderId(reqRecord.userId, reqRecord.senderId)
-
-      const user = await UserRepo.findById(reqRecord.userId)
-      const userDisplay = user ? `${user.name} (${user.email})` : reqRecord.userId
-
-      await ctx.editMessageText(
-        `✅ *Sender ID Approved*\n\n` +
-        `• *Sender ID:* \`${reqRecord.senderId}\`\n` +
-        `• *Approved For:* ${userDisplay}\n` +
-        `• *Status:* Active\n` +
-        `• *Approved At:* ${new Date().toLocaleString()}\n\n` +
-        `_The user can now select "${reqRecord.senderId}" on their Web Dashboard and REST API._`,
-        { parse_mode: 'Markdown' }
-      )
-    } catch (err) {
-      console.error('[Web Sender ID Approval Error]', err)
-      return ctx.reply(`Error approving Sender ID: ${err.message}`)
-    }
-  })
-
-  bot.action(/^reject_web_sid_(.+)$/, async (ctx) => {
-    await answerCallback(ctx)
-    if (!isDeveloperApprovalContext(ctx)) {
-      return ctx.reply('Only the Textora admin can reject sender IDs.')
-    }
-
-    const requestId = ctx.match[1]
-    try {
-      const { connectDB } = require('../web/src/db')
-      await connectDB()
-      const { UserRepo, SenderIdRequestRepo } = require('../web/src/models')
-      const reqRecord = await SenderIdRequestRepo.findById(requestId)
-      if (!reqRecord) {
-        console.warn(`[Web Sender ID Rejection] Request not found for ID: ${requestId}`)
-        return ctx.reply('⚠️ Sender ID request not found or expired.')
+      if (!result.ok && result.reason === 'already_reviewed') {
+        return ctx.reply(`ℹ️ Sender ID "${result.request.senderId}" was already ${result.request.status}. Nothing changed.`)
       }
 
-      await SenderIdRequestRepo.updateStatus(requestId, 'rejected')
-      const user = await UserRepo.findById(reqRecord.userId)
-      const userDisplay = user ? `${user.name} (${user.email})` : reqRecord.userId
+      const { request, user, sms } = result
+      const userDisplay = user ? `${user.name} (${user.email})` : request.userId
+      const smsLine = sms.ok
+        ? `📲 SMS sent to ${e(sms.phone)}`
+        : `⚠️ SMS not sent (${e(sms.reason === 'no_phone' ? 'no valid phone on account' : sms.reason)})`
+      const approved = request.status === 'approved'
 
-      await ctx.editMessageText(
-        `❌ *Sender ID Rejected*\n\n` +
-        `• *Sender ID:* \`${reqRecord.senderId}\`\n` +
-        `• *User:* ${userDisplay}\n` +
-        `• *Status:* Rejected\n` +
-        `• *Rejected At:* ${new Date().toLocaleString()}`,
-        { parse_mode: 'Markdown' }
-      )
+      const text = approved
+        ? `✅ <b>Sender ID Approved</b>\n\n` +
+          `• <b>Sender ID:</b> <code>${e(request.senderId)}</code>\n` +
+          `• <b>Approved For:</b> ${e(userDisplay)}\n` +
+          `• <b>Status:</b> Active\n` +
+          `• <b>Approved At:</b> ${e(new Date().toLocaleString('en-GB', { timeZone: 'Africa/Accra' }))}\n` +
+          `• ${smsLine}\n\n` +
+          `<i>The user can now select "${e(request.senderId)}" on their Web Dashboard and REST API.</i>`
+        : `❌ <b>Sender ID Rejected</b>\n\n` +
+          `• <b>Sender ID:</b> <code>${e(request.senderId)}</code>\n` +
+          `• <b>User:</b> ${e(userDisplay)}\n` +
+          `• <b>Status:</b> Rejected\n` +
+          `• <b>Rejected At:</b> ${e(new Date().toLocaleString('en-GB', { timeZone: 'Africa/Accra' }))}\n` +
+          `• ${smsLine}`
+
+      try {
+        await ctx.editMessageText(text, { parse_mode: 'HTML' })
+      } catch (editErr) {
+        // e.g. the button was tapped on a /pendingsids copy; still confirm in chat.
+        await ctx.reply(text, { parse_mode: 'HTML' })
+      }
     } catch (err) {
-      console.error('[Web Sender ID Rejection Error]', err)
-      return ctx.reply(`Error rejecting Sender ID: ${err.message}`)
+      console.error(`[Web Sender ID ${label} Error]`, err)
+      return ctx.reply(`Error during sender ID ${decision}: ${err.message}`)
     }
-  })
+  }
+
+  bot.action(/^approve_web_sid_(.+)$/, ctx => reviewWebSenderId(ctx, 'approve'))
+  bot.action(/^reject_web_sid_(.+)$/, ctx => reviewWebSenderId(ctx, 'reject'))
 
   bot.action('create_custom_sender_id', async (ctx) => {
 

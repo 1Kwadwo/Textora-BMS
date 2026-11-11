@@ -11,7 +11,7 @@ const { UserRepo, ApiKeyRepo, TransactionRepo, SmsLogRepo, SenderIdRequestRepo }
 const { hashPassword, comparePassword, generateToken, verifyToken, extractBearerToken } = require('./src/auth')
 const { isGhanaNumber, normalizeNumber, toCanonicalGhanaPhone, calculateSMSUnits, sendSMS } = require('./src/services/sms')
 const { initializePayment, verifyPayment } = require('./src/services/paystack')
-const { sendTelegramSenderIdAlert } = require('./src/services/telegramAlert')
+const { fulfillSenderIdFee, notifyAdmin, reconcileUserSenderIdFees } = require('./src/services/senderIdRequests')
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./src/services/email')
 
 // A phone number can sit on one account only. Checks the number against every
@@ -187,11 +187,10 @@ const server = http.createServer(async (req, res) => {
               }
             }
           } else if (reference && reference.startsWith('sid_fee_')) {
-            const tx = await TransactionRepo.findByReference(reference)
-            if (tx && tx.status !== 'success') {
-              await TransactionRepo.markSuccess(reference)
-              console.log(`[PAYSTACK WEBHOOK] Sender ID fee confirmed for ref ${reference}`)
-            }
+            // Paystack already told us it's paid (signed webhook), so create the
+            // request and alert the admin here; don't wait for the customer to return.
+            const result = await fulfillSenderIdFee(reference, { verified: true })
+            console.log(`[PAYSTACK WEBHOOK] Sender ID fee for ref ${reference}:`, result.created ? 'request created' : (result.reason || 'already recorded'))
           }
         }
       } catch (err) {
@@ -584,6 +583,8 @@ const server = http.createServer(async (req, res) => {
     const userId = user._id || user.id
     const apiKeys = await ApiKeyRepo.listByUser(userId)
     const logs = await SmsLogRepo.listByUser(userId, 10)
+    // Catch sender ID fees paid on Paystack where the customer never came back to the site.
+    try { await reconcileUserSenderIdFees(userId) } catch (e) { console.warn('[Sender ID Reconcile]', e.message) }
     const senderIdRequests = await SenderIdRequestRepo.listByUser(userId)
 
     const feeGHS = Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 8)
@@ -858,18 +859,7 @@ const server = http.createServer(async (req, res) => {
     })
 
     // Dispatch real-time Telegram notification to admin chat with 1-click inline buttons
-    try {
-      await sendTelegramSenderIdAlert({
-        user,
-        senderId: cleanSenderId,
-        purpose: purpose || 'Web business notification',
-        requestId: reqRecord._id || reqRecord.id,
-        feeAmountGHS: feeGHS,
-        paymentMethod: 'Wallet Balance'
-      })
-    } catch (alertErr) {
-      console.error('[Telegram Alert Error]', alertErr.message)
-    }
+    await notifyAdmin({ user, request: reqRecord, paymentMethod: 'Wallet Balance' })
 
     return json(200, {
       ok: true,
@@ -888,78 +878,28 @@ const server = http.createServer(async (req, res) => {
     if (!reference) return json(400, { ok: false, message: 'Missing transaction reference' })
 
     const tx = await TransactionRepo.findByReference(reference)
-    if (!tx) return json(404, { ok: false, message: 'Transaction not found' })
-
-    const userId = user._id || user.id
-    const feeGHS = Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 8)
-
-    let targetSid = 'CUSTOM'
-    let targetPurpose = 'Business Messaging'
-    if (tx.paymentPurpose && tx.paymentPurpose.startsWith('sender_id_fee:')) {
-      const parts = tx.paymentPurpose.split(':')
-      if (parts[1]) targetSid = parts[1].toUpperCase()
-      if (parts[2]) {
-        try { targetPurpose = decodeURIComponent(parts[2]) } catch(e) {}
-      }
+    if (!tx || String(tx.userId) !== String(user._id || user.id)) {
+      return json(404, { ok: false, message: 'Transaction not found' })
     }
 
-    if (tx.status === 'success') {
-      const existingReqs = await SenderIdRequestRepo.listByUser(userId)
-      const existing = existingReqs.find(r => r.senderId === targetSid)
-      return json(200, {
-        ok: true,
-        message: `Sender ID "${targetSid}" payment already confirmed and submitted for review.`,
-        senderId: targetSid,
-        senderIdRequest: existing
-      })
-    }
-
-    const verifyRes = await verifyPayment(reference)
-    if (verifyRes.status && verifyRes.data?.status === 'success') {
-      // Only the request that transitions pending -> success creates the sender-ID request (prevents duplicates).
-      const transitioned = await TransactionRepo.markSuccess(reference)
-      if (!transitioned) {
-        const existingReqs = await SenderIdRequestRepo.listByUser(userId)
-        const existing = existingReqs.find(r => r.senderId === targetSid)
-        return json(200, {
-          ok: true,
-          message: `Sender ID "${targetSid}" payment already confirmed and submitted for review.`,
-          senderId: targetSid,
-          senderIdRequest: existing
-        })
-      }
-
-      const reqRecord = await SenderIdRequestRepo.create({
-        userId,
-        senderId: targetSid,
-        purpose: targetPurpose,
-        feeAmountGHS: feeGHS,
-        paymentMethod: 'paystack',
-        paymentReference: reference
-      })
-
-      try {
-        await sendTelegramSenderIdAlert({
-          user,
-          senderId: targetSid,
-          purpose: targetPurpose,
-          requestId: reqRecord._id || reqRecord.id,
-          feeAmountGHS: feeGHS,
-          paymentMethod: 'Paystack MoMo / Card'
-        })
-      } catch (alertErr) {
-        console.error('[Telegram Alert Error]', alertErr.message)
-      }
-
-      return json(200, {
-        ok: true,
-        message: `Payment confirmed! Sender ID "${targetSid}" submitted for review. It will be approved shortly.`,
-        senderId: targetSid,
-        senderIdRequest: reqRecord
-      })
-    } else {
+    let result
+    try {
+      result = await fulfillSenderIdFee(reference)
+    } catch (err) {
+      console.error('[Sender ID verify-payment]', err.message)
       return json(400, { ok: false, message: 'Payment verification pending or failed.' })
     }
+    if (!result.ok) {
+      return json(400, { ok: false, message: 'Payment verification pending or failed.' })
+    }
+    return json(200, {
+      ok: true,
+      message: result.created
+        ? `Payment confirmed! Sender ID "${result.senderId}" submitted for review. It will be approved shortly.`
+        : `Sender ID "${result.senderId}" payment already confirmed and submitted for review.`,
+      senderId: result.senderId,
+      senderIdRequest: result.request
+    })
   }
 
   // --------------------------------------------------------------------------

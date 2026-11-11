@@ -1,0 +1,94 @@
+const test = require('node:test')
+const assert = require('node:assert')
+
+process.env.NODE_ENV = 'test'
+process.env.MONGODB_URI = 'mongodb://127.0.0.1:1/none'
+delete process.env.BOT_TOKEN
+
+const { UserRepo, TransactionRepo, SenderIdRequestRepo } = require('../web/src/models')
+const { fulfillSenderIdFee, reviewSenderIdRequest, reconcileUserSenderIdFees } = require('../web/src/services/senderIdRequests')
+const { buildSenderIdAlert } = require('../web/src/services/telegramAlert')
+
+async function makeUser() {
+  return UserRepo.create({
+    name: 'Citizen Gadgets',
+    email: `sid_${Date.now()}_${Math.random().toString(36).slice(2)}@kebsend.test`,
+    phone: '024' + String(Date.now()).slice(-7),
+    passwordHash: 'x',
+    isVerified: true
+  })
+}
+
+test('admin alert escapes customer text so Telegram accepts it', () => {
+  const { text, replyMarkup } = buildSenderIdAlert({
+    user: { name: 'Citizen_gadgets *vault*', email: 'a_b@x.com', phone: '233244000000' },
+    senderId: 'CGVAULT',
+    purpose: 'Promos <sales> & offers_',
+    requestId: 'abc123'
+  })
+  assert.match(text, /Promos &lt;sales&gt; &amp; offers_/)
+  assert.strictEqual(replyMarkup.inline_keyboard[0][0].callback_data, 'approve_web_sid_abc123')
+})
+
+test('Paystack-paid fee becomes a pending request even if the customer never returns', async () => {
+  const user = await makeUser()
+  const userId = user._id || user.id
+  const reference = 'sid_fee_' + Date.now() + '_t1'
+  await TransactionRepo.create({ userId, reference, amountGHS: 8, credits: 0, paymentPurpose: 'sender_id_fee:CGVAULT:Shop%20alerts' })
+
+  const results = await reconcileUserSenderIdFees(userId)
+  assert.strictEqual(results.length, 1)
+  assert.strictEqual(results[0].created, true)
+
+  const again = await fulfillSenderIdFee(reference, { verified: true })
+  assert.strictEqual(again.created, false)
+
+  const list = await SenderIdRequestRepo.listByUser(userId)
+  assert.strictEqual(list.length, 1)
+  assert.strictEqual(list[0].senderId, 'CGVAULT')
+  assert.strictEqual(list[0].purpose, 'Shop alerts')
+  assert.strictEqual(list[0].status, 'pending')
+})
+
+test('webhook-confirmed fee (already success) still creates the request', async () => {
+  const user = await makeUser()
+  const userId = user._id || user.id
+  const reference = 'sid_fee_' + Date.now() + '_t2'
+  await TransactionRepo.create({ userId, reference, amountGHS: 8, credits: 0, paymentPurpose: 'sender_id_fee:SHOPGH:x' })
+  await TransactionRepo.markSuccess(reference)
+  const r = await fulfillSenderIdFee(reference)
+  assert.strictEqual(r.created, true)
+})
+
+test('approving activates the ID, texts the customer, and only happens once', async () => {
+  const user = await makeUser()
+  const userId = user._id || user.id
+  const req = await SenderIdRequestRepo.create({ userId, senderId: 'CGVAULT', purpose: 'x', feeAmountGHS: 8 })
+
+  const pending = await SenderIdRequestRepo.listPending(500)
+  assert.ok(pending.some(p => String(p._id) === String(req._id)))
+
+  const r = await reviewSenderIdRequest(req._id, 'approve')
+  assert.strictEqual(r.ok, true)
+  assert.strictEqual(r.request.status, 'approved')
+  assert.ok(r.request.reviewedAt)
+  assert.strictEqual(r.sms.ok, true)
+  assert.match(r.sms.phone, /^233\d{9}$/)
+
+  const fresh = await UserRepo.findById(userId)
+  assert.ok(fresh.senderIds.includes('CGVAULT'))
+
+  const twice = await reviewSenderIdRequest(req._id, 'reject')
+  assert.strictEqual(twice.ok, false)
+  assert.strictEqual(twice.reason, 'already_reviewed')
+})
+
+test('rejecting marks the request rejected without activating it', async () => {
+  const user = await makeUser()
+  const userId = user._id || user.id
+  const req = await SenderIdRequestRepo.create({ userId, senderId: 'NOPEID', purpose: 'x', feeAmountGHS: 8 })
+  const r = await reviewSenderIdRequest(req._id, 'reject')
+  assert.strictEqual(r.request.status, 'rejected')
+  const fresh = await UserRepo.findById(userId)
+  assert.ok(!(fresh.senderIds || []).includes('NOPEID'))
+})
