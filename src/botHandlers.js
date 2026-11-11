@@ -1143,8 +1143,19 @@ You can request a refund for the sender ID fee or try another custom sender ID.`
   // WEB DASHBOARD SENDER ID TELEGRAM APPROVAL & REJECTION ACTIONS
   // --------------------------------------------------------------------------
   async function loadWebSenderIdTools() {
-    const { connectDB } = require('../web/src/db')
+    const { connectDB, getMongoStatus, getMongoError } = require('../web/src/db')
     await connectDB()
+    if (!getMongoStatus()) {
+      // Without the shared database the bot only sees its own empty local file,
+      // so every lookup would wrongly say "nothing found".
+      const hasUri = Boolean(process.env.MONGODB_URI || process.env.MONGO_URI)
+      throw new Error(
+        'the bot is not connected to the KebSEND database, so it cannot see website accounts or requests. ' +
+        (hasUri
+          ? `MongoDB error: ${getMongoError() || 'unknown'}.`
+          : 'MONGODB_URI is not set on the bot service in Render. Copy it from the website service and redeploy the bot.')
+      )
+    }
     return {
       ...require('../web/src/services/senderIdRequests'),
       ...require('../web/src/services/telegramAlert'),
