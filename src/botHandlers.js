@@ -521,6 +521,32 @@ ${ctx.chat.id}`
     }
   })
 
+  // Admin: remove the shared generic sender ID (TXTORA) from every web account
+  // except the allowed emails. "/removetxtora" previews, "/removetxtora confirm" applies.
+  bot.command('removetxtora', async (ctx) => {
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only the KebSEND admin can change sender IDs.')
+    }
+    const confirm = /\bconfirm\b/i.test(ctx.message.text)
+    try {
+      const { UserRepo, genericSenderId, genericSenderAllowedEmails } = await loadWebSenderIdTools()
+      const sid = genericSenderId()
+      const keep = genericSenderAllowedEmails()
+      const r = await UserRepo.removeSenderIdFromAll(sid, { exceptEmails: keep, dryRun: !confirm })
+      const sample = r.emails.slice(0, 15).join('\n')
+      if (!confirm) {
+        return ctx.reply(
+          `Preview: ${r.count} web account(s) still have ${sid} saved. They already can't send from it; this only cleans up the saved data.\n` +
+          `Kept for: ${keep.join(', ')}\n\n${sample}${r.count > 15 ? '\n…' : ''}\n\nSend "/removetxtora confirm" to remove it.`
+        )
+      }
+      return ctx.reply(`✅ Removed ${sid} from ${r.count} web account(s). Kept for: ${keep.join(', ')}.`)
+    } catch (err) {
+      console.error('[removetxtora Error]', err)
+      return ctx.reply(`Could not update sender IDs: ${err.message}`)
+    }
+  })
+
   bot.command('bypass', async (ctx) => {
     if (!isDeveloperApprovalContext(ctx)) {
       return ctx.reply('Only Textora admin can bypass payment verification.')

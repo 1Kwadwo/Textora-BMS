@@ -196,11 +196,25 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(res.data.user_email, testEmail)
   })
 
+  await t.test('6b. Sender IDs: generic TXTORA is not handed to new accounts', async () => {
+    const res = await request('POST', '/api/v1/send-sms', {
+      to: ['0244123456'],
+      message: 'Should be refused',
+      senderId: 'TXTORA'
+    }, {
+      Authorization: `Bearer ${generatedApiKey}`
+    })
+    assert.strictEqual(res.statusCode, 403)
+    assert.strictEqual(res.data.ok, false)
+    // Give the account its own approved sender ID for the sending tests below.
+    await UserRepo.addSenderId(createdUserId, 'TESTSHOP')
+  })
+
   await t.test('7. Developer Public API: Blocks SMS when balance is zero', async () => {
     const res = await request('POST', '/api/v1/send-sms', {
       to: ['0244123456', '0501122334'],
       message: 'Testing KebSEND Developer API delivery!',
-      senderId: 'TXTORA'
+      senderId: 'TESTSHOP'
     }, {
       Authorization: `Bearer ${generatedApiKey}`
     })
@@ -238,7 +252,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     const res = await request('POST', '/api/v1/send-sms', {
       to: ['0244123456', '0501122334'],
       message: 'Testing KebSEND Developer API delivery!',
-      senderId: 'TXTORA'
+      senderId: 'TESTSHOP'
     }, {
       Authorization: `Bearer ${generatedApiKey}`
     })
@@ -253,7 +267,7 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     const res = await request('POST', '/api/dashboard/send-sms', {
       to: '233240009988',
       message: 'Web dashboard broadcast SMS',
-      senderId: 'TXTORA'
+      senderId: 'TESTSHOP'
     }, {
       Authorization: `Bearer ${authToken}`
     })

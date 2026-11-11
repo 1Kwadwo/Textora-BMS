@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, trim: true },
   passwordHash: { type: String, required: true },
   balance: { type: Number, default: 0, min: 0 },
-  senderIds: { type: [String], default: ['TXTORA'] },
+  senderIds: { type: [String], default: [] },
   isVerified: { type: Boolean, default: false },
   verificationCode: { type: String, default: null },
   verificationCodeExpiry: { type: Date, default: null },
@@ -186,7 +186,7 @@ const UserRepo = {
       phone: phone ? phone.trim() : '',
       passwordHash,
       balance: initialBalance,
-      senderIds: ['TXTORA'],
+      senderIds: [],
       isVerified,
       verificationCode,
       verificationCodeExpiry,
@@ -209,6 +209,36 @@ const UserRepo = {
     }
     const store = loadStore()
     return store.users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase().trim()) || null
+  },
+
+  // Admin: take one sender ID off every account except the given emails.
+  // dryRun only counts. Returns { count, emails } of affected accounts.
+  async removeSenderIdFromAll(senderId, { exceptEmails = [], dryRun = true } = {}) {
+    const sid = String(senderId).trim().toUpperCase()
+    const keep = exceptEmails.map(e => String(e).trim().toLowerCase())
+    let emails = []
+    if (getMongoStatus()) {
+      const filter = { senderIds: sid, email: { $nin: keep } }
+      const docs = await UserModel.find(filter, { email: 1 }).limit(1000)
+      emails = docs.map(d => d.email)
+      if (!dryRun) {
+        await UserModel.updateMany(filter, { $pull: { senderIds: sid } })
+        if (keep.length) await UserModel.updateMany({ email: { $in: keep } }, { $addToSet: { senderIds: sid } })
+      }
+    }
+    const store = loadStore()
+    let changed = false
+    for (const u of store.users) {
+      const email = String(u.email || '').toLowerCase()
+      if (!Array.isArray(u.senderIds)) continue
+      if (keep.includes(email)) continue
+      if (u.senderIds.map(x => String(x).toUpperCase()).includes(sid)) {
+        if (!emails.includes(u.email)) emails.push(u.email)
+        if (!dryRun) { u.senderIds = u.senderIds.filter(x => String(x).toUpperCase() !== sid); changed = true }
+      }
+    }
+    if (changed) saveStore(store)
+    return { count: emails.length, emails }
   },
 
   // Admin lookup by name, email or phone (any format). Falls back to the first
@@ -347,7 +377,7 @@ const UserRepo = {
     const store = loadStore()
     const user = store.users.find(u => String(u._id) === String(userId) || String(u.id) === String(userId))
     if (user) {
-      if (!Array.isArray(user.senderIds)) user.senderIds = ['TXTORA']
+      if (!Array.isArray(user.senderIds)) user.senderIds = []
       if (!user.senderIds.includes(cleanSid)) {
         user.senderIds.push(cleanSid)
         saveStore(store)

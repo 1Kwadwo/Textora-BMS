@@ -1091,7 +1091,7 @@ Authorization: Bearer ksnd_live_...
             <div>
               <label for="dash-sms-sender-id" class="ks-label">From (sender ID)</label>
               <select id="dash-sms-sender-id" class="ks-select font-semibold">
-                <option value="TXTORA">TXTORA (Default)</option>
+                <option value="" disabled selected>No approved sender ID yet</option>
               </select>
             </div>
 
@@ -1149,7 +1149,7 @@ Authorization: Bearer ksnd_live_...
                 <div class="ks-phone-screen !min-h-[220px]">
                   <div class="mb-4 flex items-center gap-2.5 border-b border-navy-900/5 pb-3 dark:border-white/10">
                     <span class="grid h-9 w-9 place-items-center rounded-full bg-navy-900 text-xs font-black text-white">ID</span>
-                    <div id="dash-sms-preview-sender" class="font-extrabold text-navy-900 dark:text-white">TXTORA</div>
+                    <div id="dash-sms-preview-sender" class="font-extrabold text-navy-900 dark:text-white">Your sender ID</div>
                   </div>
                   <p id="dash-sms-preview-text" class="ks-bubble whitespace-pre-wrap break-words text-ink">Your message will appear here.</p>
                 </div>
@@ -1243,7 +1243,7 @@ Authorization: Bearer ksnd_live_...
           <div class="space-y-3">
             <div class="ks-stat-label">Your approved sender IDs</div>
             <div id="dash-active-sender-ids" class="flex flex-wrap gap-2">
-              <span class="badge badge-primary font-mono text-xs">TXTORA (Approved)</span>
+              <span class="text-sm text-ink dark:text-slate-400">Loading…</span>
             </div>
           </div>
 

@@ -1089,7 +1089,11 @@ function initDashboardWorkspace() {
       if (!currentAuthToken) return;
       const rawRecipients = recipientsInput ? recipientsInput.value.trim() : '';
       const message = messageInput ? messageInput.value.trim() : '';
-      const senderId = senderIdInput ? senderIdInput.value.trim() || 'TXTORA' : 'TXTORA';
+      const senderId = senderIdInput ? senderIdInput.value.trim() : '';
+      if (!senderId) {
+        alert('You need an approved sender ID before you can send. Register one under Sender IDs.');
+        return;
+      }
 
       const { valid } = parseAndValidateContacts(rawRecipients);
 
@@ -1262,7 +1266,7 @@ async function loadDashboardData() {
       if (feeBtn) feeBtn.textContent = `₵${currentCustomSenderIdFee.toFixed(2)}`;
     }
     document.getElementById('card-api-keys-count').textContent = data.apiKeys.length;
-    document.getElementById('card-sender-ids-count').textContent = (currentUser.senderIds || ['TXTORA']).length;
+    document.getElementById('card-sender-ids-count').textContent = (currentUser.senderIds || []).length;
 
     // Render API Keys List
     const keysContainer = document.getElementById('dash-api-keys-list');
@@ -1313,11 +1317,16 @@ async function loadDashboardData() {
     // Render Sender IDs dropdown, active badges, and request history table
     const sidDropdown = document.getElementById('dash-sms-sender-id');
     const sidBadges = document.getElementById('dash-active-sender-ids');
-    if (sidDropdown && currentUser.senderIds) {
-      sidDropdown.innerHTML = currentUser.senderIds.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+    const mySenderIds = currentUser.senderIds || [];
+    if (sidDropdown) {
+      sidDropdown.innerHTML = mySenderIds.length
+        ? mySenderIds.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')
+        : '<option value="" disabled selected>No approved sender ID yet</option>';
     }
-    if (sidBadges && currentUser.senderIds) {
-      sidBadges.innerHTML = currentUser.senderIds.map(s => `
+    if (sidBadges && mySenderIds.length === 0) {
+      sidBadges.innerHTML = '<span class="text-sm text-ink dark:text-slate-400">None yet. Register a sender ID below to start sending.</span>';
+    } else if (sidBadges) {
+      sidBadges.innerHTML = mySenderIds.map(s => `
         <span class="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
           <span class="h-1.5 w-1.5 rounded-full bg-teal-500"></span>${escapeHtml(s)}
         </span>
@@ -1754,7 +1763,7 @@ function initComposerPreview() {
     const text = messageInput.value.trim();
     previewText.textContent = text || placeholder;
     previewText.classList.toggle('text-ink', !text);
-    if (previewSender && senderSelect) previewSender.textContent = senderSelect.value || 'TXTORA';
+    if (previewSender && senderSelect) previewSender.textContent = senderSelect.value || 'Your sender ID';
   };
   messageInput.addEventListener('input', update);
   if (senderSelect) {
