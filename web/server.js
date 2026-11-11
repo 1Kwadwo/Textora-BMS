@@ -11,7 +11,7 @@ const { UserRepo, ApiKeyRepo, TransactionRepo, SmsLogRepo, SenderIdRequestRepo }
 const { hashPassword, comparePassword, generateToken, verifyToken, extractBearerToken } = require('./src/auth')
 const { isGhanaNumber, normalizeNumber, toCanonicalGhanaPhone, calculateSMSUnits, sendSMS } = require('./src/services/sms')
 const { initializePayment, verifyPayment } = require('./src/services/paystack')
-const { fulfillSenderIdFee, notifyAdmin, reconcileUserSenderIdFees, isValidWebSenderId } = require('./src/services/senderIdRequests')
+const { fulfillSenderIdFee, notifyAdmin, reconcileUserSenderIdFees, isValidWebSenderId, allowedSenderIdsFor } = require('./src/services/senderIdRequests')
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./src/services/email')
 
 // A phone number can sit on one account only. Checks the number against every
@@ -412,7 +412,7 @@ const server = http.createServer(async (req, res) => {
           email: user.email,
           phone: user.phone,
           balance: user.balance,
-          senderIds: user.senderIds
+          senderIds: allowedSenderIdsFor(user)
         },
         initialApiKey: initialKey?.key
       })
@@ -502,7 +502,7 @@ const server = http.createServer(async (req, res) => {
           email: user.email,
           phone: user.phone,
           balance: user.balance,
-          senderIds: user.senderIds
+          senderIds: allowedSenderIdsFor(user)
         }
       })
     } catch (err) {
@@ -567,7 +567,7 @@ const server = http.createServer(async (req, res) => {
         email: user.email,
         phone: user.phone,
         balance: user.balance,
-        senderIds: user.senderIds
+        senderIds: allowedSenderIdsFor(user)
       }
     })
   }
@@ -598,7 +598,7 @@ const server = http.createServer(async (req, res) => {
         email: user.email,
         phone: user.phone,
         balance: user.balance,
-        senderIds: user.senderIds
+        senderIds: allowedSenderIdsFor(user)
       },
       apiKeys,
       logs,
@@ -647,11 +647,13 @@ const server = http.createServer(async (req, res) => {
       return json(400, { ok: false, message: 'No valid recipient phone numbers provided.' })
     }
 
-    // Authorize the sender ID: callers may only use IDs approved for their account (plus the generic default).
-    const genericSender = (process.env.GENERIC_SENDER_ID || 'TXTORA').toUpperCase()
-    const allowedSenders = new Set([...(user.senderIds || []).map(s => String(s).toUpperCase()), genericSender])
-    const sId = senderId ? String(senderId).trim() : genericSender
-    if (!allowedSenders.has(sId.toUpperCase())) {
+    // Authorize the sender ID: callers may only use IDs approved for their own account.
+    const allowedList = allowedSenderIdsFor(user)
+    if (allowedList.length === 0) {
+      return json(403, { ok: false, noSenderId: true, message: 'You don\'t have an approved sender ID yet. Register one under Sender IDs first.' })
+    }
+    const sId = senderId ? String(senderId).trim() : allowedList[0]
+    if (!allowedList.includes(sId.toUpperCase())) {
       return json(403, { ok: false, message: `Sender ID "${sId}" is not approved for your account. Register it under Sender IDs first.` })
     }
 
@@ -926,7 +928,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (urlPath === '/api/v1/sender-ids' && req.method === 'GET') {
-      return json(200, { ok: true, senderIds: user.senderIds || ['TXTORA'] })
+      return json(200, { ok: true, senderIds: allowedSenderIdsFor(user) })
     }
 
     if (urlPath === '/api/v1/send-sms' && req.method === 'POST') {
@@ -947,10 +949,12 @@ const server = http.createServer(async (req, res) => {
           return json(400, { ok: false, message: 'No valid recipients in "to"' })
         }
 
-        const genericSender = (process.env.GENERIC_SENDER_ID || 'TXTORA').toUpperCase()
-        const allowedSenders = new Set([...(user.senderIds || []).map(s => String(s).toUpperCase()), genericSender])
-        const sId = senderId ? String(senderId).trim() : genericSender
-        if (!allowedSenders.has(sId.toUpperCase())) {
+        const allowedList = allowedSenderIdsFor(user)
+        if (allowedList.length === 0) {
+          return json(403, { ok: false, message: 'No approved sender ID on this account yet. Register one under Sender IDs on your dashboard.' })
+        }
+        const sId = senderId ? String(senderId).trim() : allowedList[0]
+        if (!allowedList.includes(sId.toUpperCase())) {
           return json(403, { ok: false, message: `Sender ID "${sId}" is not approved for your account.` })
         }
 

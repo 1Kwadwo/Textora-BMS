@@ -15,6 +15,27 @@ function isValidWebSenderId(value) {
   return /^[A-Za-z0-9]{3,11}$/.test(v) && !/^\d+$/.test(v)
 }
 
+// The shared generic sender ID (TXTORA) is no longer handed to every account.
+// Only these emails keep it automatically (comma-separated env override).
+function genericSenderId() {
+  return String(process.env.GENERIC_SENDER_ID || 'TXTORA').trim().toUpperCase()
+}
+function genericSenderAllowedEmails() {
+  return String(process.env.GENERIC_SENDER_ALLOWED_EMAILS || 'harrisbraimah@icloud.com')
+    .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+}
+
+// Sender IDs an account may actually send from (upper-cased, no duplicates).
+function allowedSenderIdsFor(user) {
+  if (!user) return []
+  const generic = genericSenderId()
+  const ids = (user.senderIds || []).map(x => String(x).trim().toUpperCase()).filter(Boolean)
+  const mayUseGeneric = user.isBotDev || genericSenderAllowedEmails().includes(String(user.email || '').toLowerCase())
+  const list = ids.filter(id => id !== generic || mayUseGeneric)
+  if (mayUseGeneric && !list.includes(generic)) list.push(generic)
+  return Array.from(new Set(list))
+}
+
 function feeGHS() {
   return Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 8)
 }
@@ -183,6 +204,9 @@ async function grantSenderId({ userId, senderId, purpose = 'Added by KebSEND adm
 }
 
 module.exports = {
+  allowedSenderIdsFor,
+  genericSenderId,
+  genericSenderAllowedEmails,
   isValidWebSenderId,
   grantSenderId,
   SENDER_ID_FEE_PREFIX,

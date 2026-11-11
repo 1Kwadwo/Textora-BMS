@@ -140,3 +140,19 @@ test('sender IDs with emoji are rejected; admin grant links an unused paid fee a
   const fresh = await UserRepo.findById(userId)
   assert.ok(fresh.senderIds.includes('CITIZEN'))
 })
+
+test('generic TXTORA is only usable by the allowed admin email', async () => {
+  const { allowedSenderIdsFor } = require('../web/src/services/senderIdRequests')
+  assert.deepStrictEqual(allowedSenderIdsFor({ email: 'someone@x.com', senderIds: ['TXTORA'] }), [])
+  assert.deepStrictEqual(allowedSenderIdsFor({ email: 'someone@x.com', senderIds: ['TXTORA', 'shopgh'] }), ['SHOPGH'])
+  assert.deepStrictEqual(allowedSenderIdsFor({ email: 'HarrisBraimah@iCloud.com', senderIds: [] }), ['TXTORA'])
+
+  const user = await makeUser()
+  assert.deepStrictEqual(user.senderIds, [])
+  await UserRepo.addSenderId(user._id, 'TXTORA')
+  const preview = await UserRepo.removeSenderIdFromAll('TXTORA', { exceptEmails: ['harrisbraimah@icloud.com'], dryRun: true })
+  assert.ok(preview.emails.includes(user.email))
+  assert.ok((await UserRepo.findById(user._id)).senderIds.includes('TXTORA'))
+  await UserRepo.removeSenderIdFromAll('TXTORA', { exceptEmails: ['harrisbraimah@icloud.com'], dryRun: false })
+  assert.ok(!(await UserRepo.findById(user._id)).senderIds.includes('TXTORA'))
+})
