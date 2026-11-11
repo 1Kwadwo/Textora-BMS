@@ -211,21 +211,42 @@ const UserRepo = {
     return store.users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase().trim()) || null
   },
 
-  // Admin lookup: accounts whose name or email contains q (case-insensitive).
+  // Admin lookup by name, email or phone (any format). Falls back to the first
+  // 6 letters of a name so small typos ("gadgetvault" vs "gadgetsvault") still match.
   async searchByNameOrEmail(q, limit = 5) {
     const needle = String(q || '').trim()
     if (!needle) return []
+    const esc = v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const digits = needle.replace(/\D/g, '')
+    const looksLikePhone = digits.length >= 9 && /^[\d\s+()-]+$/.test(needle)
+    const local9 = looksLikePhone ? digits.slice(-9) : ''
+    const phoneRx = local9 ? new RegExp(local9.split('').join('\\D*') + '$') : null
+
+    const attempts = looksLikePhone ? [null] : [needle, needle.length > 6 ? needle.slice(0, 6) : null].filter(Boolean)
     if (getMongoStatus()) {
       try {
-        const rx = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-        const list = await UserModel.find({ $or: [{ name: rx }, { email: rx }] }).limit(limit)
-        return list.map(u => u.toObject())
+        if (phoneRx) {
+          const list = await UserModel.find({ phone: phoneRx }).limit(limit)
+          return list.map(u => u.toObject())
+        }
+        for (const term of attempts) {
+          // Ignore spaces/dots/underscores: "Citizengadgetsvault" matches "Citizen Gadgets Vault".
+          const rx = new RegExp(term.replace(/[\s._-]+/g, '').split('').map(esc).join('[\\s._-]*'), 'i')
+          const list = await UserModel.find({ $or: [{ name: rx }, { email: rx }] }).limit(limit)
+          if (list.length) return list.map(u => u.toObject())
+        }
+        return []
       } catch (e) {}
     }
-    const low = needle.toLowerCase()
-    return loadStore().users.filter(u =>
-      String(u.name || '').toLowerCase().includes(low) || String(u.email || '').toLowerCase().includes(low)
-    ).slice(0, limit)
+    const users = loadStore().users
+    if (phoneRx) return users.filter(u => phoneRx.test(String(u.phone || ''))).slice(0, limit)
+    for (const term of attempts) {
+      const squash = v => String(v || '').toLowerCase().replace(/[\s._-]+/g, '')
+      const low = squash(term)
+      const found = users.filter(u => squash(u.name).includes(low) || squash(u.email).includes(low)).slice(0, limit)
+      if (found.length) return found
+    }
+    return []
   },
 
   // Every account (any email) whose stored phone is the same number.

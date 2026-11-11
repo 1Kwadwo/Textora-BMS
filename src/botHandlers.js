@@ -446,11 +446,11 @@ ${ctx.chat.id}`
       return ctx.reply('Only the KebSEND admin can look up customers.')
     }
     const q = ctx.message.text.split(' ').slice(1).join(' ').trim()
-    if (!q) return ctx.reply('Usage: /sidlookup <name or email>')
+    if (!q) return ctx.reply('Usage: /sidlookup <name, email or phone>')
     try {
       const { UserRepo, TransactionRepo, SenderIdRequestRepo, escapeTelegramHtml: e, buildSenderIdAlert } = await loadWebSenderIdTools()
       const users = await UserRepo.searchByNameOrEmail(q, 5)
-      if (users.length === 0) return ctx.reply(`No web account matches "${q}".`)
+      if (users.length === 0) return ctx.reply(`No web account matches "${q}". Try their email or phone number.`)
       for (const user of users) {
         const userId = String(user._id || user.id)
         const requests = await SenderIdRequestRepo.listByUser(userId)
