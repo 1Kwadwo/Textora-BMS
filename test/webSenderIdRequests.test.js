@@ -156,3 +156,14 @@ test('generic TXTORA is only usable by the allowed admin email', async () => {
   await UserRepo.removeSenderIdFromAll('TXTORA', { exceptEmails: ['harrisbraimah@icloud.com'], dryRun: false })
   assert.ok(!(await UserRepo.findById(user._id)).senderIds.includes('TXTORA'))
 })
+
+test('rejecting gives one free retry that is used up once', async () => {
+  const user = await makeUser()
+  const userId = String(user._id)
+  const req = await SenderIdRequestRepo.create({ userId, senderId: 'BADNAME', purpose: 'x', feeAmountGHS: 8 })
+  const r = await reviewSenderIdRequest(req._id, 'reject')
+  assert.strictEqual(r.ok, true)
+  assert.strictEqual((await UserRepo.findById(userId)).freeSenderIdRetries, 1)
+  assert.strictEqual(await UserRepo.consumeFreeSenderIdRetry(userId), true)
+  assert.strictEqual(await UserRepo.consumeFreeSenderIdRetry(userId), false)
+})

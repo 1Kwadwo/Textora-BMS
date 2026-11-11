@@ -1215,7 +1215,7 @@ function initDashboardWorkspace() {
         }
       } finally {
         btnReqSid.disabled = false;
-        btnReqSid.innerHTML = `Register (<span id="dash-sid-fee-btn">₵${currentCustomSenderIdFee.toFixed(2)}</span>)`;
+        btnReqSid.innerHTML = `Register (<span id="dash-sid-fee-btn">${Number(currentUser?.freeSenderIdRetries || 0) > 0 ? 'Free retry' : '₵' + currentCustomSenderIdFee.toFixed(2)}</span>)`;
       }
     });
   }
@@ -1264,6 +1264,13 @@ async function loadDashboardData() {
       if (feeBadge) feeBadge.textContent = `₵${currentCustomSenderIdFee.toFixed(2)}`;
       const feeBtn = document.getElementById('dash-sid-fee-btn');
       if (feeBtn) feeBtn.textContent = `₵${currentCustomSenderIdFee.toFixed(2)}`;
+    }
+    // A rejected sender ID earns one free retry; show it on the fee badge and button.
+    if (Number(currentUser.freeSenderIdRetries || 0) > 0) {
+      const feeBadge = document.getElementById('dash-sid-fee-badge');
+      if (feeBadge) feeBadge.textContent = 'Free (retry after a rejected ID)';
+      const feeBtn = document.getElementById('dash-sid-fee-btn');
+      if (feeBtn) feeBtn.textContent = 'Free retry';
     }
     document.getElementById('card-api-keys-count').textContent = data.apiKeys.length;
     document.getElementById('card-sender-ids-count').textContent = (currentUser.senderIds || []).length;
@@ -1347,13 +1354,15 @@ async function loadDashboardData() {
               (reviewedOn ? `<div class="mt-1 text-xs text-ink dark:text-slate-400">Active since ${escapeHtml(reviewedOn)}</div>` : '');
           } else if (req.status === 'rejected') {
             statusBadge = '<span class="badge badge-error badge-sm font-semibold">Rejected</span>' +
-              `<div class="mt-1 text-xs text-ink dark:text-slate-400">${reviewedOn ? escapeHtml(reviewedOn) + ' · ' : ''}Contact support</div>`;
+              `<div class="mt-1 text-xs text-ink dark:text-slate-400">${reviewedOn ? escapeHtml(reviewedOn) + ' · ' : ''}Your next request is free</div>`;
           } else {
             statusBadge = '<span class="badge badge-warning badge-sm font-semibold">Pending</span>' +
               '<div class="mt-1 text-xs text-ink dark:text-slate-400">Under review</div>';
           }
 
-          const feeFormatted = `₵${Number(req.feeAmountGHS || 1).toFixed(2)} (${req.paymentMethod === 'paystack' ? 'Paystack' : 'Wallet'})`;
+          const feeFormatted = req.paymentMethod === 'free_retry'
+            ? 'Free retry'
+            : `₵${Number(req.feeAmountGHS || 0).toFixed(2)} (${req.paymentMethod === 'paystack' ? 'Paystack' : req.paymentMethod === 'admin' ? 'Added by KebSEND' : 'Wallet'})`;
 
           return `
             <tr class="hover:bg-cream-50 dark:hover:bg-white/5">

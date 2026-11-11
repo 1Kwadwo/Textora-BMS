@@ -567,6 +567,7 @@ const server = http.createServer(async (req, res) => {
         email: user.email,
         phone: user.phone,
         balance: user.balance,
+        freeSenderIdRetries: Number(user.freeSenderIdRetries || 0),
         senderIds: allowedSenderIdsFor(user)
       }
     })
@@ -598,6 +599,7 @@ const server = http.createServer(async (req, res) => {
         email: user.email,
         phone: user.phone,
         balance: user.balance,
+        freeSenderIdRetries: Number(user.freeSenderIdRetries || 0),
         senderIds: allowedSenderIdsFor(user)
       },
       apiKeys,
@@ -809,6 +811,26 @@ const server = http.createServer(async (req, res) => {
     }
     if (user.senderIds && user.senderIds.includes(cleanSenderId)) {
       return json(400, { ok: false, message: `Sender ID "${cleanSenderId}" is already approved and active in your account.` })
+    }
+
+    // A previously rejected sender ID earns one free retry: no payment needed.
+    if (await UserRepo.consumeFreeSenderIdRetry(userId)) {
+      const freeReq = await SenderIdRequestRepo.create({
+        userId,
+        senderId: cleanSenderId,
+        purpose: purpose || 'Web business notification',
+        feeAmountGHS: 0,
+        paymentMethod: 'free_retry'
+      })
+      await notifyAdmin({ user, request: freeReq, paymentMethod: 'Free retry (earlier ID rejected)' })
+      return json(200, {
+        ok: true,
+        feePaid: 0,
+        freeRetryUsed: true,
+        remainingBalance: user.balance,
+        message: `Sender ID "${cleanSenderId}" submitted for review using your free retry. No fee was charged.`,
+        senderIdRequest: freeReq
+      })
     }
 
     if (paymentMethod === 'paystack') {

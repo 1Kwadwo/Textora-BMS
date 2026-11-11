@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   balance: { type: Number, default: 0, min: 0 },
   senderIds: { type: [String], default: [] },
+  freeSenderIdRetries: { type: Number, default: 0, min: 0 },
   isVerified: { type: Boolean, default: false },
   verificationCode: { type: String, default: null },
   verificationCodeExpiry: { type: Date, default: null },
@@ -321,6 +322,43 @@ const UserRepo = {
     }
     const store = loadStore()
     return store.users.find(u => String(u._id) === String(id) || String(u.id) === String(id)) || null
+  },
+
+  // A rejected sender ID gives the customer one free retry.
+  async addFreeSenderIdRetry(userId) {
+    if (getMongoStatus()) {
+      try { await UserModel.findByIdAndUpdate(userId, { $inc: { freeSenderIdRetries: 1 } }) } catch (e) {}
+    }
+    const store = loadStore()
+    const user = store.users.find(u => String(u._id) === String(userId) || String(u.id) === String(userId))
+    if (user) { user.freeSenderIdRetries = Number(user.freeSenderIdRetries || 0) + 1; saveStore(store) }
+  },
+
+  // Uses up one free retry. Returns true only if one was available.
+  async consumeFreeSenderIdRetry(userId) {
+    if (getMongoStatus()) {
+      try {
+        const updated = await UserModel.findOneAndUpdate(
+          { _id: userId, freeSenderIdRetries: { $gt: 0 } },
+          { $inc: { freeSenderIdRetries: -1 } },
+          { new: true }
+        )
+        if (updated) {
+          const store = loadStore()
+          const u = store.users.find(x => String(x._id) === String(userId))
+          if (u) { u.freeSenderIdRetries = updated.freeSenderIdRetries; saveStore(store) }
+          return true
+        }
+        const exists = await UserModel.findById(userId)
+        if (exists) return false
+      } catch (e) {}
+    }
+    const store = loadStore()
+    const user = store.users.find(u => String(u._id) === String(userId) || String(u.id) === String(userId))
+    if (!user || !(Number(user.freeSenderIdRetries) > 0)) return false
+    user.freeSenderIdRetries = Number(user.freeSenderIdRetries) - 1
+    saveStore(store)
+    return true
   },
 
   async debitBalance(userId, amount) {
