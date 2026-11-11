@@ -100,3 +100,14 @@ test('admin lookup finds a customer by part of their name', async () => {
   const txs = await TransactionRepo.listByUser(user._id)
   assert.ok(Array.isArray(txs))
 })
+
+test('admin lookup finds a customer by phone in any format and by a misspelled name', async () => {
+  const stamp = String(Date.now()).slice(-7)
+  const user = await UserRepo.create({ name: 'Zqxgadgetsvault' + stamp, email: `z${stamp}@kebsend.test`, phone: '233' + '20' + stamp, passwordHash: 'x', isVerified: true })
+  for (const q of ['020 ' + stamp.slice(0, 3) + ' ' + stamp.slice(3), '+233 20' + stamp, '20' + stamp]) {
+    const found = await UserRepo.searchByNameOrEmail(q)
+    assert.ok(found.some(u => String(u._id) === String(user._id)), q)
+  }
+  const typo = await UserRepo.searchByNameOrEmail('Zqxgadgetvault')
+  assert.ok(typo.some(u => String(u._id) === String(user._id)))
+})
