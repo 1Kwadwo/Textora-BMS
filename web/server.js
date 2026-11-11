@@ -884,7 +884,6 @@ const server = http.createServer(async (req, res) => {
 
     // Dispatch real-time Telegram notification to admin chat with 1-click inline buttons
     await notifyAdmin({ user, request: reqRecord, paymentMethod: 'Wallet Balance' })
-
     return json(200, {
       ok: true,
       feePaid: feeGHS,
@@ -911,7 +910,7 @@ const server = http.createServer(async (req, res) => {
       result = await fulfillSenderIdFee(reference)
     } catch (err) {
       console.error('[Sender ID verify-payment]', err.message)
-      return json(400, { ok: false, message: 'Payment verification pending or failed.' })
+      return json(500, { ok: false, message: 'Could not complete sender ID payment verification.' })
     }
     if (!result.ok) {
       return json(400, { ok: false, message: 'Payment verification pending or failed.' })

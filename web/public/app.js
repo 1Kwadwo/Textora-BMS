@@ -704,6 +704,9 @@ async function checkPendingPayments() {
       const data = await res.json();
       if (data.ok) {
         setTimeout(() => {
+          const sidTabBtn = document.querySelector('[data-dash-tab="dash-sender-ids"]');
+          if (sidTabBtn) sidTabBtn.click();
+
           const sidFeedback = document.getElementById('dash-sid-feedback');
           if (sidFeedback) {
             sidFeedback.className = 'rounded-xl border border-teal-500/30 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-700 dark:bg-teal-500/10 dark:text-teal-300';
@@ -1182,13 +1185,47 @@ function initDashboardWorkspace() {
 
         if (data.ok) {
           if (data.paymentRequired && data.checkout_url) {
-            // Paystack checkout redirect
             if (sidFeedback) {
               sidFeedback.className = 'rounded-xl border border-blue-500/30 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-200';
-              sidFeedback.textContent = `Redirecting to Paystack for ₵${currentCustomSenderIdFee.toFixed(2)} registration fee...`;
+              sidFeedback.innerHTML = `Checkout opened in new window. <a href="${data.checkout_url}" target="_blank" class="font-bold underline text-ember-600">Click here if it didn't open</a><div class="mt-2 flex items-center gap-2 text-ink dark:text-slate-300"><span class="loading loading-spinner loading-xs text-ember-600"></span> Waiting for payment confirmation...</div>`;
               sidFeedback.classList.remove('hidden');
             }
-            window.location.href = data.checkout_url;
+
+            const payWindow = window.open(data.checkout_url, '_blank');
+
+            // Live polling every 3 seconds for Sender ID payment
+            let pollCount = 0;
+            const pollTimer = setInterval(async () => {
+              pollCount++;
+              if (pollCount > 100) {
+                clearInterval(pollTimer);
+                btnReqSid.disabled = false;
+                btnReqSid.textContent = origText;
+                return;
+              }
+              try {
+                const vRes = await fetch(`/api/dashboard/sender-id/verify-payment?reference=${encodeURIComponent(data.reference)}`, {
+                  headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+                });
+                const vData = await vRes.json();
+                if (vData.ok) {
+                  clearInterval(pollTimer);
+                  if (payWindow && !payWindow.closed) {
+                    try { payWindow.close(); } catch (e) {}
+                  }
+                  if (sidFeedback) {
+                    sidFeedback.className = 'rounded-xl border border-teal-500/30 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-700 dark:bg-teal-500/10 dark:text-teal-300';
+                    sidFeedback.textContent = vData.message || `🎉 Payment confirmed! Sender ID "${sid}" submitted for review.`;
+                    sidFeedback.classList.remove('hidden');
+                  }
+                  sidInput.value = '';
+                  sidPurpose.value = '';
+                  btnReqSid.disabled = false;
+                  btnReqSid.textContent = origText;
+                  if (typeof loadDashboardData === 'function') loadDashboardData();
+                }
+              } catch (e) {}
+            }, 3000);
             return;
           }
 
