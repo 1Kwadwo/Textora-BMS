@@ -211,6 +211,23 @@ const UserRepo = {
     return store.users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase().trim()) || null
   },
 
+  // Admin lookup: accounts whose name or email contains q (case-insensitive).
+  async searchByNameOrEmail(q, limit = 5) {
+    const needle = String(q || '').trim()
+    if (!needle) return []
+    if (getMongoStatus()) {
+      try {
+        const rx = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+        const list = await UserModel.find({ $or: [{ name: rx }, { email: rx }] }).limit(limit)
+        return list.map(u => u.toObject())
+      } catch (e) {}
+    }
+    const low = needle.toLowerCase()
+    return loadStore().users.filter(u =>
+      String(u.name || '').toLowerCase().includes(low) || String(u.email || '').toLowerCase().includes(low)
+    ).slice(0, limit)
+  },
+
   // Every account (any email) whose stored phone is the same number.
   async findAllByPhone(canonicalPhone) {
     const re = phoneMatcher(canonicalPhone)
@@ -550,6 +567,16 @@ const TransactionRepo = {
       return tx
     }
     return null
+  },
+
+  async listByUser(userId, limit = 20) {
+    if (getMongoStatus()) {
+      try {
+        const list = await TransactionModel.find({ userId: String(userId) }).sort({ createdAt: -1 }).limit(limit)
+        return list.map(t => t.toObject())
+      } catch (e) {}
+    }
+    return loadStore().transactions.filter(t => String(t.userId) === String(userId)).slice(-limit).reverse()
   },
 
   // Pending transactions whose reference starts with prefix (optionally for one user / since a date).

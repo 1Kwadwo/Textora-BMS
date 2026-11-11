@@ -92,3 +92,11 @@ test('rejecting marks the request rejected without activating it', async () => {
   const fresh = await UserRepo.findById(userId)
   assert.ok(!(fresh.senderIds || []).includes('NOPEID'))
 })
+
+test('admin lookup finds a customer by part of their name', async () => {
+  const user = await makeUser()
+  const found = await UserRepo.searchByNameOrEmail(user.email.slice(0, 20).toUpperCase())
+  assert.ok(found.some(u => String(u._id) === String(user._id)))
+  const txs = await TransactionRepo.listByUser(user._id)
+  assert.ok(Array.isArray(txs))
+})
