@@ -11,7 +11,7 @@ const { UserRepo, ApiKeyRepo, TransactionRepo, SmsLogRepo, SenderIdRequestRepo }
 const { hashPassword, comparePassword, generateToken, verifyToken, extractBearerToken } = require('./src/auth')
 const { isGhanaNumber, normalizeNumber, toCanonicalGhanaPhone, calculateSMSUnits, sendSMS } = require('./src/services/sms')
 const { initializePayment, verifyPayment } = require('./src/services/paystack')
-const { fulfillSenderIdFee, notifyAdmin, reconcileUserSenderIdFees } = require('./src/services/senderIdRequests')
+const { fulfillSenderIdFee, notifyAdmin, reconcileUserSenderIdFees, isValidWebSenderId } = require('./src/services/senderIdRequests')
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./src/services/email')
 
 // A phone number can sit on one account only. Checks the number against every
@@ -791,8 +791,8 @@ const server = http.createServer(async (req, res) => {
 
     const body = await parseBody()
     const { senderId, purpose, paymentMethod = 'wallet' } = body
-    if (!senderId || senderId.trim().length < 3 || senderId.trim().length > 11) {
-      return json(400, { ok: false, message: 'Sender ID must be between 3 and 11 alphanumeric characters.' })
+    if (!senderId || !isValidWebSenderId(senderId)) {
+      return json(400, { ok: false, message: 'Sender ID must be 3 to 11 letters or numbers (no emoji, spaces or symbols), and not only numbers.' })
     }
 
     const userId = user._id || user.id

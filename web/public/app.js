@@ -1145,10 +1145,10 @@ function initDashboardWorkspace() {
       const sid = sidInput.value.trim().toUpperCase();
       const purpose = sidPurpose.value.trim();
 
-      if (!sid || sid.length < 3 || sid.length > 11) {
+      if (!sid || !/^[A-Za-z0-9]{3,11}$/.test(sid) || /^\d+$/.test(sid)) {
         if (sidFeedback) {
           sidFeedback.className = 'rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-sm font-medium text-error';
-          sidFeedback.textContent = 'Sender ID must be 3-11 alphanumeric characters.';
+          sidFeedback.textContent = 'Sender ID must be 3-11 letters or numbers (no emoji, spaces or symbols).';
           sidFeedback.classList.remove('hidden');
         }
         return;

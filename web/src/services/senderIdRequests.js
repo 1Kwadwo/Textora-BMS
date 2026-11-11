@@ -9,6 +9,12 @@ const { sendTelegramSenderIdAlert } = require('./telegramAlert')
 
 const SENDER_ID_FEE_PREFIX = 'sid_fee_'
 
+// Carriers only accept plain letters/digits; emoji or symbols get rejected at send time.
+function isValidWebSenderId(value) {
+  const v = String(value || '').trim()
+  return /^[A-Za-z0-9]{3,11}$/.test(v) && !/^\d+$/.test(v)
+}
+
 function feeGHS() {
   return Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 8)
 }
@@ -151,7 +157,34 @@ async function reviewSenderIdRequest(requestId, decision) {
   return { ok: true, request, user, sms }
 }
 
+// Admin: create a sender ID for an account directly and approve it (texts the
+// customer). Links it to a paid fee that never became a request, if one exists.
+async function grantSenderId({ userId, senderId, purpose = 'Added by KebSEND admin' }) {
+  const clean = String(senderId || '').trim().toUpperCase()
+  if (!isValidWebSenderId(clean)) return { ok: false, reason: 'invalid' }
+
+  const txs = (await TransactionRepo.listByUser(userId, 50)).filter(t =>
+    String(t.reference || '').startsWith(SENDER_ID_FEE_PREFIX) && t.status === 'success')
+  let paidTx = null
+  for (const t of txs) {
+    if (!(await SenderIdRequestRepo.findByPaymentReference(t.reference))) { paidTx = t; break }
+  }
+
+  const request = await SenderIdRequestRepo.create({
+    userId,
+    senderId: clean,
+    purpose: paidTx ? parseFeePurpose(paidTx.paymentPurpose).purpose : purpose,
+    feeAmountGHS: paidTx ? (paidTx.amountGHS || feeGHS()) : 0,
+    paymentMethod: paidTx ? 'paystack' : 'admin',
+    paymentReference: paidTx ? paidTx.reference : ''
+  })
+  const review = await reviewSenderIdRequest(String(request._id || request.id), 'approve')
+  return { ...review, linkedPayment: paidTx ? paidTx.reference : null }
+}
+
 module.exports = {
+  isValidWebSenderId,
+  grantSenderId,
   SENDER_ID_FEE_PREFIX,
   parseFeePurpose,
   fulfillSenderIdFee,

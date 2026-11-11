@@ -482,6 +482,45 @@ ${ctx.chat.id}`
     }
   })
 
+  // Admin: create + approve a sender ID for a web account in one step.
+  // /grantsid <email or phone> <SENDERID>
+  bot.command(['grantsid', 'addwebsid'], async (ctx) => {
+    if (!isDeveloperApprovalContext(ctx)) {
+      return ctx.reply('Only the KebSEND admin can add sender IDs.')
+    }
+    const parts = ctx.message.text.split(/\s+/).slice(1)
+    if (parts.length < 2) return ctx.reply('Usage: /grantsid <email or phone> <SENDERID>\nExample: /grantsid citizen@gmail.com CITIZEN')
+    const senderId = parts[parts.length - 1]
+    const who = parts.slice(0, -1).join(' ')
+    try {
+      const { UserRepo, grantSenderId, isValidWebSenderId, escapeTelegramHtml: e } = await loadWebSenderIdTools()
+      if (!isValidWebSenderId(senderId)) {
+        return ctx.reply(`"${senderId}" isn't a valid sender ID. Use 3 to 11 letters or numbers, no emoji, spaces or symbols.`)
+      }
+      const users = await UserRepo.searchByNameOrEmail(who, 2)
+      if (users.length === 0) return ctx.reply(`No web account matches "${who}".`)
+      if (users.length > 1) return ctx.reply(`More than one account matches "${who}". Use their full email address.`)
+      const user = users[0]
+      if ((user.senderIds || []).map(s => String(s).toUpperCase()).includes(senderId.toUpperCase())) {
+        return ctx.reply(`${user.name} already has ${senderId.toUpperCase()}.`)
+      }
+      const r = await grantSenderId({ userId: String(user._id || user.id), senderId })
+      if (!r.ok) return ctx.reply(`Could not add sender ID (${r.reason}).`)
+      const smsLine = r.sms.ok ? `📲 SMS sent to ${e(r.sms.phone)}` : `⚠️ SMS not sent (${e(r.sms.reason)})`
+      return ctx.reply(
+        `✅ <b>Sender ID Approved</b>\n\n` +
+        `• <b>Sender ID:</b> <code>${e(r.request.senderId)}</code>\n` +
+        `• <b>Account:</b> ${e(user.name)} (${e(user.email)})\n` +
+        `• ${r.linkedPayment ? 'Linked to their paid ₵ fee' : 'No unused fee payment found (added free)'}\n` +
+        `• ${smsLine}`,
+        { parse_mode: 'HTML' }
+      )
+    } catch (err) {
+      console.error('[grantsid Error]', err)
+      return ctx.reply(`Could not add sender ID: ${err.message}`)
+    }
+  })
+
   bot.command('bypass', async (ctx) => {
     if (!isDeveloperApprovalContext(ctx)) {
       return ctx.reply('Only Textora admin can bypass payment verification.')
