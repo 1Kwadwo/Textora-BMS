@@ -13,6 +13,20 @@ function normalizeNumber(phone) {
   return cleaned
 }
 
+// Turns any common way of writing a Ghana mobile number (024 412 3456,
+// +233 24 412 3456, 233244123456, 244123456) into one canonical form:
+// 233XXXXXXXXX. Returns null when it is not a valid Ghana mobile number.
+function toCanonicalGhanaPhone(phone) {
+  if (phone === undefined || phone === null) return null
+  let digits = String(phone).replace(/\D/g, '')
+  if (digits.startsWith('00233')) digits = digits.slice(2)
+  if (digits.startsWith('2330') && digits.length === 13) digits = '233' + digits.slice(4)
+  if (digits.startsWith('0') && digits.length === 10) digits = '233' + digits.slice(1)
+  if (digits.length === 9 && !digits.startsWith('0')) digits = '233' + digits
+  if (!/^233[2-5]\d{8}$/.test(digits)) return null
+  return digits
+}
+
 function isGsm7String(text) {
   const gsm7Chars =
     "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\x1BÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà\f^{}\\[~]|€"
@@ -100,6 +114,7 @@ async function sendSMS({ to, message, senderId = 'TXTORA' }) {
 module.exports = {
   isGhanaNumber,
   normalizeNumber,
+  toCanonicalGhanaPhone,
   calculateSMSUnits,
   sendSMS
 }

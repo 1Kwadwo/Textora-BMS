@@ -45,13 +45,15 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
   let createdUserId = ''
   let generatedApiKey = ''
   const testEmail = `test_${Date.now()}@kebsend.test`
+  // A fresh number each run, written as a customer would type it (0 + 9 digits)
+  const testPhone = '024' + String(Date.now()).slice(-7)
 
   await t.test('1. User Registration: Requires 6-digit email code and holds 0 balance initially', async () => {
     const res = await request('POST', '/api/auth/register', {
       name: 'Harrison Kwadwo',
       email: testEmail,
       password: 'SecurePassword2026',
-      phone: '0244123456'
+      phone: testPhone
     })
 
     assert.strictEqual(res.statusCode, 200)
@@ -109,6 +111,43 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(res.statusCode, 400)
     assert.strictEqual(res.data.ok, false)
     assert.ok(res.data.message.includes('already exists'))
+  })
+
+  await t.test('2b. User Registration: Blocks a phone number already on another account, in any format', async () => {
+    const formats = [
+      testPhone,
+      '+233 ' + testPhone.slice(1, 3) + ' ' + testPhone.slice(3, 6) + ' ' + testPhone.slice(6),
+      '233' + testPhone.slice(1)
+    ]
+    for (const [i, phone] of formats.entries()) {
+      const res = await request('POST', '/api/auth/register', {
+        name: 'Second Account',
+        email: `other_${i}_${Date.now()}@kebsend.test`,
+        password: 'AnotherPassword',
+        phone
+      })
+      assert.strictEqual(res.statusCode, 409, `format ${phone} should be rejected`)
+      assert.strictEqual(res.data.ok, false)
+      assert.ok(res.data.message.includes('already linked'))
+    }
+  })
+
+  await t.test('2c. User Registration: Rejects an invalid phone number and holds a number pending on another sign-up', async () => {
+    const bad = await request('POST', '/api/auth/register', {
+      name: 'Bad Number', email: `bad_${Date.now()}@kebsend.test`, password: 'Password123', phone: '12345'
+    })
+    assert.strictEqual(bad.statusCode, 400)
+
+    const pendingPhone = '055' + String(Date.now() + 7).slice(-7)
+    const first = await request('POST', '/api/auth/register', {
+      name: 'Pending One', email: `pend1_${Date.now()}@kebsend.test`, password: 'Password123', phone: pendingPhone
+    })
+    assert.strictEqual(first.statusCode, 200)
+    const second = await request('POST', '/api/auth/register', {
+      name: 'Pending Two', email: `pend2_${Date.now()}@kebsend.test`, password: 'Password123', phone: pendingPhone
+    })
+    assert.strictEqual(second.statusCode, 409)
+    assert.ok(second.data.message.includes('waiting to be verified'))
   })
 
   await t.test('3. User Login: Validates credentials and returns JWT', async () => {
