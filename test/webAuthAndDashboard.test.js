@@ -286,9 +286,34 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
       Authorization: `Bearer ${authToken}`
     })
 
+    // SMS credits must never pay the sender ID fee: it always goes to Paystack.
     assert.strictEqual(res.statusCode, 200)
     assert.strictEqual(res.data.ok, true)
-    assert.strictEqual(res.data.senderIdRequest.senderId, 'MYSHOP')
+    assert.strictEqual(res.data.paymentRequired, true)
+    assert.ok(res.data.checkout_url)
+    const after = await UserRepo.findById(createdUserId)
+    assert.strictEqual(after.balance, 997)
+
+    const verify = await request('GET', `/api/dashboard/sender-id/verify-payment?reference=${res.data.reference}`, null, {
+      Authorization: `Bearer ${authToken}`
+    })
+    assert.strictEqual(verify.statusCode, 200)
+    assert.strictEqual(verify.data.senderIdRequest.senderId, 'MYSHOP')
+
+    // Asking for wallet payment is ignored too.
+    const walletTry = await request('POST', '/api/dashboard/sender-id', {
+      senderId: 'MYSHOPTWO', purpose: 'x', paymentMethod: 'wallet'
+    }, { Authorization: `Bearer ${authToken}` })
+    assert.strictEqual(walletTry.data.paymentRequired, true)
+    assert.strictEqual((await UserRepo.findById(createdUserId)).balance, 997)
+
+    // A free retry (after a rejection) skips payment entirely.
+    await UserRepo.addFreeSenderIdRetry(createdUserId)
+    const free = await request('POST', '/api/dashboard/sender-id', {
+      senderId: 'MYSHOPGH', purpose: 'x'
+    }, { Authorization: `Bearer ${authToken}` })
+    assert.strictEqual(free.data.freeRetryUsed, true)
+    assert.strictEqual(free.data.senderIdRequest.paymentMethod, 'free_retry')
   })
 
   await t.test('12. Forgot Password: Requests password reset link', async () => {

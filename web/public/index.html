@@ -1227,14 +1227,8 @@ Authorization: Bearer ksnd_live_...
 
             <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-t pt-3 text-sm text-ink dark:text-slate-300" style="border-color:var(--ks-border)">
               <span class="font-semibold">Pay with:</span>
-              <label class="inline-flex cursor-pointer items-center gap-2">
-                <input type="radio" name="sid-pay-method" value="wallet" checked class="radio radio-primary radio-sm">
-                <span>Wallet (<span id="sid-wallet-balance" class="font-bold text-navy-900 dark:text-white">₵0.00</span>)</span>
-              </label>
-              <label class="inline-flex cursor-pointer items-center gap-2">
-                <input type="radio" name="sid-pay-method" value="paystack" class="radio radio-primary radio-sm">
-                <span>Mobile Money / card</span>
-              </label>
+              <span>Mobile Money / card (₵ fee, paid on Paystack). SMS credits can't be used for sender IDs.</span>
+              <input type="hidden" name="sid-pay-method" value="paystack">
             </div>
 
             <div id="dash-sid-feedback" class="hidden text-xs font-mono p-2.5 rounded border"></div>
