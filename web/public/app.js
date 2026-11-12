@@ -1162,15 +1162,12 @@ function initDashboardWorkspace() {
       }
 
       // Check selected payment method
-      const payMethodRadios = document.getElementsByName('sid-pay-method');
-      let chosenMethod = 'wallet';
-      for (const r of payMethodRadios) {
-        if (r.checked) chosenMethod = r.value;
-      }
+      // Sender ID fees are always paid with real money on Paystack, never SMS credits.
+      const chosenMethod = 'paystack';
 
       const origText = btnReqSid.textContent;
       btnReqSid.disabled = true;
-      btnReqSid.textContent = chosenMethod === 'paystack' ? 'Initializing Paystack...' : 'Processing Payment...';
+      btnReqSid.textContent = Number(currentUser?.freeSenderIdRetries || 0) > 0 ? 'Submitting...' : 'Opening Paystack...';
 
       try {
         const res = await fetch('/api/dashboard/sender-id', {
@@ -1231,7 +1228,7 @@ function initDashboardWorkspace() {
 
           if (sidFeedback) {
             sidFeedback.className = 'rounded-xl border border-teal-500/30 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-700 dark:bg-teal-500/10 dark:text-teal-300';
-            sidFeedback.textContent = data.message || `Sender ID "${sid}" submitted for review. Registration fee (₵${currentCustomSenderIdFee.toFixed(2)}) deducted from your wallet balance.`;
+            sidFeedback.textContent = data.message || `Sender ID "${sid}" submitted for review.`;
             sidFeedback.classList.remove('hidden');
           }
           sidInput.value = '';

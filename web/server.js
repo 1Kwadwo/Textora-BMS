@@ -794,7 +794,7 @@ const server = http.createServer(async (req, res) => {
     if (!user) return json(401, { ok: false, message: 'Unauthorized' })
 
     const body = await parseBody()
-    const { senderId, purpose, paymentMethod = 'wallet' } = body
+    const { senderId, purpose } = body
     if (!senderId || !isValidWebSenderId(senderId)) {
       return json(400, { ok: false, message: 'Sender ID must be 3 to 11 letters or numbers (no emoji, spaces or symbols), and not only numbers.' })
     }
@@ -833,7 +833,9 @@ const server = http.createServer(async (req, res) => {
       })
     }
 
-    if (paymentMethod === 'paystack') {
+    // The fee is real money (Paystack MoMo/card). SMS credits in the wallet are
+    // SMS units, not cedis, so they can never pay for a sender ID.
+    {
       const reference = 'sid_fee_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex')
       await TransactionRepo.create({
         userId,
@@ -862,35 +864,6 @@ const server = http.createServer(async (req, res) => {
       })
     }
 
-    // Default: Pay with account wallet balance
-    const debitRes = await UserRepo.debitBalance(userId, feeGHS)
-    if (!debitRes.ok) {
-      return json(400, {
-        ok: false,
-        insufficientBalance: true,
-        feeGHS,
-        currentBalance: user.balance,
-        message: `Insufficient wallet balance. Custom Sender ID registration fee is ₵${feeGHS.toFixed(2)}. Your current balance is ₵${Number(user.balance || 0).toFixed(2)}. Please recharge your wallet or choose Pay via Mobile Money/Card.`
-      })
-    }
-
-    const reqRecord = await SenderIdRequestRepo.create({
-      userId,
-      senderId: cleanSenderId,
-      purpose: purpose || 'Web business notification',
-      feeAmountGHS: feeGHS,
-      paymentMethod: 'wallet'
-    })
-
-    // Dispatch real-time Telegram notification to admin chat with 1-click inline buttons
-    await notifyAdmin({ user, request: reqRecord, paymentMethod: 'Wallet Balance' })
-    return json(200, {
-      ok: true,
-      feePaid: feeGHS,
-      remainingBalance: debitRes.balance,
-      message: `Sender ID "${cleanSenderId}" submitted for review. Registration fee of ₵${feeGHS.toFixed(2)} deducted from your wallet balance. It will be approved shortly.`,
-      senderIdRequest: reqRecord
-    })
   }
 
   if (urlPath === '/api/dashboard/sender-id/verify-payment' && req.method === 'GET') {
