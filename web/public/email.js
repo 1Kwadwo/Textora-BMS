@@ -112,8 +112,6 @@
     if (!c) return
     state.credits = { transactional: Number(c.transactional || 0), marketing: Number(c.marketing || 0) }
     $('em-head-balance').textContent = `${fmtN(state.credits.transactional)} · ${fmtN(state.credits.marketing)} emails`
-    $('em-side-tx').textContent = fmtN(state.credits.transactional)
-    $('em-side-mk').textContent = fmtN(state.credits.marketing)
     if ($('cr-tx')) { $('cr-tx').textContent = fmtN(state.credits.transactional); $('cr-mk').textContent = fmtN(state.credits.marketing) }
   }
 
