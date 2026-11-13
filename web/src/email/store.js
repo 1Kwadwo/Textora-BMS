@@ -91,6 +91,18 @@ function collection(name, prefix) {
       fileSave()
       return record
     },
+    async insertMany(docs) {
+      const now = new Date().toISOString()
+      const records = docs.map(doc => ({ _id: newId(prefix), createdAt: now, updatedAt: now, ...doc }))
+      if (!records.length) return records
+      if (useMongo()) {
+        await col().insertMany(records, { ordered: false })
+        return records
+      }
+      rows().push(...records.map(clone))
+      fileSave()
+      return records
+    },
     async findOne(filter) {
       if (useMongo()) return col().findOne(filter)
       return clone(rows().find(d => matches(d, filter)) || null)
@@ -146,14 +158,18 @@ const db = {
   events: collection('events', 'eevt'),
   templates: collection('templates', 'etpl'),
   suppressions: collection('suppressions', 'esup'),
-  accounts: collection('accounts', 'eacc')
+  accounts: collection('accounts', 'eacc'),
+  campaigns: collection('campaigns', 'ecmp')
 }
 
 async function ensureIndexes() {
   await db.domains.ensureIndexes([[{ name: 1 }, { unique: true }], [{ userId: 1 }]])
   await db.identities.ensureIndexes([[{ address: 1 }, { unique: true }], [{ userId: 1 }]])
+  await db.campaigns.ensureIndexes([[{ userId: 1, createdAt: -1 }], [{ userId: 1, idempotencyKey: 1 }]])
   await db.messages.ensureIndexes([
     [{ userId: 1, createdAt: -1 }],
+    [{ campaignId: 1 }],
+    [{ status: 1, product: 1, nextAttemptAt: 1 }],
     [{ providerMessageId: 1 }],
     [{ status: 1, nextAttemptAt: 1 }],
     [{ userId: 1, idempotencyKey: 1 }, { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } }]

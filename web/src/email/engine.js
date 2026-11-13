@@ -4,8 +4,10 @@
 const dns = require('dns').promises
 const { db, ensureIndexes } = require('./store')
 const { getProvider } = require('./providers')
-const { UserRepo, TransactionRepo } = require('../models')
+const crypto = require('crypto')
+const { UserRepo } = require('../models')
 const U = require('./util')
+const wallet = require('./wallet')
 
 class EmailError extends Error {
   constructor(status, code, message, extra = {}) {
@@ -41,7 +43,7 @@ function provider() {
 // --------------------------------------------------------------------------
 
 async function getAccount(userId) {
-  return (await db.accounts.findOne({ userId: String(userId) })) || { userId: String(userId), paused: false }
+  return wallet.ensureAccount(userId)
 }
 
 // Pause sending when bounces or complaints get too high over the last 200 emails.
@@ -54,10 +56,9 @@ async function checkHealth(userId) {
   if (bounced > 0.05) reason = `Bounce rate ${(bounced * 100).toFixed(1)}% is above 5%`
   else if (complained > 0.001) reason = `Complaint rate ${(complained * 100).toFixed(2)}% is above 0.1%`
   if (!reason) return
-  const existing = await db.accounts.findOne({ userId: String(userId) })
-  if (existing?.paused) return
-  if (existing) await db.accounts.updateOne({ userId: String(userId) }, { $set: { paused: true, pausedReason: reason, pausedAt: nowIso() } })
-  else await db.accounts.insert({ userId: String(userId), paused: true, pausedReason: reason, pausedAt: nowIso() })
+  const existing = await wallet.ensureAccount(userId)
+  if (existing.paused) return
+  await db.accounts.updateOne({ userId: String(userId) }, { $set: { paused: true, pausedReason: reason, pausedAt: nowIso() } })
   console.warn(`[Email] Paused sending for user ${userId}: ${reason}`)
 }
 
@@ -322,6 +323,8 @@ function publicMessage(m, { full = false } = {}) {
     cc: m.cc,
     bcc: m.bcc,
     subject: m.subject,
+    type: m.product || 'transactional',
+    campaign_id: m.campaignId || null,
     source: m.source,
     credits_charged: m.creditsCharged,
     refunded: !!m.refunded,
@@ -345,14 +348,27 @@ function publicMessage(m, { full = false } = {}) {
   return out
 }
 
-async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempotencyKey = null } = {}) {
+function emailType(input) {
+  const t = String(input.type || 'transactional').trim().toLowerCase()
+  if (t !== 'transactional' && t !== 'marketing') throw new EmailError(400, 'invalid_type', '"type" must be "transactional" or "marketing".')
+  return t
+}
+
+async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempotencyKey = null, baseUrl = null } = {}) {
   const userId = uid(user)
+  input = input && typeof input === 'object' ? input : {}
+  const product = emailType(input)
   provider() // fail early if not configured
 
   if (idempotencyKey) {
     idempotencyKey = String(idempotencyKey).slice(0, 200)
-    const prior = await db.messages.findOne({ userId, idempotencyKey })
-    if (prior) return { message: prior, duplicate: true }
+    if (product === 'marketing') {
+      const prior = await db.campaigns.findOne({ userId, idempotencyKey })
+      if (prior) return { campaign: prior, duplicate: true }
+    } else {
+      const prior = await db.messages.findOne({ userId, idempotencyKey })
+      if (prior) return { message: prior, duplicate: true }
+    }
   }
 
   const account = await getAccount(userId)
@@ -372,9 +388,11 @@ async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempot
     html = html || t.html
     text = text || t.text
   }
+  // In marketing email {{email}} is filled in per recipient when it is sent.
+  const renderVars = product === 'marketing' ? { ...vars, email: '{{email}}' } : vars
   subject = U.renderTemplate(subject, vars)
-  html = U.renderTemplate(html, vars, { html: true })
-  text = U.renderTemplate(text, vars)
+  html = U.renderTemplate(html, renderVars, { html: true })
+  text = U.renderTemplate(text, renderVars)
 
   subject = typeof subject === 'string' ? subject.trim() : ''
   if (!subject) throw new EmailError(400, 'missing_subject', '"subject" is required.')
@@ -391,10 +409,15 @@ async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempot
   const cc = U.parseAddressList(input.cc)
   const bcc = U.parseAddressList(input.bcc)
   const invalid = [...to.invalid, ...cc.invalid, ...bcc.invalid]
-  if (invalid.length) throw new EmailError(400, 'invalid_recipients', `These addresses are not valid: ${invalid.slice(0, 5).join(', ')}`, { invalid })
+  if (invalid.length) throw new EmailError(400, 'invalid_recipients', `These addresses are not valid: ${invalid.slice(0, 5).join(', ')}${invalid.length > 5 ? ` and ${invalid.length - 5} more` : ''}`, { invalid: invalid.slice(0, 100) })
   if (!to.list.length) throw new EmailError(400, 'missing_to', '"to" needs at least one email address.')
-  const total = to.list.length + cc.list.length + bcc.list.length
-  if (total > U.config.maxRecipients()) throw new EmailError(400, 'too_many_recipients', `Up to ${U.config.maxRecipients()} recipients per email (to + cc + bcc). Bulk email is coming separately.`)
+  if (product === 'marketing') {
+    if (cc.list.length || bcc.list.length) throw new EmailError(400, 'cc_not_allowed', 'Marketing email goes to each recipient on their own, so cc and bcc are not used. Put every address in "to".')
+    if (to.list.length > U.config.maxCampaignRecipients()) throw new EmailError(400, 'too_many_recipients', `Up to ${U.config.maxCampaignRecipients().toLocaleString()} recipients per marketing send.`)
+  } else {
+    const total = to.list.length + cc.list.length + bcc.list.length
+    if (total > U.config.maxRecipients()) throw new EmailError(400, 'too_many_recipients', `Up to ${U.config.maxRecipients()} recipients per transactional email (to + cc + bcc). For newsletters and promotions, send it as marketing email.`)
+  }
 
   let replyTo = sender.replyTo
   if (input.reply_to || input.replyTo) {
@@ -413,7 +436,10 @@ async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempot
 
   // Suppressed addresses (earlier hard bounces, complaints, unsubscribes) are skipped and not charged.
   const everyone = [...to.list, ...cc.list, ...bcc.list]
-  const suppressed = new Set((await db.suppressions.find({ userId, address: { $in: everyone } })).map(s => s.address))
+  const suppressed = new Set()
+  for (let i = 0; i < everyone.length; i += 500) {
+    for (const s of await db.suppressions.find({ userId, address: { $in: everyone.slice(i, i + 500) } })) suppressed.add(s.address)
+  }
   const keep = l => l.filter(a => !suppressed.has(a))
   const finalTo = keep(to.list)
   const finalCc = keep(cc.list)
@@ -422,23 +448,26 @@ async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempot
     throw new EmailError(422, 'all_suppressed', 'Every "to" address is on your suppression list (bounced, complained or unsubscribed) so nothing was sent.', { suppressed: [...suppressed] })
   }
 
-  // Daily cap for accounts that have never paid.
+  // Daily cap for accounts that have never bought email credits.
   const cap = U.config.dailyCapUnpaid()
-  if (cap > 0) {
-    const txs = await TransactionRepo.listByUser(userId, 50)
-    const hasPaid = txs.some(t => t.status === 'success')
-    if (!hasPaid) {
-      const startOfDay = new Date(); startOfDay.setUTCHours(0, 0, 0, 0)
-      const today = await db.messages.count({ userId, createdAt: { $gte: startOfDay.toISOString() } })
-      if (today >= cap) throw new EmailError(429, 'daily_cap', `New accounts can send ${cap} emails a day until their first top-up.`)
-    }
+  if (cap > 0 && !(await wallet.hasPaid(userId))) {
+    const startOfDay = new Date(); startOfDay.setUTCHours(0, 0, 0, 0)
+    const today = await db.messages.count({ userId, createdAt: { $gte: startOfDay.toISOString() } })
+    if (today >= cap) throw new EmailError(429, 'daily_cap', `New accounts can send ${cap} emails a day until their first email credit purchase.`)
   }
 
-  const recipients = finalTo.length + finalCc.length + finalBcc.length
-  const cost = U.round2(recipients * U.config.creditsPerRecipient())
-  const debit = await UserRepo.debitBalance(userId, cost)
+  // Email credits only: SMS credits never pay for email. One credit per recipient.
+  const cost = finalTo.length + finalCc.length + finalBcc.length
+  const debit = await wallet.debit(userId, product, cost)
   if (!debit.ok) {
-    throw new EmailError(402, 'insufficient_balance', `Not enough credits. This email needs ${cost} credits and your balance is ${U.round2(debit.balance || 0)}.`, { required: cost, balance: debit.balance })
+    const label = product === 'marketing' ? 'marketing' : 'transactional'
+    throw new EmailError(402, 'insufficient_credits',
+      `Not enough ${label} email credits. This needs ${cost.toLocaleString()} and you have ${Number(debit.balance || 0).toLocaleString()}. Buy ${label} credits under Email > Credits.`,
+      { type: product, required: cost, balance: debit.balance })
+  }
+
+  if (product === 'marketing') {
+    return createCampaign({ userId, apiKeyId, source, sender, replyTo, subject, html, text, templateId, tags, recipients: finalTo, suppressed: [...suppressed], idempotencyKey, baseUrl, balance: debit.balance })
   }
 
   const now = nowIso()
@@ -473,11 +502,12 @@ async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempot
       lockedUntil: EPOCH,
       lastError: null,
       idempotencyKey: idempotencyKey || null,
+      product: 'transactional',
       opens: 0,
       clicks: 0
     })
   } catch (err) {
-    await UserRepo.creditBalance(userId, cost)
+    await wallet.credit(userId, 'transactional', cost)
     if (idempotencyKey && /duplicate key/i.test(err.message)) {
       return { message: await db.messages.findOne({ userId, idempotencyKey }), duplicate: true }
     }
@@ -487,12 +517,110 @@ async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempot
   return { message, balance: debit.balance }
 }
 
+// ---------------------------------------------------------------- marketing
+
+function unsubscribeSig(userId, address) {
+  const secret = process.env.JWT_SECRET || 'kebsend-email'
+  return crypto.createHmac('sha256', secret).update('unsub:' + userId + ':' + address).digest('base64url').slice(0, 32)
+}
+function unsubscribeUrl(baseUrl, userId, address) {
+  const q = new URLSearchParams({ u: userId, e: Buffer.from(address).toString('base64url'), s: unsubscribeSig(userId, address) })
+  return `${String(baseUrl).replace(/\/$/, '')}/email/unsubscribe?${q}`
+}
+function readUnsubscribe(params) {
+  const userId = String(params.get('u') || '')
+  let address = ''
+  try { address = Buffer.from(String(params.get('e') || ''), 'base64url').toString('utf8').toLowerCase() } catch (e) {}
+  const sig = String(params.get('s') || '')
+  if (!userId || !U.isValidAddress(address) || sig.length !== 32) return null
+  const want = unsubscribeSig(userId, address)
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(want))) return null
+  return { userId, address }
+}
+async function unsubscribe(params) {
+  const who = readUnsubscribe(params)
+  if (!who) throw new EmailError(400, 'invalid_link', 'This unsubscribe link is not valid.')
+  await suppress(who.userId, [who.address], 'unsubscribed', null)
+  return who
+}
+
+async function createCampaign({ userId, apiKeyId, source, sender, replyTo, subject, html, text, templateId, tags, recipients, suppressed, idempotencyKey, baseUrl, balance }) {
+  const now = nowIso()
+  let campaign
+  try {
+    campaign = await db.campaigns.insert({
+      userId, apiKeyId, source,
+      from: U.formatMailbox({ name: sender.name, address: sender.address }),
+      fromAddress: sender.address,
+      senderName: sender.name || sender.address,
+      replyTo, subject, html: html || null, text: text || null, templateId, tags,
+      recipients: recipients.length,
+      suppressedRecipients: suppressed,
+      baseUrl: process.env.PUBLIC_BASE_URL || baseUrl || 'https://kebsend.com',
+      idempotencyKey: idempotencyKey || null,
+      creditsCharged: recipients.length
+    })
+    const docs = recipients.map(address => ({
+      userId, apiKeyId, source, campaignId: campaign._id, product: 'marketing',
+      from: campaign.from, fromAddress: sender.address, senderType: sender.senderType, domainId: sender.domainId,
+      to: [address], cc: [], bcc: [], replyTo, subject, html: null, text: null, templateId, tags,
+      suppressedRecipients: [],
+      status: 'queued', history: [{ status: 'queued', at: now }],
+      provider: getProvider().name, providerMessageId: null,
+      creditsCharged: 1, refunded: false, attempts: 0, nextAttemptAt: now, lockedUntil: EPOCH, lastError: null,
+      idempotencyKey: null, opens: 0, clicks: 0
+    }))
+    for (let i = 0; i < docs.length; i += 500) await db.messages.insertMany(docs.slice(i, i + 500))
+  } catch (err) {
+    // Nothing (or not everything) was queued: give back the credits for what is not in the outbox.
+    const queued = campaign ? await db.messages.count({ campaignId: campaign._id }) : 0
+    await wallet.credit(userId, 'marketing', recipients.length - queued)
+    if (!queued) throw err
+    console.error('[Email] Campaign partly queued', campaign._id, err.message)
+  }
+  kick()
+  return { campaign, balance }
+}
+
+const campaignCache = new Map()
+async function campaignFor(id) {
+  if (campaignCache.has(id)) return campaignCache.get(id)
+  const c = await db.campaigns.findOne({ _id: id })
+  if (campaignCache.size > 50) campaignCache.clear()
+  if (c) campaignCache.set(id, c)
+  return c
+}
+
+// The body that is actually sent to one marketing recipient.
+function marketingBody(c, address) {
+  const url = unsubscribeUrl(c.baseUrl, c.userId, address)
+  const fill = (s, isHtml) => s ? s.replace(/\{\{\s*email\s*\}\}/g, isHtml ? U.escapeHtml(address) : address) : s
+  let html = fill(c.html, true)
+  let text = fill(c.text, false)
+  if (html) {
+    const footer = `<div style="margin:28px auto 0;max-width:520px;padding:14px 16px 0;border-top:1px solid #e5e7eb;font:12px/1.6 Arial,Helvetica,sans-serif;color:#6b7280;text-align:center">You are getting this email from ${U.escapeHtml(c.senderName)}. <a href="${U.escapeHtml(url)}" style="color:#6b7280;text-decoration:underline">Unsubscribe</a></div>`
+    html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, footer + '</body>') : html + footer
+  }
+  text = (text || '') + `\n\n--\nYou are getting this email from ${c.senderName}. Unsubscribe: ${url}`
+  return { html, text, headers: { 'List-Unsubscribe': `<${url}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } }
+}
+
+async function messageContent(m) {
+  if (!m.campaignId) return { html: m.html, text: m.text }
+  const c = await db.campaigns.findOne({ _id: m.campaignId })
+  return c ? { html: c.html, text: c.text } : { html: null, text: null }
+}
+
 async function refund(message, reason) {
   const claimed = await db.messages.updateOne(
     { _id: message._id, refunded: false, creditsCharged: { $gt: 0 } },
     { $set: { refunded: true, refundedAt: nowIso(), refundReason: reason } }
   )
-  if (claimed) await UserRepo.creditBalance(claimed.userId, claimed.creditsCharged)
+  if (claimed) {
+    // Messages from before email credits existed were paid from the SMS wallet.
+    if (claimed.product) await wallet.credit(claimed.userId, claimed.product, claimed.creditsCharged)
+    else await UserRepo.creditBalance(claimed.userId, claimed.creditsCharged)
+  }
   return !!claimed
 }
 
@@ -520,9 +648,15 @@ let again = false
 async function deliverOne(m) {
   const p = getProvider()
   try {
+    let body = { html: m.html, text: m.text, headers: undefined }
+    if (m.campaignId) {
+      const c = await campaignFor(m.campaignId)
+      if (!c) throw Object.assign(new Error('Campaign content is missing'), { retryable: false })
+      body = marketingBody(c, m.to[0])
+    }
     const { providerMessageId } = await p.send({
       id: m._id, from: m.from, to: m.to, cc: m.cc, bcc: m.bcc, replyTo: m.replyTo,
-      subject: m.subject, html: m.html, text: m.text, tags: m.tags
+      subject: m.subject, html: body.html, text: body.text, headers: body.headers, tags: m.tags
     })
     const updated = await db.messages.updateOne({ _id: m._id }, {
       $set: { providerMessageId, provider: p.name, attempts: m.attempts + 1, lastError: null, acceptedAt: nowIso() }
@@ -530,6 +664,13 @@ async function deliverOne(m) {
     await transition(updated, 'accepted')
     await replayEarlyEvents(updated._id, providerMessageId)
   } catch (err) {
+    // Provider rate limit: wait and try again without using up an attempt.
+    if ((err.status === 429 || err.code === 'rate_limit_exceeded') && (m.rateLimited || 0) < 30) {
+      await db.messages.updateOne({ _id: m._id }, {
+        $set: { rateLimited: (m.rateLimited || 0) + 1, nextAttemptAt: new Date(Date.now() + 2000).toISOString(), lockedUntil: EPOCH }
+      })
+      return
+    }
     const attempts = m.attempts + 1
     if (err.retryable && attempts < MAX_ATTEMPTS) {
       const wait = 5000 * Math.pow(3, attempts - 1) // 5s, 15s
@@ -553,11 +694,13 @@ async function processQueue() {
       again = false
       for (let n = 0; n < 50; n++) {
         const now = nowIso()
-        const m = await db.messages.updateOne(
-          { status: 'queued', nextAttemptAt: { $lte: now }, lockedUntil: { $lte: now } },
-          { $set: { lockedUntil: new Date(Date.now() + 60000).toISOString() } }
-        )
+        const lock = { $set: { lockedUntil: new Date(Date.now() + 60000).toISOString() } }
+        const due = { status: 'queued', nextAttemptAt: { $lte: now }, lockedUntil: { $lte: now } }
+        // Transactional email (OTPs, resets) always goes before marketing.
+        const m = (await db.messages.updateOne({ ...due, product: { $ne: 'marketing' } }, lock)) ||
+          (await db.messages.updateOne({ ...due, product: 'marketing' }, lock))
         if (!m) break
+        await pace()
         await deliverOne(m)
       }
     } while (again)
@@ -566,6 +709,16 @@ async function processQueue() {
   } finally {
     working = false
   }
+}
+
+// Keep under the provider's request rate (Resend allows 2 a second by default).
+let lastSendAt = 0
+async function pace() {
+  if (getProvider().name === 'mock') return
+  const gap = 1000 / Math.max(0.1, U.config.sendRatePerSecond())
+  const wait = lastSendAt + gap - Date.now()
+  if (wait > 0) await new Promise(r => setTimeout(r, wait))
+  lastSendAt = Date.now()
 }
 
 function kick() {
@@ -577,6 +730,11 @@ async function purgeOldContent() {
   const cutoff = new Date(Date.now() - U.config.retentionDays() * 24 * 3600 * 1000).toISOString()
   const old = await db.messages.find({ createdAt: { $lt: cutoff }, contentPurged: { $ne: true } }, { limit: 200 })
   for (const m of old) await db.messages.updateOne({ _id: m._id }, { $set: { html: null, text: null, contentPurged: true } })
+  const oldCampaigns = await db.campaigns.find({ createdAt: { $lt: cutoff }, contentPurged: { $ne: true } }, { limit: 50 })
+  for (const c of oldCampaigns) {
+    if (await db.messages.count({ campaignId: c._id, status: 'queued' })) continue
+    await db.campaigns.updateOne({ _id: c._id }, { $set: { html: null, text: null, contentPurged: true } })
+  }
 }
 
 let timers = []
@@ -704,9 +862,11 @@ async function handleWebhook(rawBody, headers) {
 // REPORTING
 // --------------------------------------------------------------------------
 
-async function listMessages(user, { status, q, limit = 50, skip = 0, apiKeyId } = {}) {
+async function listMessages(user, { status, q, limit = 50, skip = 0, apiKeyId, type } = {}) {
   const filter = { userId: uid(user) }
   if (status && STATUS_RANK[status] !== undefined) filter.status = status
+  if (type === 'marketing') filter.product = 'marketing'
+  else if (type === 'transactional') filter.product = { $ne: 'marketing' }
   if (apiKeyId) filter.apiKeyId = apiKeyId
   let list = await db.messages.find(filter, { limit: q ? 500 : Math.min(Number(limit) || 50, 200), skip: q ? 0 : Number(skip) || 0 })
   if (q) {
@@ -751,6 +911,10 @@ async function stats(user) {
     inFlight,
     deliveryRate: settled ? U.round2((delivered / settled) * 100) : null,
     creditsSpent: U.round2(recent.reduce((a, m) => a + (m.refunded ? 0 : m.creditsCharged || 0), 0)),
+    byType: {
+      transactional: recent.filter(m => m.product !== 'marketing').length,
+      marketing: recent.filter(m => m.product === 'marketing').length
+    },
     days
   }
 }
@@ -786,5 +950,7 @@ module.exports = {
   // sending + events
   sendEmail, applyEvent, handleWebhook, processQueue, startWorker, stopWorker,
   // reporting
-  listMessages, getMessage, stats, listSuppressions, removeSuppression, getAccount, apiKeyUsage
+  listMessages, getMessage, messageContent, stats, listSuppressions, removeSuppression, getAccount, apiKeyUsage,
+  // marketing
+  unsubscribe, unsubscribeUrl, marketingBody
 }

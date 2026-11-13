@@ -1,9 +1,10 @@
 // Parsing, validation and template helpers for the email module.
 
 const config = {
-  creditsPerRecipient: () => Number(process.env.EMAIL_CREDITS_PER_RECIPIENT || 0.2),
   sharedDomain: () => String(process.env.EMAIL_SHARED_DOMAIN || 'mail.kebsend.com').toLowerCase(),
   maxRecipients: () => Number(process.env.EMAIL_MAX_RECIPIENTS || 50),
+  maxCampaignRecipients: () => Number(process.env.EMAIL_MAX_CAMPAIGN_RECIPIENTS || 10000),
+  sendRatePerSecond: () => Number(process.env.EMAIL_SEND_RATE_PER_SEC || 2),
   dailyCapUnpaid: () => Number(process.env.EMAIL_DAILY_CAP_UNPAID || 100),
   apiRatePerMinute: () => Number(process.env.EMAIL_API_RATE_PER_MIN || 60),
   maxHtmlBytes: 256 * 1024,

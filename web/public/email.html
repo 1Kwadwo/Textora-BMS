@@ -20,7 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
 </head>
 <body class="min-h-screen bg-cream-50 dark:bg-night-950">
 
@@ -38,9 +38,9 @@
         <button id="em-theme" class="btn btn-circle btn-ghost btn-sm text-navy-900 dark:text-slate-200" title="Switch light / dark mode" aria-label="Switch light or dark mode">
           <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
         </button>
-        <a href="/#dashboard" class="hidden items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-700 sm:flex dark:bg-teal-500/10 dark:text-teal-300" title="Shared wallet">
-          <span class="h-2 w-2 rounded-full bg-teal-500"></span><span id="em-head-balance">0.00 Cr</span>
-        </a>
+        <button data-goto="credits" class="hidden items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-700 sm:flex dark:bg-teal-500/10 dark:text-teal-300" title="Email credits: transactional · marketing">
+          <span class="h-2 w-2 rounded-full bg-teal-500"></span><span id="em-head-balance">0 · 0 emails</span>
+        </button>
         <button id="em-logout" class="btn btn-ghost btn-sm font-semibold text-ink dark:text-slate-300">Sign out</button>
       </div>
     </div>
@@ -67,6 +67,10 @@
           <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Email logs
         </button>
+        <button class="sidebar-nav-item w-full text-left" data-tab="credits">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+          Credits
+        </button>
         <button class="sidebar-nav-item w-full text-left" data-tab="templates">
           <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v3H4V5zM4 12h7v8H5a1 1 0 01-1-1v-7zM15 12h5v7a1 1 0 01-1 1h-4v-8z"/></svg>
           Templates
@@ -85,10 +89,11 @@
         </button>
       </nav>
       <div class="mt-auto rounded-2xl bg-cream-100 p-4 dark:bg-night-900">
-        <div class="ks-stat-label">Wallet balance</div>
-        <div id="em-side-balance" class="mt-1 text-2xl font-black text-navy-900 dark:text-white">0.00 Credits</div>
-        <div class="mt-1 text-xs text-ink dark:text-slate-400">Shared with SMS · <span id="em-side-rate">0.2</span> credits per email</div>
-        <a href="/#dashboard" class="ks-btn-primary btn-sm btn-block mt-3">+ Top up</a>
+        <div class="ks-stat-label">Email credits</div>
+        <div class="mt-2 flex items-baseline justify-between gap-2"><span class="text-xs font-semibold text-ink dark:text-slate-400">Transactional</span><span id="em-side-tx" class="text-xl font-black text-navy-900 dark:text-white">0</span></div>
+        <div class="mt-1 flex items-baseline justify-between gap-2"><span class="text-xs font-semibold text-ink dark:text-slate-400">Marketing</span><span id="em-side-mk" class="text-xl font-black text-navy-900 dark:text-white">0</span></div>
+        <div class="mt-2 text-xs text-ink dark:text-slate-400">1 credit sends 1 email. Separate from SMS credits.</div>
+        <button data-goto="credits" class="ks-btn-primary btn-sm btn-block mt-3">+ Buy credits</button>
       </div>
     </aside>
 
@@ -105,6 +110,7 @@
           <button class="em-mtab" data-tab="overview">Overview</button>
           <button class="em-mtab" data-tab="send">Send</button>
           <button class="em-mtab" data-tab="logs">Logs</button>
+          <button class="em-mtab" data-tab="credits">Credits</button>
           <button class="em-mtab" data-tab="templates">Templates</button>
           <button class="em-mtab" data-tab="domains">Domains</button>
           <button class="em-mtab" data-tab="developers">API keys</button>
@@ -123,7 +129,7 @@
           <div>
             <div class="ks-kicker">KebSEND Email</div>
             <h1 class="mt-1 text-3xl font-black tracking-tight text-navy-900 dark:text-white">Hello, <span id="em-name" class="text-ember-500">there</span></h1>
-            <p class="mt-0.5 text-sm text-ink dark:text-slate-400">Account emails, receipts and reminders, sent from your name.</p>
+            <p class="mt-0.5 text-sm text-ink dark:text-slate-400">OTPs, receipts and newsletters, sent from your name.</p>
           </div>
           <div class="flex gap-2">
             <button class="ks-btn-ghost btn-sm h-10" data-goto="domains">Sender domains</button>
@@ -141,7 +147,7 @@
             <div class="sm:pr-5"><div class="ks-stat-label">Emails sent</div><div id="st-total" class="mt-1 text-3xl font-black text-navy-900 dark:text-white">0</div><div id="st-inflight" class="text-xs text-ink dark:text-slate-400">0 on the way</div></div>
             <div class="sm:px-5"><div class="ks-stat-label">Delivered</div><div id="st-delivered" class="mt-1 text-3xl font-black text-teal-700 dark:text-teal-300">0</div><div id="st-rate" class="text-xs text-ink dark:text-slate-400">Delivery rate –</div></div>
             <div class="sm:px-5"><div class="ks-stat-label">Bounced</div><div id="st-bounced" class="mt-1 text-3xl font-black text-navy-900 dark:text-white">0</div><div id="st-complained" class="text-xs text-ink dark:text-slate-400">0 spam complaints</div></div>
-            <div class="sm:pl-5"><div class="ks-stat-label">Failed</div><div id="st-failed" class="mt-1 text-3xl font-black text-navy-900 dark:text-white">0</div><div class="text-xs text-ink dark:text-slate-400">Refunded to wallet</div></div>
+            <div class="sm:pl-5"><div class="ks-stat-label">Failed</div><div id="st-failed" class="mt-1 text-3xl font-black text-navy-900 dark:text-white">0</div><div class="text-xs text-ink dark:text-slate-400">Credits given back</div></div>
           </div>
           <div class="mt-6 border-t border-navy-900/5 pt-5 dark:border-white/5">
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -168,10 +174,14 @@
       <section id="tab-send" class="em-tab hidden space-y-5">
         <div>
           <h1 class="text-2xl font-black tracking-tight text-navy-900 sm:text-3xl dark:text-white">Send an email</h1>
-          <p class="text-sm text-ink dark:text-slate-400">One email, up to <span class="em-max">50</span> recipients. For newsletters, bulk email is coming next.</p>
+          <p id="em-send-sub" class="text-sm text-ink dark:text-slate-400">One email, up to <span class="em-max">50</span> recipients. Paid from transactional credits.</p>
         </div>
         <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <form id="em-send-form" class="dash-surface-card space-y-4 p-5 sm:p-6" autocomplete="off">
+            <div class="grid grid-cols-2 rounded-xl bg-cream-100 p-1 text-sm font-bold dark:bg-night-900" role="tablist" aria-label="Email type">
+              <button type="button" class="em-type-tab rounded-lg bg-white px-3 py-2 text-navy-900 shadow-soft dark:bg-night-800 dark:text-white" data-type="transactional">Transactional</button>
+              <button type="button" class="em-type-tab rounded-lg px-3 py-2 text-ink dark:text-slate-400" data-type="marketing">Marketing</button>
+            </div>
             <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <label class="ks-label" for="em-from-name">Sender name <span class="font-normal text-ink dark:text-slate-400">(Display name)</span></label>
@@ -185,9 +195,16 @@
               </div>
             </div>
             <div>
-              <label class="ks-label" for="em-to">To</label>
+              <div class="flex items-end justify-between gap-2">
+                <label class="ks-label" for="em-to" id="em-to-label">To</label>
+                <span id="em-to-count" class="mb-1.5 text-xs font-semibold text-ink dark:text-slate-400"></span>
+              </div>
               <textarea id="em-to" rows="2" class="ks-textarea font-mono text-sm" placeholder="customer@example.com, another@example.com"></textarea>
               <button type="button" id="em-ccbcc-toggle" class="mt-1 text-xs font-bold text-blue-600 dark:text-blue-300">+ Cc / Bcc</button>
+              <div id="em-mk-tools" class="mt-1 hidden flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                <label class="cursor-pointer font-bold text-blue-600 dark:text-blue-300">Upload a list (.csv or .txt)<input id="em-list-file" type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden"></label>
+                <span class="text-ink dark:text-slate-400">Each person gets their own copy with an unsubscribe link. Type <code class="em-code">{{email}}</code> to insert their address.</span>
+              </div>
             </div>
             <div id="em-ccbcc" class="hidden grid gap-3 sm:grid-cols-2">
               <div><label class="ks-label" for="em-cc">Cc</label><input id="em-cc" class="ks-input font-mono text-sm"></div>
@@ -216,7 +233,7 @@
             <div class="flex flex-col gap-3 border-t border-navy-900/5 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/5">
               <div>
                 <div class="text-xs font-semibold text-ink dark:text-slate-400">Cost</div>
-                <div><span id="em-cost" class="text-xl font-black text-ember-500">0.00 credits</span> <span id="em-cost-note" class="text-xs text-ink dark:text-slate-400"></span></div>
+                <div><span id="em-cost" class="text-xl font-black text-ember-500">0 credits</span> <span id="em-cost-note" class="text-xs text-ink dark:text-slate-400"></span></div>
               </div>
               <button id="em-send-btn" type="submit" class="ks-btn-primary h-12 min-w-[10rem] rounded-xl px-8"><span id="em-send-spin" class="loading loading-spinner loading-sm hidden"></span><span id="em-send-label">Send email</span></button>
             </div>
@@ -264,6 +281,44 @@
             <table class="table table-sm w-full text-sm text-navy-900 dark:text-slate-200">
               <thead><tr class="text-ink dark:text-slate-400"><th>Sent</th><th>Recipient</th><th>From</th><th>Subject</th><th>Status</th><th class="text-right">Credits</th></tr></thead>
               <tbody id="em-logs-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= CREDITS ================= -->
+      <section id="tab-credits" class="em-tab hidden space-y-5">
+        <div>
+          <h1 class="text-2xl font-black tracking-tight text-navy-900 sm:text-3xl dark:text-white">Email credits</h1>
+          <p class="text-sm text-ink dark:text-slate-400">Email credits are separate from your SMS credits. One credit sends one email to one person. Pay with Mobile Money or card through Paystack.</p>
+        </div>
+
+        <div class="dash-surface-card p-5 sm:p-6">
+          <div class="grid grid-cols-2 gap-y-5 sm:divide-x sm:divide-navy-900/5 dark:sm:divide-white/5">
+            <div class="pr-4 sm:pr-5"><div class="ks-stat-label">Transactional</div><div id="cr-tx" class="mt-1 text-3xl font-black text-navy-900 dark:text-white">0</div><div class="text-xs text-ink dark:text-slate-400">OTPs, verification codes, receipts</div></div>
+            <div class="pl-4 sm:pl-5"><div class="ks-stat-label">Marketing</div><div id="cr-mk" class="mt-1 text-3xl font-black text-navy-900 dark:text-white">0</div><div class="text-xs text-ink dark:text-slate-400">Newsletters, promotions, announcements</div></div>
+          </div>
+        </div>
+
+        <div class="dash-surface-card p-5 sm:p-6">
+          <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <h3 class="text-lg font-extrabold text-navy-900 dark:text-white">Buy credits</h3>
+            <div class="grid grid-cols-2 rounded-xl bg-cream-100 p-1 text-sm font-bold sm:w-72 dark:bg-night-900" role="tablist" aria-label="Credit type">
+              <button type="button" class="em-cr-tab rounded-lg bg-white px-3 py-2 text-navy-900 shadow-soft dark:bg-night-800 dark:text-white" data-type="transactional">Transactional</button>
+              <button type="button" class="em-cr-tab rounded-lg px-3 py-2 text-ink dark:text-slate-400" data-type="marketing">Marketing</button>
+            </div>
+          </div>
+          <p id="cr-blurb" class="mt-2 text-sm text-ink dark:text-slate-400"></p>
+          <div id="cr-packs" class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"></div>
+          <div id="cr-status" class="mt-4 hidden rounded-xl bg-cream-100 p-4 text-sm text-navy-900 dark:bg-night-900 dark:text-slate-200"></div>
+        </div>
+
+        <div class="dash-surface-card overflow-hidden">
+          <div class="px-5 pt-5 sm:px-6"><h3 class="text-lg font-extrabold text-navy-900 dark:text-white">Purchases</h3></div>
+          <div class="overflow-x-auto">
+            <table class="table table-sm mt-2 w-full text-sm text-navy-900 dark:text-slate-200">
+              <thead><tr class="text-ink dark:text-slate-400"><th>Date</th><th>Type</th><th class="text-right">Emails</th><th class="text-right">Amount</th><th>Status</th></tr></thead>
+              <tbody id="cr-history"></tbody>
             </table>
           </div>
         </div>
@@ -390,11 +445,14 @@
                 <li><b class="text-blue-600 dark:text-blue-300">GET</b> /api/v1/email/messages?status=bounced</li>
                 <li><b class="text-blue-600 dark:text-blue-300">GET</b> /api/v1/email/senders</li>
                 <li><b class="text-blue-600 dark:text-blue-300">GET</b> /api/v1/email/domains</li>
+                <li><b class="text-blue-600 dark:text-blue-300">GET</b> /api/v1/email/balance</li>
               </ul>
             </div>
             <div>
               <h4 class="font-bold text-navy-900 dark:text-white">Good to know</h4>
               <ul class="mt-2 list-disc space-y-1.5 pl-5 text-ink dark:text-slate-300">
+                <li>Emails are <code class="em-code">transactional</code> by default and use transactional credits. They always go out before any marketing send.</li>
+                <li>Add <code class="em-code">"type": "marketing"</code> for newsletters. Each address gets its own copy with an unsubscribe link, paid from marketing credits.</li>
                 <li>A <code class="em-code">202</code> means queued, not delivered. Check the status later or in Email logs.</li>
                 <li>Send an <code class="em-code">Idempotency-Key</code> header to make retries safe.</li>
                 <li>Use <code class="em-code">template_id</code> and <code class="em-code">variables</code> instead of <code class="em-code">html</code>.</li>
@@ -450,8 +508,8 @@
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
   </dialog>
 
-  <div id="em-toast" class="toast toast-top toast-end z-[60] hidden" role="status" aria-live="polite"><div id="em-toast-box" class="alert flex max-w-sm items-start gap-3 rounded-2xl border-0 bg-navy-900 p-4 text-left text-sm text-white shadow-chip"><span id="em-toast-icon" class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-black"></span><div class="min-w-0"><div id="em-toast-title" class="font-bold"></div><div id="em-toast-text" class="mt-0.5 text-white/80"></div></div></div></div>
+  <div id="em-toast" class="toast toast-top toast-end z-[60] hidden" role="status" aria-live="polite"><div id="em-toast-box" class="alert flex w-[22rem] max-w-[calc(100vw-2rem)] items-start whitespace-normal break-words gap-3 rounded-2xl border-0 bg-navy-900 p-4 text-left text-sm text-white shadow-chip"><span id="em-toast-icon" class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-black"></span><div class="min-w-0"><div id="em-toast-title" class="font-bold"></div><div id="em-toast-text" class="mt-0.5 text-white/80"></div></div></div></div>
 
-  <script src="email.js?v=2"></script>
+  <script src="email.js?v=3"></script>
 </body>
 </html>

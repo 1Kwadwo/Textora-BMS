@@ -14,6 +14,7 @@ const { initializePayment, verifyPayment } = require('./src/services/paystack')
 const { fulfillSenderIdFee, notifyAdmin, reconcileUserSenderIdFees, isValidWebSenderId, allowedSenderIdsFor } = require('./src/services/senderIdRequests')
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./src/services/email')
 const { handleEmailRoutes } = require('./src/email/routes')
+const emailWallet = require('./src/email/wallet')
 const emailEngine = require('./src/email/engine')
 const { keyHasScope } = require('./src/models')
 
@@ -192,6 +193,10 @@ const server = http.createServer(async (req, res) => {
                 console.log(`[PAYSTACK WEBHOOK] Credited ${tx.credits} SMS to user ${tx.userId} for ref ${reference}`)
               }
             }
+          } else if (reference && reference.startsWith(emailWallet.REF_PREFIX)) {
+            // Email credits go to the separate email balance, never to SMS.
+            const result = await emailWallet.fulfillPurchase(reference)
+            console.log(`[PAYSTACK WEBHOOK] Email credits for ref ${reference}:`, result.ok ? (result.already ? 'already credited' : `+${result.emails} ${result.product}`) : result.reason)
           } else if (reference && reference.startsWith('sid_fee_')) {
             // Paystack already told us it's paid (signed webhook), so create the
             // request and alert the admin here; don't wait for the customer to return.
@@ -773,8 +778,12 @@ const server = http.createServer(async (req, res) => {
     const reference = urlObj.searchParams.get('reference')
     if (!reference) return json(400, { ok: false, message: 'Missing transaction reference' })
 
+    // Only SMS top-ups belong to this user's SMS wallet. Email credit and sender ID
+    // payments are settled by their own endpoints.
     const tx = await TransactionRepo.findByReference(reference)
-    if (!tx) return json(404, { ok: false, message: 'Transaction not found' })
+    if (!tx || !String(reference).startsWith('web_topup_') || String(tx.userId) !== String(user._id || user.id)) {
+      return json(404, { ok: false, message: 'Transaction not found' })
+    }
 
     if (tx.status === 'success') {
       return json(200, { ok: true, message: 'Payment already verified', creditsAdded: tx.credits, currentBalance: user.balance })

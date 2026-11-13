@@ -12,7 +12,22 @@
   const $$ = sel => Array.from(document.querySelectorAll(sel))
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
   const fmtCr = n => Number(n || 0).toFixed(2)
-  const state = { overview: null, senders: [], templates: [], domains: [], sharedDomain: 'mail.kebsend.com', rate: 0.2, max: 50, logStatus: '', bodyTab: 'html', editingTpl: null, codeLang: 'curl' }
+  const fmtN = n => Math.round(Number(n || 0)).toLocaleString()
+  const TYPE_LABEL = { transactional: 'Transactional', marketing: 'Marketing' }
+  const state = {
+    overview: null, senders: [], templates: [], domains: [], sharedDomain: 'mail.kebsend.com', max: 50, maxCampaign: 10000,
+    credits: { transactional: 0, marketing: 0 }, sendType: 'transactional', crType: 'transactional', pricing: null,
+    logStatus: '', bodyTab: 'html', editingTpl: null, codeLang: 'curl'
+  }
+  // One look for every two-option switch on the page (same as the SMS / Email switch).
+  function setSeg(buttons, active) {
+    buttons.forEach(x => {
+      const on = x === active
+      x.classList.toggle('bg-white', on); x.classList.toggle('shadow-soft', on); x.classList.toggle('text-navy-900', on)
+      x.classList.toggle('dark:bg-night-800', on); x.classList.toggle('dark:text-white', on)
+      x.classList.toggle('text-ink', !on); x.classList.toggle('dark:text-slate-400', !on)
+    })
+  }
 
   async function api(path, opts = {}) {
     const res = await fetch(path, {
@@ -67,18 +82,23 @@
   $('em-logout').addEventListener('click', () => { try { localStorage.removeItem(TOKEN_KEY) } catch (e) {} location.href = '/' })
 
   // ------------------------------------------------------------------ tabs
-  const TABS = ['overview', 'send', 'logs', 'templates', 'domains', 'developers', 'smtp']
+  const TABS = ['overview', 'send', 'logs', 'credits', 'templates', 'domains', 'developers', 'smtp']
   function show(tab) {
+    tab = String(tab || '').split('?')[0]
     if (!TABS.includes(tab)) tab = 'overview'
     $$('.em-tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + tab))
     $$('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab))
-    if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab)
+    if (location.hash.split('?')[0] !== '#' + tab) history.replaceState(null, '', '#' + tab)
     window.scrollTo(0, 0)
     LOADERS[tab] && LOADERS[tab]().catch(err => toast(err.message))
   }
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-tab],[data-goto]')
-    if (t) { e.preventDefault(); show(t.dataset.tab || t.dataset.goto) }
+    if (t) {
+      e.preventDefault()
+      if (t.dataset.crType) state.crType = t.dataset.crType
+      show(t.dataset.tab || t.dataset.goto)
+    }
     const c = e.target.closest('[data-copy],[data-copy-target]')
     if (c) {
       const text = c.dataset.copy ?? $(c.dataset.copyTarget).textContent
@@ -88,26 +108,29 @@
   window.addEventListener('hashchange', () => show(location.hash.slice(1)))
 
   // ------------------------------------------------------------------ overview
-  function setBalance(b) {
-    $('em-head-balance').textContent = fmtCr(b) + ' Cr'
-    $('em-side-balance').textContent = fmtCr(b) + ' Credits'
+  function setCredits(c) {
+    if (!c) return
+    state.credits = { transactional: Number(c.transactional || 0), marketing: Number(c.marketing || 0) }
+    $('em-head-balance').textContent = `${fmtN(state.credits.transactional)} · ${fmtN(state.credits.marketing)} emails`
+    $('em-side-tx').textContent = fmtN(state.credits.transactional)
+    $('em-side-mk').textContent = fmtN(state.credits.marketing)
+    if ($('cr-tx')) { $('cr-tx').textContent = fmtN(state.credits.transactional); $('cr-mk').textContent = fmtN(state.credits.marketing) }
   }
 
   async function loadOverview() {
     const d = await api('/api/email/overview')
     state.overview = d
     state.sharedDomain = d.settings.sharedDomain
-    state.rate = d.settings.creditsPerRecipient
     state.max = d.settings.maxRecipients
+    state.maxCampaign = d.settings.maxCampaignRecipients || state.maxCampaign
     $$('.em-shared').forEach(el => { el.textContent = state.sharedDomain })
     $$('.em-max').forEach(el => { el.textContent = state.max })
-    $('em-side-rate').textContent = state.rate
     state.enabled = d.settings.enabled !== false
     $('em-disabled').classList.toggle('hidden', state.enabled)
     $('em-send-btn').disabled = !state.enabled
     $('em-send-btn').title = state.enabled ? '' : 'Email sending is not switched on yet'
     $('em-name').textContent = (d.user.name || 'there').split(' ')[0]
-    setBalance(d.user.balance)
+    setCredits(d.credits)
 
     const pause = $('em-paused')
     pause.classList.toggle('hidden', !d.account.paused)
@@ -126,7 +149,7 @@
     // First-run checklist
     const steps = [
       { done: d.senders > 0, title: 'Choose a sender', text: `Create a free @${state.sharedDomain} address or connect your domain.`, tab: 'domains' },
-      { done: d.user.balance >= state.rate, title: 'Have credits', text: `Each email costs ${state.rate} credits from your SMS wallet.`, href: '/#dashboard' },
+      { done: state.credits.transactional + state.credits.marketing > 0, title: 'Have email credits', text: 'Buy transactional or marketing credits. They are separate from SMS credits.', tab: 'credits' },
       { done: s.total > 0, title: 'Send a test', text: 'Send one to yourself and watch it arrive in Email logs.', tab: 'send' }
     ]
     $('em-setup').classList.toggle('hidden', steps.every(x => x.done))
@@ -136,13 +159,13 @@
           <span class="grid h-6 w-6 place-items-center rounded-full text-xs ${x.done ? 'bg-teal-500 text-white' : 'bg-cream-200 text-navy-900 dark:bg-white/10 dark:text-white'}">${x.done ? '✓' : i + 1}</span>${esc(x.title)}
         </div>
         <p class="mt-1.5 text-sm text-ink dark:text-slate-400">${esc(x.text)}</p>
-        ${x.done ? '' : x.href ? `<a href="${x.href}" class="mt-2 inline-block text-sm font-bold text-ember-500">Top up →</a>` : `<button data-goto="${x.tab}" class="mt-2 text-sm font-bold text-ember-500">Open →</button>`}
+        ${x.done ? '' : `<button data-goto="${x.tab}" class="mt-2 text-sm font-bold text-ember-500">Open →</button>`}
       </li>`).join('')
 
     $('em-recent').innerHTML = d.recent.length ? d.recent.map(m => `
       <button class="em-row flex w-full items-center gap-3 px-1 py-3 text-left" data-msg="${esc(m.id)}">
         <div class="min-w-0 flex-1">
-          <div class="truncate text-sm font-bold text-navy-900 dark:text-white">${esc(m.subject)}</div>
+          <div class="truncate text-sm font-bold text-navy-900 dark:text-white">${m.type === 'marketing' ? '<span class="em-badge em-badge-mute mr-1.5 align-middle">Marketing</span>' : ''}${esc(m.subject)}</div>
           <div class="truncate text-xs text-ink dark:text-slate-400">to ${esc(m.to.join(', '))} · ${when(m.created_at)}</div>
         </div>
         ${badge(m.status)}
@@ -244,24 +267,72 @@
   }
   const fill = (s, vars, html) => String(s || '').replace(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g, (_, k) => (vars[k] ? (html ? esc(vars[k]) : vars[k]) : `{{${k}}}`))
 
+  const splitList = v => Array.from(new Set(v.split(/[\n,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean)))
   function countRecipients() {
-    const n = v => v.split(/[\n,;]+/).map(x => x.trim()).filter(Boolean).length
-    return n($('em-to').value) + n($('em-cc').value) + n($('em-bcc').value)
+    if (state.sendType === 'marketing') return splitList($('em-to').value).length
+    return splitList($('em-to').value).length + splitList($('em-cc').value).length + splitList($('em-bcc').value).length
   }
+  const MK_FOOTER = '<div style="margin:28px auto 0;max-width:520px;padding:14px 16px 0;border-top:1px solid #e5e7eb;font:12px/1.6 Arial,Helvetica,sans-serif;color:#6b7280;text-align:center">You are getting this email from SENDER. <a href="#" style="color:#6b7280;text-decoration:underline">Unsubscribe</a></div>'
+
+  function setSendType(type) {
+    state.sendType = type
+    const mk = type === 'marketing'
+    setSeg($$('.em-type-tab'), $$('.em-type-tab').find(b => b.dataset.type === type))
+    $('em-to-label').textContent = mk ? 'Recipients' : 'To'
+    $('em-to').rows = mk ? 6 : 2
+    $('em-to').placeholder = mk ? 'Paste addresses, one per line or separated by commas' : 'customer@example.com, another@example.com'
+    $('em-ccbcc-toggle').classList.toggle('hidden', mk)
+    if (mk) $('em-ccbcc').classList.add('hidden')
+    $('em-mk-tools').classList.toggle('hidden', !mk)
+    $('em-mk-tools').classList.toggle('flex', mk)
+    $('em-send-sub').innerHTML = mk
+      ? `A newsletter or promotion to up to ${fmtN(state.maxCampaign)} people. Paid from marketing credits.`
+      : `One email, up to <span class="em-max">${state.max}</span> recipients. Paid from transactional credits.`
+    updatePreview()
+  }
+  $$('.em-type-tab').forEach(b => b.addEventListener('click', () => setSendType(b.dataset.type)))
+
+  $('em-list-file').addEventListener('change', async () => {
+    const f = $('em-list-file').files[0]
+    $('em-list-file').value = ''
+    if (!f) return
+    if (f.size > 5 * 1024 * 1024) return toast('That file is over 5 MB.', { tone: 'bad' })
+    const text = await f.text()
+    const found = Array.from(new Set((text.match(/[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}/g) || []).map(a => a.toLowerCase())))
+    if (!found.length) return toast('No email addresses found in that file.', { tone: 'bad' })
+    const merged = Array.from(new Set([...splitList($('em-to').value), ...found]))
+    $('em-to').value = merged.join('\n')
+    toast(`${fmtN(found.length)} address${found.length > 1 ? 'es' : ''} added from ${f.name}.`, { tone: 'ok' })
+    updatePreview()
+  })
   function updatePreview() {
     const vars = currentVars()
     const name = ($('em-from-name')?.value || '').trim()
     const addr = ($('em-from')?.value || '').trim()
     $('pv-from').textContent = name && addr ? `${name} <${addr}>` : (addr || name || 'Your sender')
-    $('pv-to').textContent = $('em-to').value.trim() || 'recipient'
+    const toList = splitList($('em-to').value)
+    $('pv-to').textContent = toList.length > 3 ? `${toList.slice(0, 3).join(', ')} and ${fmtN(toList.length - 3)} more` : (toList.join(', ') || 'recipient')
     $('pv-subject').textContent = fill($('em-subject').value, vars) || 'Subject'
     const html = $('em-html').value.trim()
+    const mk = state.sendType === 'marketing'
+    const footer = mk ? MK_FOOTER.replace('SENDER', esc(name || addr || 'your sender')) : ''
+    const firstTo = splitList($('em-to').value)[0] || 'recipient@example.com'
+    const pvVars = mk ? { ...vars, email: firstTo } : vars
     $('pv-frame').srcdoc = html
-      ? `<base target="_blank"><body style="margin:16px;font-family:Arial,sans-serif">${fill(html, vars, true)}</body>`
-      : `<body style="margin:16px;font-family:Arial,sans-serif;white-space:pre-wrap;color:#334155">${esc(fill($('em-text').value, vars))}</body>`
+      ? `<base target="_blank"><body style="margin:16px;font-family:Arial,sans-serif">${fill(html, pvVars, true)}${footer}</body>`
+      : `<body style="margin:16px;font-family:Arial,sans-serif;white-space:pre-wrap;color:#334155">${esc(fill($('em-text').value, pvVars))}${footer}</body>`
+    if (mk) $('pv-to').textContent = firstTo
     const n = countRecipients()
-    $('em-cost').textContent = fmtCr(n * state.rate) + ' credits'
-    $('em-cost-note').textContent = n ? `${n} recipient${n > 1 ? 's' : ''} × ${state.rate}` : ''
+    const have = state.credits[state.sendType] || 0
+    $('em-to-count').textContent = n ? `${fmtN(n)} ${n === 1 ? 'person' : 'people'}` : ''
+    $('em-cost').textContent = `${fmtN(n)} credit${n === 1 ? '' : 's'}`
+    const short = n > have
+    $('em-cost-note').innerHTML = short
+      ? `<span class="font-semibold text-ember-700 dark:text-ember-300">You have ${fmtN(have)} ${state.sendType} credits.</span> <button type="button" data-goto="credits" data-cr-type="${state.sendType}" class="font-bold text-ember-500">Buy credits →</button>`
+      : `${TYPE_LABEL[state.sendType]} · ${fmtN(have)} left`
+    if (!$('em-send-btn').getAttribute('aria-busy') || $('em-send-btn').getAttribute('aria-busy') === 'false') {
+      $('em-send-label').textContent = mk && n > 1 ? `Send to ${fmtN(n)} people` : 'Send email'
+    }
   }
   ;['em-from-name', 'em-from', 'em-to', 'em-cc', 'em-bcc', 'em-subject', 'em-html', 'em-text'].forEach(id => $(id).addEventListener('input', updatePreview))
   $('em-from').addEventListener('change', () => {
@@ -300,7 +371,7 @@
     btn.disabled = on || state.enabled === false
     btn.setAttribute('aria-busy', on ? 'true' : 'false')
     $('em-send-spin').classList.toggle('hidden', !on)
-    $('em-send-label').textContent = on ? 'Sending…' : 'Send email'
+    $('em-send-label').textContent = on ? (state.sendType === 'marketing' ? 'Queuing…' : 'Sending…') : 'Send email'
     $$('#em-send-form input, #em-send-form textarea, #em-send-form select').forEach(el => { el.disabled = on })
   }
 
@@ -313,21 +384,29 @@
       const fromName = ($('em-from-name')?.value || '').trim()
       const fromAddr = ($('em-from')?.value || '').trim()
       const fullFrom = fromName ? `${fromName} <${fromAddr}>` : fromAddr
+      const mk = state.sendType === 'marketing'
       const body = {
+        type: state.sendType,
         from: fullFrom,
         to: $('em-to').value,
-        cc: $('em-cc').value || undefined,
-        bcc: $('em-bcc').value || undefined,
+        cc: mk ? undefined : $('em-cc').value || undefined,
+        bcc: mk ? undefined : $('em-bcc').value || undefined,
         subject: $('em-subject').value,
         html: $('em-html').value || undefined,
         text: $('em-text').value || undefined
       }
       if (tplId) { body.template_id = tplId; body.variables = currentVars() }
       const d = await api('/api/email/send', { method: 'POST', body })
-      setBalance(d.remaining_balance)
-      const n = d.message.to.length + d.message.cc.length + d.message.bcc.length
-      const skipped = d.message.suppressed_recipients.length ? ` Skipped ${d.message.suppressed_recipients.join(', ')} (bounced or unsubscribed before).` : ''
-      toast(`Sent to ${n} recipient${n > 1 ? 's' : ''} · ${fmtCr(d.message.credits_charged)} credits charged.${skipped}`, { title: 'Email dispatched', tone: 'ok', ms: 4500 })
+      setCredits({ ...state.credits, [state.sendType]: d.remaining_credits })
+      if (d.type === 'marketing') {
+        const c = d.campaign
+        const skipped = c.suppressed_recipients.length ? ` Skipped ${fmtN(c.suppressed_recipients.length)} unsubscribed or bounced.` : ''
+        toast(`Going out to ${fmtN(c.recipients)} ${c.recipients === 1 ? 'person' : 'people'} · ${fmtN(c.credits_charged)} marketing credits used.${skipped} Follow it in Email logs.`, { title: 'Campaign queued', tone: 'ok', ms: 6000 })
+      } else {
+        const n = d.message.to.length + d.message.cc.length + d.message.bcc.length
+        const skipped = d.message.suppressed_recipients.length ? ` Skipped ${d.message.suppressed_recipients.join(', ')} (bounced or unsubscribed before).` : ''
+        toast(`Sent to ${n} recipient${n > 1 ? 's' : ''} · ${fmtN(d.message.credits_charged)} credit${d.message.credits_charged === 1 ? '' : 's'} used.${skipped}`, { title: 'Email dispatched', tone: 'ok', ms: 4500 })
+      }
       $('em-to').value = ''
       $('em-cc').value = ''
       $('em-bcc').value = ''
@@ -350,9 +429,9 @@
         <td class="whitespace-nowrap text-ink dark:text-slate-400">${when(m.created_at)}</td>
         <td class="max-w-[14rem] truncate font-semibold">${esc(m.to.join(', '))}</td>
         <td class="max-w-[12rem] truncate text-ink dark:text-slate-400">${esc(m.from.replace(/^.*<|>$/g, ''))}</td>
-        <td class="max-w-[16rem] truncate">${esc(m.subject)}</td>
+        <td class="max-w-[16rem] truncate">${m.type === 'marketing' ? '<span class="em-badge em-badge-mute mr-1.5">Marketing</span>' : ''}${esc(m.subject)}</td>
         <td>${badge(m.status)}</td>
-        <td class="text-right font-mono text-[13px]">${m.refunded ? '<span class="text-ink line-through">' + fmtCr(m.credits_charged) + '</span>' : fmtCr(m.credits_charged)}</td>
+        <td class="text-right font-mono text-[13px]">${m.refunded ? '<span class="text-ink line-through">' + fmtN(m.credits_charged) + '</span>' : fmtN(m.credits_charged)}</td>
       </tr>`).join('') : '<tr><td colspan="6" class="py-10 text-center text-ink dark:text-slate-400">No emails match.</td></tr>'
   }
   $$('#em-log-filters .em-pill').forEach(p => p.addEventListener('click', () => {
@@ -374,7 +453,8 @@
       const meta = [
         ['From', m.from], ['To', m.to.join(', ')], ...(m.cc.length ? [['Cc', m.cc.join(', ')]] : []), ...(m.bcc.length ? [['Bcc', m.bcc.join(', ')]] : []),
         ['Reply-to', m.reply_to || '–'], ['Sent', new Date(m.created_at).toLocaleString()], ['Via', m.source === 'api' ? 'API' : 'Dashboard'],
-        ['Credits', fmtCr(m.credits_charged) + (m.refunded ? ' (refunded)' : '')], ['Message id', m.id], ['Provider id', m.provider_message_id || '–'],
+        ['Type', TYPE_LABEL[m.type] || 'Transactional'],
+        ['Credits', fmtN(m.credits_charged) + (m.refunded ? ' (given back)' : '')], ['Message id', m.id], ['Provider id', m.provider_message_id || '–'],
         ...(m.opens ? [['Opens', String(m.opens)]] : []), ...(m.suppressed_recipients.length ? [['Skipped', m.suppressed_recipients.join(', ') + ' (suppressed)']] : [])
       ]
       $('dt-meta').innerHTML = meta.map(([k, v]) => `<dt class="font-semibold text-ink dark:text-slate-400">${esc(k)}</dt><dd class="break-all font-medium text-navy-900 dark:text-slate-100 ${/id$/.test(k) ? 'font-mono text-[12px]' : ''}">${esc(v)}</dd>`).join('')
@@ -386,6 +466,115 @@
       $('em-detail').showModal()
     } catch (err) { toast(err.message) }
   })
+
+  // ------------------------------------------------------------------ credits
+  async function loadCredits() {
+    const d = await api('/api/email/credits')
+    state.pricing = d.pricing
+    setCredits(d.credits)
+    renderPacks()
+    $('cr-history').innerHTML = d.history.length ? d.history.map(h => `
+      <tr>
+        <td class="whitespace-nowrap text-ink dark:text-slate-400">${when(h.createdAt)}</td>
+        <td class="font-semibold">${esc(TYPE_LABEL[h.product])}</td>
+        <td class="text-right font-mono text-[13px]">${fmtN(h.emails)}</td>
+        <td class="text-right font-mono text-[13px]">GH₵ ${fmtN(h.amountGHS)}</td>
+        <td>${h.status === 'success' ? '<span class="em-badge em-badge-ok">Paid</span>' : '<span class="em-badge em-badge-warn">Not completed</span>'}</td>
+      </tr>`).join('') : '<tr><td colspan="5" class="py-8 text-center text-ink dark:text-slate-400">No purchases yet.</td></tr>'
+  }
+
+  function renderPacks() {
+    if (!state.pricing) return
+    const type = state.crType
+    setSeg($$('.em-cr-tab'), $$('.em-cr-tab').find(b => b.dataset.type === type))
+    const p = state.pricing[type]
+    $('cr-blurb').textContent = p.blurb || ''
+    $('cr-packs').innerHTML = p.packs.map(x => `
+      <div class="relative flex flex-col justify-between rounded-2xl border-2 p-4 ${x.popular ? 'border-ember-500 bg-ember-50/60 dark:bg-ember-500/10' : 'border-transparent bg-cream-100 dark:bg-night-900'}">
+        ${x.popular ? '<span class="absolute -top-2.5 left-3 rounded-full bg-ember-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Popular</span>' : ''}
+        <div>
+          <div class="text-xs font-bold uppercase tracking-wider text-ink dark:text-slate-400">${esc(x.tag || '')}</div>
+          <div class="mt-0.5 text-xl font-black text-navy-900 dark:text-white">GH₵ ${fmtN(x.priceGHS)}</div>
+          <div class="mt-1 text-sm font-bold text-teal-600 dark:text-teal-400">${fmtN(x.emails)} emails</div>
+          <div class="mt-0.5 text-xs text-ink dark:text-slate-400">GH₵ ${Number(x.perEmailGHS).toFixed(3)} per email</div>
+        </div>
+        <button class="btn btn-sm btn-block mt-3 ${x.popular ? 'ks-btn-primary' : 'ks-btn-navy'}" data-buy="${esc(x.id)}">Pay GH₵ ${fmtN(x.priceGHS)}</button>
+      </div>`).join('')
+  }
+  $$('.em-cr-tab').forEach(b => b.addEventListener('click', () => { state.crType = b.dataset.type; renderPacks() }))
+
+  function crStatus(html, tone) {
+    const el = $('cr-status')
+    el.className = 'mt-4 rounded-xl p-4 text-sm ' + (tone === 'ok'
+      ? 'border border-teal-500/30 bg-teal-50 font-semibold text-teal-800 dark:bg-teal-500/10 dark:text-teal-300'
+      : tone === 'bad' ? 'border border-ember-200 bg-ember-50 font-semibold text-ember-800 dark:border-ember-500/30 dark:bg-ember-500/10 dark:text-ember-200'
+        : 'bg-cream-100 text-navy-900 dark:bg-night-900 dark:text-slate-200')
+    el.innerHTML = html
+  }
+
+  let payPoll = null
+  function paid(d) {
+    clearInterval(payPoll)
+    setCredits(d.credits)
+    crStatus(`Payment confirmed. ${fmtN(d.emails)} ${d.type} email credits added.`, 'ok')
+    toast(`${fmtN(d.emails)} ${d.type} email credits added.`, { title: 'Payment confirmed', tone: 'ok', ms: 5000 })
+    state.overview = null
+    loadCredits().catch(() => {})
+    updatePreview()
+  }
+  function watchPayment(reference, payWindow) {
+    clearInterval(payPoll)
+    let n = 0
+    const check = async () => {
+      n++
+      if (n > 100) { clearInterval(payPoll); crStatus('We did not get a payment confirmation yet. If you paid, your credits will appear here in a few minutes.', 'info'); return }
+      try {
+        const d = await api('/api/email/credits/verify?reference=' + encodeURIComponent(reference))
+        if (d.ok) {
+          if (payWindow && !payWindow.closed) { try { payWindow.close() } catch (e) {} }
+          paid(d)
+        }
+      } catch (e) { /* keep waiting */ }
+    }
+    payPoll = setInterval(check, 3000)
+    check()
+  }
+
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-buy]')
+    if (!b) return
+    // Open the checkout window straight from the click so pop-up blockers allow it.
+    const payWindow = window.open('', '_blank')
+    $$('[data-buy]').forEach(x => { x.disabled = true })
+    crStatus('<span class="loading loading-spinner loading-xs mr-2 align-middle text-ember-600"></span>Opening secure checkout…')
+    try {
+      const d = await api('/api/email/credits/checkout', { method: 'POST', body: { type: state.crType, packId: b.dataset.buy } })
+      if (payWindow) {
+        payWindow.location.href = d.checkout_url
+        crStatus(`Checkout opened in a new tab. <a href="${esc(d.checkout_url)}" target="_blank" rel="noopener" class="font-bold text-ember-600 underline">Open it again</a><div class="mt-2 flex items-center gap-2 text-ink dark:text-slate-300"><span class="loading loading-spinner loading-xs text-ember-600"></span> Waiting for payment confirmation…</div>`)
+        watchPayment(d.reference, payWindow)
+      } else {
+        location.href = d.checkout_url
+      }
+    } catch (err) {
+      if (payWindow) payWindow.close()
+      crStatus(esc(err.message), 'bad')
+    } finally {
+      $$('[data-buy]').forEach(x => { x.disabled = false })
+    }
+  })
+
+  // Back from Paystack: /email#credits?ref=web_email_...
+  function returnedFromPaystack() {
+    const q = location.hash.split('?')[1]
+    if (!q) return
+    const p = new URLSearchParams(q)
+    const ref = p.get('ref') || p.get('reference') || p.get('trxref')
+    if (!ref || !ref.startsWith('web_email_')) return
+    history.replaceState(null, '', '#credits')
+    crStatus('<span class="loading loading-spinner loading-xs mr-2 align-middle text-ember-600"></span>Confirming your payment…')
+    watchPayment(ref, null)
+  }
 
   // ------------------------------------------------------------------ templates
   async function loadTemplatesTab() {
@@ -685,18 +874,21 @@ $data = json_decode(curl_exec($ch), true);`
     overview: loadOverview,
     send: loadSend,
     logs: loadLogs,
+    credits: loadCredits,
     templates: loadTemplatesTab,
     domains: loadDomains,
     developers: () => Promise.all([loadSenders(), loadKeys()]),
     smtp: async () => {}
   }
   if (!state.overview) loadOverview().catch(err => toast(err.message))
-  show(location.hash.slice(1) || 'overview')
+  const startHash = location.hash.slice(1)
+  show(startHash || 'overview')
+  if (startHash.startsWith('credits?')) { history.replaceState(null, '', '#' + startHash); returnedFromPaystack() }
 
   // Keep in-flight statuses fresh while the page is open.
   setInterval(() => {
     if (document.hidden) return
-    const tab = location.hash.slice(1) || 'overview'
+    const tab = location.hash.slice(1).split('?')[0] || 'overview'
     if (tab === 'overview') loadOverview().catch(() => {})
     if (tab === 'logs') loadLogs().catch(() => {})
   }, 8000)
