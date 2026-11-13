@@ -22,7 +22,7 @@ function unsubscribePage(ok, address) {
   const body = ok
     ? `<b>${U.escapeHtml(address)}</b> will not get marketing email from this sender again. Receipts and security codes you ask for can still arrive.`
     : 'The unsubscribe link is incomplete or has been changed. Use the link from the bottom of the email.'
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · KebSEND</title><link rel="stylesheet" href="/style.css?v=18"></head>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · KebSEND</title><link rel="stylesheet" href="/style.css?v=19"></head>
 <body class="min-h-screen bg-cream-50 font-sans text-navy-900 antialiased"><main class="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
 <img src="/kebsend-logo.png" alt="KebSEND" class="mb-8 h-8 w-auto self-start">
 <div class="dash-surface-card p-6"><h1 class="text-2xl font-black tracking-tight">${title}</h1><p class="mt-3 text-sm leading-relaxed text-ink">${body}</p></div>
@@ -176,6 +176,11 @@ async function route(req, res, ctx) {
         return json(200, { ok: true, senders: (await engine.listSenders(user)).map(s => ({ from: s.from, ready: s.ready })) })
       }
       return json(404, { ok: false, message: 'Not Found' })
+    }
+
+    // Public price list (landing page).
+    if (urlPath === '/api/email/pricing' && req.method === 'GET') {
+      return json(200, { ok: true, pricing: pricing.pricing() })
     }
 
     // ------------------------------------------------------------------ dashboard

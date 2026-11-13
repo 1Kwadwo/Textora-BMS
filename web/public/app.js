@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSenderIdValidator();
   initApiCodeSnippets();
   loadPublicPlans();
+  loadEmailPricing();
   initMobileNavMenu();
   checkAuthAndInitialize();
 });
@@ -653,6 +654,7 @@ async function checkAuthAndInitialize() {
           if (window.location.hash.startsWith('#dashboard') || window.location.hash === '') {
             navigate('dashboard');
           }
+          document.documentElement.classList.remove('ks-boot-dash');
           return;
         }
       }
@@ -660,6 +662,7 @@ async function checkAuthAndInitialize() {
   }
 
   updateNavAuthState();
+  document.documentElement.classList.remove('ks-boot-dash');
   handleRoute();
 }
 
@@ -1848,4 +1851,27 @@ function initAudienceSwitcher() {
       select(next.dataset.audience); next.focus();
     });
   });
+}
+
+/* --------------------------------------------------------------------------
+   EMAIL PRICES ON THE LANDING PAGE (kept in step with the server's price list)
+   -------------------------------------------------------------------------- */
+async function loadEmailPricing() {
+  const boxes = { transactional: document.getElementById('email-prices-transactional'), marketing: document.getElementById('email-prices-marketing') };
+  if (!boxes.transactional || !boxes.marketing) return;
+  try {
+    const res = await fetch('/api/email/pricing');
+    const data = await res.json();
+    if (!data.ok || !data.pricing) return;
+    const n = v => Number(v).toLocaleString();
+    for (const type of ['transactional', 'marketing']) {
+      const packs = (data.pricing[type] && data.pricing[type].packs) || [];
+      if (!packs.length) continue;
+      boxes[type].innerHTML = packs.map(p => `
+        <div class="flex items-center justify-between gap-3 py-3">
+          <div><span class="text-lg font-black text-navy-900 dark:text-white">${n(p.emails)}</span> <span class="text-sm font-semibold text-ink dark:text-slate-400">emails</span>${p.popular ? ' <span class="ml-1 rounded-full bg-ember-500 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-white">Popular</span>' : ''}</div>
+          <div class="text-right"><div class="text-lg font-black text-navy-900 dark:text-white">GH₵ ${n(p.priceGHS)}</div><div class="text-xs text-ink dark:text-slate-400">GH₵ ${Number(p.perEmailGHS).toFixed(3)} each</div></div>
+        </div>`).join('');
+    }
+  } catch (e) { /* keep the prices already in the page */ }
 }

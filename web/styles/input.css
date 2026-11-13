@@ -333,3 +333,8 @@
 .em-bar { transition: opacity .15s; }
 .em-chart-tip { @apply pointer-events-none absolute z-10 rounded-lg bg-navy-900 px-3 py-2 text-xs font-semibold text-white shadow-chip dark:bg-white dark:text-navy-900; }
 #em-send-btn[aria-busy="true"] { @apply cursor-wait border-none bg-ember-500 text-white opacity-90; }
+
+/* Signed-in reload of the dashboard: hide the landing page until auth is checked. */
+html.ks-boot-dash #view-landing,
+html.ks-boot-dash #landing-nav-links { display: none !important; }
+html.ks-boot-dash #view-dashboard { display: flex !important; }
