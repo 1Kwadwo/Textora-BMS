@@ -332,3 +332,4 @@
 .em-row { @apply cursor-pointer transition hover:bg-cream-50 dark:hover:bg-white/5; }
 .em-bar { transition: opacity .15s; }
 .em-chart-tip { @apply pointer-events-none absolute z-10 rounded-lg bg-navy-900 px-3 py-2 text-xs font-semibold text-white shadow-chip dark:bg-white dark:text-navy-900; }
+#em-send-btn[aria-busy="true"] { @apply cursor-wait border-none bg-ember-500 text-white opacity-90; }

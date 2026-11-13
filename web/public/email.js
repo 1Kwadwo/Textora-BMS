@@ -26,11 +26,18 @@
     return data
   }
 
-  function toast(text) {
+  // tone: 'info' (navy), 'ok' (teal), 'bad' (orange). Title is optional.
+  function toast(text, { title = '', tone = 'info', ms = 3200 } = {}) {
+    const box = $('em-toast-box')
+    box.classList.remove('bg-navy-900', 'bg-teal-700', 'bg-ember-600')
+    box.classList.add(tone === 'ok' ? 'bg-teal-700' : tone === 'bad' ? 'bg-ember-600' : 'bg-navy-900')
+    $('em-toast-icon').textContent = tone === 'ok' ? '✓' : tone === 'bad' ? '!' : 'i'
+    $('em-toast-title').textContent = title
+    $('em-toast-title').classList.toggle('hidden', !title)
     $('em-toast-text').textContent = text
     $('em-toast').classList.remove('hidden')
     clearTimeout(toast.t)
-    toast.t = setTimeout(() => $('em-toast').classList.add('hidden'), 2600)
+    toast.t = setTimeout(() => $('em-toast').classList.add('hidden'), ms)
   }
   function note(el, text, ok) {
     el.className = 'mt-2 text-sm font-semibold ' + (ok ? 'text-teal-700 dark:text-teal-300' : 'text-ember-700 dark:text-ember-300')
@@ -95,6 +102,10 @@
     $$('.em-shared').forEach(el => { el.textContent = state.sharedDomain })
     $$('.em-max').forEach(el => { el.textContent = state.max })
     $('em-side-rate').textContent = state.rate
+    state.enabled = d.settings.enabled !== false
+    $('em-disabled').classList.toggle('hidden', state.enabled)
+    $('em-send-btn').disabled = !state.enabled
+    $('em-send-btn').title = state.enabled ? '' : 'Email sending is not switched on yet'
     $('em-name').textContent = (d.user.name || 'there').split(' ')[0]
     setBalance(d.user.balance)
 
@@ -284,12 +295,19 @@
     updatePreview()
   })
 
+  function setSending(on) {
+    const btn = $('em-send-btn')
+    btn.disabled = on || state.enabled === false
+    btn.setAttribute('aria-busy', on ? 'true' : 'false')
+    $('em-send-spin').classList.toggle('hidden', !on)
+    $('em-send-label').textContent = on ? 'Sending…' : 'Send email'
+    $$('#em-send-form input, #em-send-form textarea, #em-send-form select').forEach(el => { el.disabled = on })
+  }
+
   $('em-send-form').addEventListener('submit', async e => {
     e.preventDefault()
-    const out = $('em-send-result')
-    const btn = $('em-send-btn')
-    btn.disabled = true
-    btn.textContent = 'Sending…'
+    if ($('em-send-btn').disabled) return
+    setSending(true)
     try {
       const tplId = $('em-template').value
       const fromName = ($('em-from-name')?.value || '').trim()
@@ -307,16 +325,18 @@
       if (tplId) { body.template_id = tplId; body.variables = currentVars() }
       const d = await api('/api/email/send', { method: 'POST', body })
       setBalance(d.remaining_balance)
-      out.className = 'rounded-xl bg-teal-50 p-3 text-sm text-teal-800 dark:bg-teal-500/10 dark:text-teal-200'
-      out.innerHTML = `<b>Queued.</b> ${d.message.credits_charged} credits charged${d.message.suppressed_recipients.length ? `, skipped ${esc(d.message.suppressed_recipients.join(', '))} (suppressed)` : ''}. <button type="button" class="font-bold underline" data-msg="${esc(d.message.id)}">Track delivery</button>`
+      const n = d.message.to.length + d.message.cc.length + d.message.bcc.length
+      const skipped = d.message.suppressed_recipients.length ? ` Skipped ${d.message.suppressed_recipients.join(', ')} (bounced or unsubscribed before).` : ''
+      toast(`Sent to ${n} recipient${n > 1 ? 's' : ''} · ${fmtCr(d.message.credits_charged)} credits charged.${skipped}`, { title: 'Email dispatched', tone: 'ok', ms: 4500 })
+      $('em-to').value = ''
+      $('em-cc').value = ''
+      $('em-bcc').value = ''
       state.overview = null
     } catch (err) {
-      out.className = 'rounded-xl bg-ember-50 p-3 text-sm text-ember-800 dark:bg-ember-500/10 dark:text-ember-200'
-      out.textContent = err.message
+      toast(err.message, { title: 'Email not sent', tone: 'bad', ms: 6000 })
     } finally {
-      out.classList.remove('hidden')
-      btn.disabled = false
-      btn.textContent = 'Send email'
+      setSending(false)
+      updatePreview()
     }
   })
 

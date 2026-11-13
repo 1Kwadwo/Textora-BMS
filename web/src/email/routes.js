@@ -6,6 +6,7 @@ const engine = require('./engine')
 const { EmailError, publicMessage } = engine
 const { ApiKeyRepo, keyHasScope } = require('../models')
 const U = require('./util')
+const { isEmailEnabled } = require('./providers')
 
 const buckets = new Map()
 function limited(key, max, windowMs) {
@@ -139,7 +140,7 @@ async function route(req, res, ctx) {
       return json(200, {
         ok: true,
         user: { id: userId, name: user.name, email: user.email, balance: user.balance },
-        settings: { creditsPerRecipient: U.config.creditsPerRecipient(), sharedDomain: U.config.sharedDomain(), maxRecipients: U.config.maxRecipients() },
+        settings: { enabled: isEmailEnabled(), creditsPerRecipient: U.config.creditsPerRecipient(), sharedDomain: U.config.sharedDomain(), maxRecipients: U.config.maxRecipients() },
         account: { paused: !!account.paused, pausedReason: account.pausedReason || null },
         stats,
         recent: recent.map(x => publicMessage(x)),

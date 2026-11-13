@@ -33,8 +33,12 @@ let active = null
 
 function getProvider() {
   if (active) return active
-  const wanted = (process.env.EMAIL_PROVIDER || (process.env.EMAIL_RESEND_API_KEY ? 'resend' : 'mock')).toLowerCase()
-  if (wanted === 'resend') {
+  // With no key and no explicit EMAIL_PROVIDER, email stays switched off. The mock
+  // provider is only ever used when EMAIL_PROVIDER=mock is set on purpose (local dev, tests).
+  const wanted = (process.env.EMAIL_PROVIDER || (process.env.EMAIL_RESEND_API_KEY ? 'resend' : 'disabled')).trim().toLowerCase()
+  if (wanted === 'disabled' || (wanted === 'resend' && !process.env.EMAIL_RESEND_API_KEY)) {
+    active = createDisabledProvider(wanted === 'resend' ? 'EMAIL_PROVIDER=resend but EMAIL_RESEND_API_KEY is empty' : 'no EMAIL_RESEND_API_KEY set')
+  } else if (wanted === 'resend') {
     const { createResendProvider } = require('./resend')
     active = createResendProvider({
       apiKey: process.env.EMAIL_RESEND_API_KEY,
@@ -50,7 +54,23 @@ function getProvider() {
   return active
 }
 
+// Placeholder used until a real provider is configured. Every call fails clearly.
+function createDisabledProvider(reason) {
+  const off = async () => { throw new ProviderError('Email sending is switched off: ' + reason, { code: 'email_disabled' }) }
+  return {
+    name: 'disabled',
+    disabled: true,
+    reason,
+    send: off, createDomain: off, getDomain: off, verifyDomain: off, deleteDomain: off,
+    parseWebhook() { throw new ProviderError('Email webhooks are switched off', { code: 'email_disabled' }) }
+  }
+}
+
+function isEmailEnabled() {
+  try { return !getProvider().disabled } catch (e) { return false }
+}
+
 // Tests can swap the provider.
 function setProvider(p) { active = p }
 
-module.exports = { getProvider, setProvider, ProviderError }
+module.exports = { getProvider, setProvider, isEmailEnabled, ProviderError }

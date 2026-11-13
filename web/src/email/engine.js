@@ -27,6 +27,9 @@ const nowIso = () => new Date().toISOString()
 
 function provider() {
   const p = getProvider()
+  if (p.disabled) {
+    throw new EmailError(503, 'email_not_enabled', 'KebSEND Email is not switched on yet. No email was sent and nothing was charged.')
+  }
   if (p.name === 'mock' && process.env.NODE_ENV === 'production' && process.env.EMAIL_ALLOW_MOCK !== 'true') {
     throw new EmailError(503, 'email_not_configured', 'Email sending is not configured on this server yet.')
   }
@@ -580,7 +583,11 @@ let timers = []
 function startWorker() {
   if (timers.length) return
   const every = (ms, fn) => { const t = setInterval(() => fn().catch(e => console.warn('[Email worker]', e.message)), ms); if (t.unref) t.unref(); timers.push(t) }
-  every(5000, processQueue)
+  let indexed = false
+  every(5000, async () => {
+    if (!indexed && require('../db').getMongoStatus()) { await ensureIndexes(); indexed = true }
+    await processQueue()
+  })
   every(60 * 1000, recheckPendingDomains)
   every(60 * 60 * 1000, purgeOldContent)
   ensureIndexes().catch(() => {})
@@ -683,7 +690,7 @@ async function replayEarlyEvents(messageId, providerMessageId) {
 
 async function handleWebhook(rawBody, headers) {
   const p = getProvider()
-  if (p.name === 'mock' && process.env.NODE_ENV === 'production') throw new EmailError(404, 'not_found', 'Not found')
+  if (p.disabled || (p.name === 'mock' && process.env.NODE_ENV === 'production')) throw new EmailError(404, 'not_found', 'Not found')
   let evt
   try {
     evt = p.parseWebhook(rawBody, headers)
