@@ -266,7 +266,7 @@ async function resolveSender(user, fromInput) {
 
   if (domainName === U.config.sharedDomain()) {
     if (!identity) throw new EmailError(403, 'sender_not_allowed', `${mb.address} is not one of your KebSEND addresses. Create it under Sender domains.`)
-    return { address: mb.address, name: mb.name || identity.displayName || user.name || '', replyTo: identity.replyTo, senderType: 'shared', domainId: null }
+    return { address: mb.address, name: mb.name || identity.displayName || '', replyTo: identity.replyTo, senderType: 'shared', domainId: null }
   }
   const domain = await db.domains.findOne({ name: domainName, userId: uid(user) })
   if (!domain) throw new EmailError(403, 'domain_not_connected', `${domainName} is not connected to your account. Add it under Sender domains.`)

@@ -169,10 +169,17 @@
         </div>
         <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <form id="em-send-form" class="dash-surface-card space-y-4 p-5 sm:p-6" autocomplete="off">
-            <div>
-              <label class="ks-label" for="em-from">From</label>
-              <select id="em-from" class="ks-select font-semibold"></select>
-              <p id="em-from-help" class="mt-1 text-xs text-ink dark:text-slate-400"></p>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label class="ks-label" for="em-from-name">Sender name <span class="font-normal text-ink dark:text-slate-400">(Display name)</span></label>
+                <input id="em-from-name" class="ks-input font-semibold" placeholder="e.g. KebSEND, Citizen Gadgets">
+                <p class="mt-1 text-[11px] text-ink dark:text-slate-400">What recipients see in their inbox header.</p>
+              </div>
+              <div>
+                <label class="ks-label" for="em-from">From address</label>
+                <select id="em-from" class="ks-select font-semibold"></select>
+                <p id="em-from-help" class="mt-1 text-[11px] text-ink dark:text-slate-400"></p>
+              </div>
             </div>
             <div>
               <label class="ks-label" for="em-to">To</label>

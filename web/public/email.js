@@ -205,9 +205,12 @@
     const prev = sel.value
     const ready = state.senders.filter(s => s.ready)
     sel.innerHTML = ready.length
-      ? ready.map(s => `<option value="${esc(s.from)}">${esc(s.from)}</option>`).join('')
+      ? ready.map(s => `<option value="${esc(s.address)}" data-name="${esc(s.displayName || '')}">${esc(s.address)}${s.displayName ? ' (' + esc(s.displayName) + ')' : ''}</option>`).join('')
       : '<option value="">No sender yet</option>'
-    if (prev && ready.some(s => s.from === prev)) sel.value = prev
+    if (prev && ready.some(s => s.address === prev)) sel.value = prev
+    if (!$('em-from-name').value && ready.length) {
+      $('em-from-name').value = sel.options[sel.selectedIndex]?.dataset?.name || ''
+    }
     const waiting = state.senders.length - ready.length
     $('em-from-help').innerHTML = !ready.length
       ? `Create a sender first under <button type="button" data-goto="domains" class="font-bold text-ember-500">Sender domains</button>.`
@@ -236,7 +239,9 @@
   }
   function updatePreview() {
     const vars = currentVars()
-    $('pv-from').textContent = $('em-from').value || 'Your sender'
+    const name = ($('em-from-name')?.value || '').trim()
+    const addr = ($('em-from')?.value || '').trim()
+    $('pv-from').textContent = name && addr ? `${name} <${addr}>` : (addr || name || 'Your sender')
     $('pv-to').textContent = $('em-to').value.trim() || 'recipient'
     $('pv-subject').textContent = fill($('em-subject').value, vars) || 'Subject'
     const html = $('em-html').value.trim()
@@ -247,8 +252,12 @@
     $('em-cost').textContent = fmtCr(n * state.rate) + ' credits'
     $('em-cost-note').textContent = n ? `${n} recipient${n > 1 ? 's' : ''} × ${state.rate}` : ''
   }
-  ;['em-from', 'em-to', 'em-cc', 'em-bcc', 'em-subject', 'em-html', 'em-text'].forEach(id => $(id).addEventListener('input', updatePreview))
-  $('em-from').addEventListener('change', updatePreview)
+  ;['em-from-name', 'em-from', 'em-to', 'em-cc', 'em-bcc', 'em-subject', 'em-html', 'em-text'].forEach(id => $(id).addEventListener('input', updatePreview))
+  $('em-from').addEventListener('change', () => {
+    const opt = $('em-from').options[$('em-from').selectedIndex]
+    if (opt?.dataset?.name) $('em-from-name').value = opt.dataset.name
+    updatePreview()
+  })
   $('em-ccbcc-toggle').addEventListener('click', () => $('em-ccbcc').classList.toggle('hidden'))
   $$('.em-body-tab').forEach(b => b.addEventListener('click', () => {
     state.bodyTab = b.dataset.body
@@ -283,8 +292,11 @@
     btn.textContent = 'Sending…'
     try {
       const tplId = $('em-template').value
+      const fromName = ($('em-from-name')?.value || '').trim()
+      const fromAddr = ($('em-from')?.value || '').trim()
+      const fullFrom = fromName ? `${fromName} <${fromAddr}>` : fromAddr
       const body = {
-        from: $('em-from').value,
+        from: fullFrom,
         to: $('em-to').value,
         cc: $('em-cc').value || undefined,
         bcc: $('em-bcc').value || undefined,
