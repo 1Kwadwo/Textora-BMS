@@ -13,6 +13,9 @@ const { isGhanaNumber, normalizeNumber, toCanonicalGhanaPhone, calculateSMSUnits
 const { initializePayment, verifyPayment } = require('./src/services/paystack')
 const { fulfillSenderIdFee, notifyAdmin, reconcileUserSenderIdFees, isValidWebSenderId, allowedSenderIdsFor } = require('./src/services/senderIdRequests')
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./src/services/email')
+const { handleEmailRoutes } = require('./src/email/routes')
+const emailEngine = require('./src/email/engine')
+const { keyHasScope } = require('./src/models')
 
 // A phone number can sit on one account only. Checks the number against every
 // other account (in any stored format) before any code is sent to it.
@@ -121,6 +124,9 @@ function clientIp(req) {
 
 // Connect to MongoDB
 connectDB().catch(err => console.error('DB Startup error:', err.message))
+
+// KebSEND Email background worker (outbox + domain re-checks)
+emailEngine.startWorker()
 
 const server = http.createServer(async (req, res) => {
 
@@ -285,6 +291,11 @@ const server = http.createServer(async (req, res) => {
 
     return null
   }
+
+  // --------------------------------------------------------------------------
+  // KEBSEND EMAIL (all routes live in src/email)
+  // --------------------------------------------------------------------------
+  if (await handleEmailRoutes(req, res, { urlPath, urlObj, json, authenticateUser, authenticateApiKey })) return
 
   // --------------------------------------------------------------------------
   // AUTHENTICATION ROUTES
@@ -582,7 +593,7 @@ const server = http.createServer(async (req, res) => {
     if (!user) return json(401, { ok: false, message: 'Unauthorized' })
 
     const userId = user._id || user.id
-    const apiKeys = await ApiKeyRepo.listByUser(userId)
+    const apiKeys = await ApiKeyRepo.listByUser(userId, 'sms')
     const logs = await SmsLogRepo.listByUser(userId, 10)
     // Catch sender ID fees paid on Paystack where the customer never came back to the site.
     try { await reconcileUserSenderIdFees(userId) } catch (e) { console.warn('[Sender ID Reconcile]', e.message) }
@@ -909,6 +920,11 @@ const server = http.createServer(async (req, res) => {
       return json(401, { ok: false, message: 'Missing or invalid API key. Use Authorization: Bearer ksnd_live_... or x-api-key header.' })
     }
 
+    // Email-only keys can't use the SMS API.
+    if (!auth.isBotDev && !keyHasScope(auth.apiKeyDoc, 'sms')) {
+      return json(403, { ok: false, message: 'This API key is for KebSEND Email. Use an SMS API key from the Developers tab.' })
+    }
+
     const { user } = auth
     const userId = user._id || user.id
 
@@ -1056,6 +1072,7 @@ const server = http.createServer(async (req, res) => {
   // Static files
   let safePath = path.normalize(decodeURIComponent(urlPath)).replace(/^(\.\.[\/\\])+/, '')
   if (safePath === '/' || safePath === '' || safePath === '/reset-password') safePath = '/index.html'
+  if (safePath === '/email' || safePath === '/email/') safePath = '/email.html'
 
   const filePath = path.join(PUBLIC_DIR, safePath)
   // Containment: never serve anything resolving outside the public directory.

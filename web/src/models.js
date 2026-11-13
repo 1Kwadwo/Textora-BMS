@@ -41,9 +41,19 @@ const apiKeySchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true, index: true },
   name: { type: String, default: 'Default Live Key' },
   status: { type: String, enum: ['active', 'revoked'], default: 'active' },
+  // Products this key may use. Keys made before email existed have no scopes and count as SMS-only.
+  scopes: { type: [String], default: undefined },
   createdAt: { type: Date, default: Date.now },
   lastUsedAt: { type: Date }
 })
+
+// Keys without a scopes list predate KebSEND Email and are SMS keys.
+function keyScopes(k) {
+  return Array.isArray(k?.scopes) && k.scopes.length ? k.scopes : ['sms']
+}
+function keyHasScope(k, scope) {
+  return keyScopes(k).includes(scope)
+}
 
 const transactionSchema = new mongoose.Schema({
   userId: { type: String, required: true, index: true },
@@ -363,17 +373,19 @@ const UserRepo = {
 
   async debitBalance(userId, amount) {
     const debitAmount = Number(amount)
-    if (getMongoStatus()) {
-      const updated = await UserModel.findOneAndUpdate(
-        { _id: userId, balance: { $gte: debitAmount } },
-        { $inc: { balance: -debitAmount } },
-        { new: true }
-      )
-      if (!updated) {
-        const user = await UserModel.findById(userId)
-        return { ok: false, balance: user ? user.balance : 0, message: 'Insufficient balance' }
-      }
-      return { ok: true, balance: updated.balance }
+    if (getMongoStatus() && mongoose.Types.ObjectId.isValid(userId)) {
+      try {
+        const updated = await UserModel.findOneAndUpdate(
+          { _id: userId, balance: { $gte: debitAmount } },
+          { $inc: { balance: -debitAmount } },
+          { new: true }
+        )
+        if (!updated) {
+          const user = await UserModel.findById(userId)
+          return { ok: false, balance: user ? user.balance : 0, message: 'Insufficient balance' }
+        }
+        return { ok: true, balance: updated.balance }
+      } catch (e) {}
     }
 
     const store = loadStore()
@@ -389,13 +401,15 @@ const UserRepo = {
 
   async creditBalance(userId, amount) {
     const creditAmount = Number(amount)
-    if (getMongoStatus()) {
-      const updated = await UserModel.findByIdAndUpdate(
-        userId,
-        { $inc: { balance: creditAmount } },
-        { new: true }
-      )
-      return { ok: true, balance: updated ? updated.balance : 0 }
+    if (getMongoStatus() && mongoose.Types.ObjectId.isValid(userId)) {
+      try {
+        const updated = await UserModel.findByIdAndUpdate(
+          userId,
+          { $inc: { balance: creditAmount } },
+          { new: true }
+        )
+        return { ok: true, balance: updated ? updated.balance : 0 }
+      } catch (e) {}
     }
     const store = loadStore()
     const user = store.users.find(u => String(u._id) === String(userId) || String(u.id) === String(userId))
@@ -554,10 +568,10 @@ const UserRepo = {
 }
 
 const ApiKeyRepo = {
-  async generate(userId, name = 'Live API Key') {
+  async generate(userId, name = 'Live API Key', scopes) {
     const key = 'ksnd_live_' + crypto.randomBytes(16).toString('hex')
     if (getMongoStatus()) {
-      const k = new ApiKeyModel({ userId, key, name, status: 'active' })
+      const k = new ApiKeyModel({ userId, key, name, status: 'active', ...(scopes ? { scopes } : {}) })
       const saved = await k.save()
       return saved.toObject()
     }
@@ -568,6 +582,7 @@ const ApiKeyRepo = {
       key,
       name,
       status: 'active',
+      ...(scopes ? { scopes } : {}),
       createdAt: new Date().toISOString(),
       lastUsedAt: null
     }
@@ -576,13 +591,15 @@ const ApiKeyRepo = {
     return record
   },
 
-  async listByUser(userId) {
+  // scope: optional 'sms' or 'email' to list only keys for that product.
+  async listByUser(userId, scope) {
+    const pick = list => (scope ? list.filter(k => keyHasScope(k, scope)) : list)
     if (getMongoStatus()) {
       const keys = await ApiKeyModel.find({ userId: String(userId), status: 'active' }).sort({ createdAt: -1 })
-      if (keys && keys.length) return keys.map(k => k.toObject())
+      if (keys && keys.length) return pick(keys.map(k => k.toObject()))
     }
     const store = loadStore()
-    return store.apiKeys.filter(k => String(k.userId) === String(userId) && k.status === 'active')
+    return pick(store.apiKeys.filter(k => String(k.userId) === String(userId) && k.status === 'active'))
   },
 
   async findByKey(key) {
@@ -864,6 +881,8 @@ const SenderIdRequestRepo = {
 }
 
 module.exports = {
+  keyScopes,
+  keyHasScope,
   UserRepo,
   ApiKeyRepo,
   TransactionRepo,

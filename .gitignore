@@ -8,4 +8,6 @@ node_modules/
 sender-ids.json
 users.json
 api-developers.json
+locks/
+src/sms-log.json
 data/
