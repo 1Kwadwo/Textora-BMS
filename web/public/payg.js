@@ -80,13 +80,13 @@
   function open({ quote, token, checkout, onSent, onFailed, onPackages }) {
     show({ token, onSent, onFailed })
     const unit = UNIT[quote.product] || 'credits'
-    const short = Math.ceil(quote.needed - quote.balance - 1e-9)
+    const short = quote.needed - quote.balance
     $('payg-summary').textContent = quote.balance > 0
       ? `This send needs ${fmt(quote.needed)} ${unit} and you have ${fmt(quote.balance)}. Pay for the rest and it goes out right away.`
       : `This send needs ${fmt(quote.needed)} ${unit}. Pay for just this send, no package needed.`
     $('payg-amount').textContent = ghs(quote.amountGHS)
     $('payg-rate').innerHTML = `${fmt(quote.credits)} credits at ${ghs(quote.rateGHS)} each` +
-      (quote.credits > short ? `<br>${ghs(quote.minGHS)} minimum, the extra stays in your balance` : '')
+      (quote.minGHS && quote.credits > short + 1e-9 ? `<br>${ghs(quote.minGHS)} minimum, the extra stays in your balance` : '')
     $('payg-pay').textContent = `Pay ${ghs(quote.amountGHS)} and send`
     $('payg-packages').onclick = () => { $('modal-payg').close(); onPackages && onPackages() }
     $('payg-pay').onclick = async () => {

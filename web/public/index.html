@@ -419,16 +419,11 @@
           <p class="ks-lead mt-4">Buy a credit package, or skip it and pay as you go: write your message, press Send, and pay for just that send.</p>
         </div>
 
-        <div class="mx-auto mb-12 grid max-w-5xl gap-4 sm:grid-cols-3">
+        <div class="mx-auto mb-12 grid max-w-3xl gap-4 sm:grid-cols-2">
           <div class="ks-card p-7 text-center">
-            <div class="text-sm font-bold uppercase tracking-wider text-ink dark:text-slate-400">Ghana, with a package</div>
+            <div class="text-sm font-bold uppercase tracking-wider text-ink dark:text-slate-400">Ghana (local)</div>
             <div class="mt-2 text-5xl font-black text-navy-900 dark:text-white">GH₵ 0.05</div>
-            <div class="mt-1 font-semibold text-ink dark:text-slate-400">per SMS</div>
-          </div>
-          <div class="ks-card border-2 !border-ember-500 p-7 text-center">
-            <div class="text-sm font-bold uppercase tracking-wider text-ember-600 dark:text-ember-300">Pay as you go</div>
-            <div class="mt-2 text-5xl font-black text-navy-900 dark:text-white">GH₵ 0.06</div>
-            <div class="mt-1 font-semibold text-ink dark:text-slate-400">per SMS, no package</div>
+            <div class="mt-1 font-semibold text-ink dark:text-slate-400">per SMS, package or pay as you go</div>
           </div>
           <div class="ks-card p-7 text-center">
             <div class="text-sm font-bold uppercase tracking-wider text-ink dark:text-slate-400">International</div>
@@ -507,7 +502,7 @@
             </div>
             <div class="ks-card p-6">
               <h4 class="font-extrabold text-navy-900 dark:text-white">No package? Pay as you go</h4>
-              <p class="mt-1.5 text-sm leading-relaxed text-ink dark:text-slate-300">Write your message and press Send. We show the exact price, you pay with MoMo or card, and it goes out the moment payment is confirmed. Any credits you already have are used first. Sending through the API needs a package.</p>
+              <p class="mt-1.5 text-sm leading-relaxed text-ink dark:text-slate-300">Write your message and press Send. We work out the cost the normal way (people × SMS parts × GH₵ 0.05), you pay that with MoMo or card, and it goes out the moment payment is confirmed. Any credits you already have are used first. Sending through the API needs a package.</p>
             </div>
             <div class="ks-card p-6">
               <h4 class="font-extrabold text-navy-900 dark:text-white">What counts as one SMS?</h4>
@@ -805,7 +800,7 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
           </details>
           <details class="ks-faq border-[color:var(--ks-border)]">
             <summary>Do I have to buy a package?<span class="ks-faq-icon">+</span></summary>
-            <p>No. On the dashboard you can pay as you go: write your SMS or email, press Send, and pay for just that send with MoMo or card (GH₵ 0.06 per SMS, GH₵ 0.04 per transactional email, GH₵ 0.03 per marketing email, GH₵ 1 minimum). Packages cost less per message, and sending through the API needs one.</p>
+            <p>No. On the dashboard you can pay as you go: write your SMS or email, press Send, and pay for just that send with MoMo or card. SMS costs the same GH₵ 0.05 per SMS as a package. Email is GH₵ 0.04 per transactional and GH₵ 0.03 per marketing email. Sending through the API needs a package.</p>
           </details>
           <details class="ks-faq border-[color:var(--ks-border)]">
             <summary>Can I use my SMS credits for email?<span class="ks-faq-icon">+</span></summary>
@@ -1184,7 +1179,7 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
         <!-- Bundles -->
         <div class="dash-surface-card p-5 sm:p-6">
           <h3 class="text-lg font-extrabold text-navy-900 dark:text-white">Buy credits</h3>
-          <p class="mb-4 text-sm text-ink dark:text-slate-400">Pay with MTN MoMo, Telecel Cash, AT Money or card. Credits are added instantly. <span id="dash-payg-note">No package? Just send, and pay for that one send at GH₵ 0.06 per SMS. Packages cost less and are needed for the API.</span></p>
+          <p class="mb-4 text-sm text-ink dark:text-slate-400">Pay with MTN MoMo, Telecel Cash, AT Money or card. Credits are added instantly. <span id="dash-payg-note">No package? Just send, and pay for that one send at the same GH₵ 0.05 per SMS. Sending through the API needs a package.</span></p>
           <div id="dash-plans-grid" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <!-- Populated via JS -->
           </div>
@@ -1486,7 +1481,7 @@ Authorization: Bearer ksnd_live_...
         </div>
         <div id="payg-rate" class="text-right text-xs text-ink dark:text-slate-400"></div>
       </div>
-      <p class="mt-3 text-xs text-ink dark:text-slate-400">It sends as soon as Paystack confirms your payment. Packages cost less per message, and the API only uses package credits.</p>
+      <p class="mt-3 text-xs text-ink dark:text-slate-400">It sends as soon as Paystack confirms your payment. Sending through the API needs a package.</p>
       <div id="payg-status" class="mt-4 hidden rounded-xl bg-cream-100 p-3 text-sm dark:bg-night-900"></div>
       <div class="modal-action mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <button id="payg-packages" type="button" class="btn btn-ghost">Buy a package instead</button>
@@ -1510,7 +1505,7 @@ Authorization: Bearer ksnd_live_...
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
   </dialog>
 
-  <script src="payg.js?v=1"></script>
-  <script src="app.js?v=14"></script>
+  <script src="payg.js?v=2"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>

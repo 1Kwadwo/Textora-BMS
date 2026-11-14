@@ -1,7 +1,6 @@
 // Pay as you go: on the website dashboard, a send that is short of credits can be
 // paid for on the spot (Paystack), and goes out as soon as the payment clears.
-// The payment buys exactly the credits the send is short of, at a slightly
-// higher per-message rate than the packs, then the send runs through the normal
+// The payment buys exactly the credits the send is short of, then the send runs through the normal
 // path, so refunds and logs work the same way. The API never offers this:
 // API sends always need credits from a package.
 const crypto = require('crypto')
@@ -11,15 +10,19 @@ const { TransactionRepo, UserRepo } = require('./models')
 const REF_PREFIX = 'web_payg_'
 
 const num = (v, d) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : d)
-// GHS per credit (one SMS part to a Ghana number, or one email to one person).
+// SMS uses the normal business model: one SMS credit is GH₵ 0.05 (the same as
+// every SMS package), and a send uses the same units as any send (contacts x
+// SMS parts, 1.6 per part abroad).
+const SMS_CREDIT_GHS = 0.05
+// GHS per credit (one SMS unit, or one email to one person).
 function rates() {
   return {
-    sms: num(process.env.PAYG_SMS_GHS, 0.06),
+    sms: SMS_CREDIT_GHS,
     transactional: num(process.env.PAYG_EMAIL_TRANSACTIONAL_GHS, 0.04),
     marketing: num(process.env.PAYG_EMAIL_MARKETING_GHS, 0.03)
   }
 }
-// Smallest single payment (Paystack charges per transaction).
+// Smallest single email payment. SMS has none: one SMS costs GH₵ 0.05.
 const minGHS = () => num(process.env.PAYG_MIN_GHS, 1)
 
 const round2 = n => Math.round(n * 100) / 100
@@ -29,7 +32,13 @@ function quote(product, needed, balance) {
   const rate = rates()[product]
   if (!rate) throw new Error('Unknown pay-as-you-go product ' + product)
   const short = Math.max(0, Number(needed) - Math.max(0, Number(balance) || 0))
-  if (!(short > 0)) return null
+  if (!(short > 0.0001)) return null
+  if (product === 'sms') {
+    // Exactly the units this send is short of, at the normal SMS price.
+    const credits = round2(short)
+    const amountGHS = Math.max(0.01, Math.ceil(credits * rate * 100 - 1e-9) / 100)
+    return { product, needed: Number(needed), balance: Number(balance) || 0, credits, rateGHS: rate, amountGHS, minGHS: 0 }
+  }
   let credits = Math.ceil(short - 1e-9)
   if (credits * rate < minGHS()) credits = Math.ceil(minGHS() / rate - 1e-9)
   return { product, needed: Number(needed), balance: Number(balance) || 0, credits, rateGHS: rate, amountGHS: round2(credits * rate), minGHS: minGHS() }
