@@ -218,35 +218,44 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
 
   async function debitDeveloperBalance(apiKey, amount) {
     return await withLock(lockName, async () => {
-      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
-      let dev = data.api_keys[apiKey]
       const db = await getMongoDb()
+      let dev = null
 
-      if (!dev && db) {
+      if (db) {
         try {
           dev = await db.collection('bot_api_developers').findOne({
             $or: [{ apiKey }, { apiKeys: apiKey }]
           })
-        } catch (e) {}
-      }
-
-      if (!dev && db) {
-        try {
-          // Check web apikeys
-          const keyDoc = await db.collection('apikeys').findOne({ key: apiKey })
-          if (keyDoc) {
-            const userDoc = await db.collection('users').findOne({ _id: keyDoc.userId })
-            if (userDoc) {
-              dev = {
-                userId: String(userDoc._id),
-                apiKey,
-                balance: userDoc.balance || 0,
-                name: userDoc.name,
-                isWebUser: true
+          if (dev) {
+            dev.isBotDev = true
+          } else {
+            // Check web apikeys
+            const keyDoc = await db.collection('apikeys').findOne({ key: apiKey })
+            if (keyDoc) {
+              const { ObjectId } = require('mongodb')
+              let queryId = keyDoc.userId
+              try { if (ObjectId.isValid(queryId)) queryId = new ObjectId(queryId) } catch (e) {}
+              const userDoc = await db.collection('users').findOne({ _id: queryId })
+              if (userDoc) {
+                dev = {
+                  userId: String(userDoc._id),
+                  apiKey,
+                  balance: userDoc.balance || 0,
+                  name: userDoc.name,
+                  isWebUser: true
+                }
               }
             }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('[debitDeveloperBalance DB query failed]', e.message)
+        }
+      }
+
+      // Offline / local fallback only if MongoDB is not connected or record not found
+      const data = await readJsonFileAsync(apiDevelopersStorePath, { api_keys: {}, users: {} })
+      if (!dev) {
+        dev = data.api_keys ? data.api_keys[apiKey] : null
       }
 
       if (!dev) {
@@ -259,27 +268,47 @@ function createApiDevelopersStore({ apiDevelopersStorePath }) {
       if (dev.isWebUser && db) {
         try {
           const { ObjectId } = require('mongodb')
-          await db.collection('users').updateOne(
-            { _id: new ObjectId(dev.userId) },
-            { $inc: { balance: -amount } }
+          let queryId = dev.userId
+          try { if (ObjectId.isValid(queryId)) queryId = new ObjectId(queryId) } catch (e) {}
+          const updated = await db.collection('users').findOneAndUpdate(
+            { _id: queryId, balance: { $gte: amount } },
+            { $inc: { balance: -amount } },
+            { returnDocument: 'after' }
           )
-          return { ok: true, balance: Number((dev.balance - amount).toFixed(2)) }
+          const newBal = updated?.balance !== undefined ? updated.balance : Number((dev.balance - amount).toFixed(2))
+          return { ok: true, balance: Number(Number(newBal).toFixed(2)) }
         } catch (e) {}
       }
 
-      dev.balance = Number((dev.balance - Number(amount)).toFixed(2))
-      data.users[dev.userId] = dev
-      data.api_keys[apiKey] = dev
-      await writeJsonFileAsync(apiDevelopersStorePath, data)
-
-      if (db) {
+      if (dev.isBotDev && db) {
         try {
-          await db.collection('bot_api_developers').updateOne(
-            { userId: String(dev.userId) },
-            { $set: { balance: dev.balance, updatedAt: new Date() } }
+          const updated = await db.collection('bot_api_developers').findOneAndUpdate(
+            { _id: dev._id, balance: { $gte: amount } },
+            { $inc: { balance: -amount }, $set: { updatedAt: new Date() } },
+            { returnDocument: 'after' }
           )
-        } catch (e) {}
+          if (!updated) {
+            const current = await db.collection('bot_api_developers').findOne({ _id: dev._id })
+            return { ok: false, balance: current ? current.balance : dev.balance, message: 'Insufficient prepaid credits' }
+          }
+          const newBal = Number(Number(updated.balance).toFixed(2))
+          if (data.users && dev.userId) {
+            dev.balance = newBal
+            data.users[dev.userId] = dev
+            if (dev.apiKey) data.api_keys[dev.apiKey] = dev
+            await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
+          }
+          return { ok: true, balance: newBal }
+        } catch (e) {
+          console.warn('[debitDeveloperBalance bot update failed]', e.message)
+        }
       }
+
+      // Offline fallback debit
+      dev.balance = Number((dev.balance - Number(amount)).toFixed(2))
+      if (data.users && dev.userId) data.users[dev.userId] = dev
+      if (data.api_keys && apiKey) data.api_keys[apiKey] = dev
+      await writeJsonFileAsync(apiDevelopersStorePath, data).catch(() => {})
 
       return { ok: true, balance: dev.balance }
     })
