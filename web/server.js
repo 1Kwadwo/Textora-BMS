@@ -17,6 +17,7 @@ const { handleEmailRoutes } = require('./src/email/routes')
 const emailWallet = require('./src/email/wallet')
 const emailEngine = require('./src/email/engine')
 const { keyHasScope } = require('./src/models')
+const payg = require('./src/payg')
 
 // A phone number can sit on one account only. Checks the number against every
 // other account (in any stored format) before any code is sent to it.
@@ -123,6 +124,91 @@ function clientIp(req) {
   return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown'
 }
 
+// Checks a dashboard SMS send and works out what it costs, without sending.
+function prepareDashboardSms(user, body) {
+  const { to, message, senderId } = body || {}
+  if (!to || !message) {
+    return { ok: false, status: 400, data: { ok: false, message: 'Recipients ("to") and "message" are required.' } }
+  }
+  let recipients = []
+  if (Array.isArray(to)) recipients = to.map(normalizeNumber).filter(Boolean)
+  else if (typeof to === 'string') recipients = to.split(/[\n,;]+/).map(normalizeNumber).filter(Boolean)
+  if (recipients.length === 0) {
+    return { ok: false, status: 400, data: { ok: false, message: 'No valid recipient phone numbers provided.' } }
+  }
+  // Authorize the sender ID: callers may only use IDs approved for their own account.
+  const allowedList = allowedSenderIdsFor(user)
+  if (allowedList.length === 0) {
+    return { ok: false, status: 403, data: { ok: false, noSenderId: true, message: 'You don\'t have an approved sender ID yet. Register one under Sender IDs first.' } }
+  }
+  const sId = senderId ? String(senderId).trim() : allowedList[0]
+  if (!allowedList.includes(sId.toUpperCase())) {
+    return { ok: false, status: 403, data: { ok: false, message: `Sender ID "${sId}" is not approved for your account. Register it under Sender IDs first.` } }
+  }
+  const unitsPerMessage = calculateSMSUnits(message)
+  let needed = 0
+  for (const r of recipients) needed += isGhanaNumber(r) ? unitsPerMessage * 1.0 : unitsPerMessage * 1.6
+  return { ok: true, recipients, message: String(message), senderId: sId, needed: Number(needed.toFixed(2)) }
+}
+
+// Debits the SMS wallet and sends. Refunds if the carrier call fails.
+async function sendDashboardSms(user, prep) {
+  const { recipients, message, senderId: sId, needed: totalCreditsNeeded } = prep
+  const userId = user._id || user.id
+  const debitRes = await UserRepo.debitBalance(userId, totalCreditsNeeded)
+  if (!debitRes.ok) {
+    return { status: 400, data: {
+      ok: false,
+      message: `Insufficient balance. Required: ${totalCreditsNeeded} credits, Available: ${debitRes.balance} credits. Please recharge your wallet.`,
+      requiredCredits: totalCreditsNeeded,
+      currentBalance: debitRes.balance
+    } }
+  }
+
+  let arkeselRes
+  try {
+    arkeselRes = await sendSMS({ to: recipients, message, senderId: sId })
+  } catch (sendErr) {
+    // Refund on failure
+    await UserRepo.creditBalance(userId, totalCreditsNeeded)
+    return { status: 500, data: { ok: false, message: 'Carrier sending failed: ' + sendErr.message } }
+  }
+
+  const logEntry = await SmsLogRepo.create({
+    userId,
+    recipients,
+    message,
+    senderId: sId,
+    unitsDebited: totalCreditsNeeded,
+    remainingBalance: debitRes.balance,
+    status: 'success'
+  })
+
+  return { status: 200, data: {
+    ok: true,
+    message: `SMS dispatched to ${recipients.length} recipients successfully.`,
+    units_debited: totalCreditsNeeded,
+    remaining_balance: debitRes.balance,
+    data: arkeselRes,
+    log: logEntry
+  } }
+}
+
+// Pay-as-you-go SMS: runs once the payment is confirmed.
+payg.setDispatcher('sms', async (user, payload) => {
+  const prep = prepareDashboardSms(user, payload)
+  if (!prep.ok) throw new Error(prep.data.message)
+  const out = await sendDashboardSms(user, prep)
+  if (!out.data.ok) throw new Error(out.data.message)
+  return { recipients: prep.recipients.length, units: out.data.units_debited, remainingBalance: out.data.remaining_balance }
+})
+
+function baseUrlOf(req) {
+  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, '')
+  const proto = String(req.headers['x-forwarded-proto'] || (req.connection?.encrypted ? 'https' : 'http')).split(',')[0].trim()
+  return `${proto}://${req.headers.host || 'localhost:4000'}`
+}
+
 // Connect to MongoDB
 connectDB().catch(err => console.error('DB Startup error:', err.message))
 
@@ -197,6 +283,10 @@ const server = http.createServer(async (req, res) => {
             // Email credits go to the separate email balance, never to SMS.
             const result = await emailWallet.fulfillPurchase(reference)
             console.log(`[PAYSTACK WEBHOOK] Email credits for ref ${reference}:`, result.ok ? (result.already ? 'already credited' : `+${result.emails} ${result.product}`) : result.reason)
+          } else if (reference && reference.startsWith(payg.REF_PREFIX)) {
+            // Pay as you go: the customer may have closed the tab, so send it from here.
+            const result = await payg.fulfill(reference)
+            console.log(`[PAYSTACK WEBHOOK] Pay-as-you-go ${reference}:`, result.ok ? result.order.status : result.reason)
           } else if (reference && reference.startsWith('sid_fee_')) {
             // Paystack already told us it's paid (signed webhook), so create the
             // request and alert the admin here; don't wait for the customer to return.
@@ -609,6 +699,7 @@ const server = http.createServer(async (req, res) => {
     return json(200, {
       ok: true,
       customSenderIdFeeGHS: feeGHS,
+      paygSmsGHS: payg.rates().sms,
       user: {
         id: userId,
         name: user.name,
@@ -652,74 +743,53 @@ const server = http.createServer(async (req, res) => {
     if (!rlSms.ok) return json(429, { ok: false, message: 'Sending too fast. Please wait a moment and try again.' })
 
     const body = await parseBody()
-    const { to, message, senderId } = body
-    if (!to || !message) {
-      return json(400, { ok: false, message: 'Recipients ("to") and "message" are required.' })
+    const prep = prepareDashboardSms(user, body)
+    if (!prep.ok) return json(prep.status, prep.data)
+    const out = await sendDashboardSms(user, prep)
+    if (!out.data.ok && out.data.requiredCredits !== undefined) {
+      // Short of credits: offer to pay for just this send.
+      out.data.payg = payg.quote('sms', out.data.requiredCredits, out.data.currentBalance)
     }
+    return json(out.status, out.data)
+  }
 
-    let recipients = []
-    if (Array.isArray(to)) recipients = to.map(normalizeNumber).filter(Boolean)
-    else if (typeof to === 'string') recipients = to.split(/[\n,;]+/).map(normalizeNumber).filter(Boolean)
-
-    if (recipients.length === 0) {
-      return json(400, { ok: false, message: 'No valid recipient phone numbers provided.' })
-    }
-
-    // Authorize the sender ID: callers may only use IDs approved for their own account.
-    const allowedList = allowedSenderIdsFor(user)
-    if (allowedList.length === 0) {
-      return json(403, { ok: false, noSenderId: true, message: 'You don\'t have an approved sender ID yet. Register one under Sender IDs first.' })
-    }
-    const sId = senderId ? String(senderId).trim() : allowedList[0]
-    if (!allowedList.includes(sId.toUpperCase())) {
-      return json(403, { ok: false, message: `Sender ID "${sId}" is not approved for your account. Register it under Sender IDs first.` })
-    }
-
-    const unitsPerMessage = calculateSMSUnits(message)
-    let totalCreditsNeeded = 0
-    for (const r of recipients) {
-      totalCreditsNeeded += isGhanaNumber(r) ? unitsPerMessage * 1.0 : unitsPerMessage * 1.6
-    }
-    totalCreditsNeeded = Number(totalCreditsNeeded.toFixed(2))
-
-    const userId = user._id || user.id
-    const debitRes = await UserRepo.debitBalance(userId, totalCreditsNeeded)
-    if (!debitRes.ok) {
-      return json(400, {
-        ok: false,
-        message: `Insufficient balance. Required: ${totalCreditsNeeded} credits, Available: ${debitRes.balance} credits. Please recharge your wallet.`,
-        requiredCredits: totalCreditsNeeded,
-        currentBalance: debitRes.balance
-      })
-    }
-
-    let arkeselRes
+  // Pay as you go: open a Paystack checkout for the credits this send is short of.
+  // The send itself goes out once the payment is confirmed (webhook or verify below).
+  if (urlPath === '/api/dashboard/payg/sms' && req.method === 'POST') {
+    const user = await authenticateUser()
+    if (!user) return json(401, { ok: false, message: 'Unauthorized' })
+    if (!rateLimit('payg:' + (user._id || user.id), 10, 60 * 1000).ok) return json(429, { ok: false, message: 'Too many checkout attempts. Please wait a minute.' })
+    const body = await parseBody()
+    const prep = prepareDashboardSms(user, body)
+    if (!prep.ok) return json(prep.status, prep.data)
+    const q = payg.quote('sms', prep.needed, user.balance)
+    if (!q) return json(409, { ok: false, enough: true, message: 'You have enough credits for this send. Press Send to send it.' })
+    const { reference } = await payg.createOrder({ user, kind: 'sms', product: 'sms', quote: q, payload: { to: prep.recipients, message: prep.message, senderId: prep.senderId } })
+    let payment
     try {
-      arkeselRes = await sendSMS({ to: recipients, message, senderId: sId })
-    } catch (sendErr) {
-      // Refund on failure
-      await UserRepo.creditBalance(userId, totalCreditsNeeded)
-      return json(500, { ok: false, message: 'Carrier sending failed: ' + sendErr.message })
+      payment = await initializePayment({ email: user.email, amountGHS: q.amountGHS, reference, callbackUrl: `${baseUrlOf(req)}/#dashboard?ref=${reference}` })
+    } catch (e) {
+      console.error('[PAYG] Paystack init failed', e.message)
     }
+    const checkoutUrl = payment?.data?.authorization_url
+    if (!checkoutUrl) return json(502, { ok: false, message: 'Could not open Paystack checkout. Please try again.' })
+    return json(200, { ok: true, reference, quote: q, checkout_url: checkoutUrl })
+  }
 
-    const logEntry = await SmsLogRepo.create({
-      userId,
-      recipients,
-      message,
-      senderId: sId,
-      unitsDebited: totalCreditsNeeded,
-      remainingBalance: debitRes.balance,
-      status: 'success'
+  // Pay as you go (SMS and email): confirm the payment, then the send goes out once.
+  if (urlPath === '/api/payg/verify' && req.method === 'GET') {
+    const user = await authenticateUser()
+    if (!user) return json(401, { ok: false, message: 'Unauthorized' })
+    const reference = String(urlObj.searchParams.get('reference') || '')
+    const r = await payg.fulfill(reference, {
+      userId: user._id || user.id,
+      confirm: async () => {
+        const v = await verifyPayment(reference).catch(() => null)
+        return !!(v && v.status && v.data?.status === 'success')
+      }
     })
-
-    return json(200, {
-      ok: true,
-      message: `SMS dispatched to ${recipients.length} recipients successfully.`,
-      units_debited: totalCreditsNeeded,
-      remaining_balance: debitRes.balance,
-      data: arkeselRes,
-      log: logEntry
-    })
+    if (!r.ok) return json(404, { ok: false, message: 'Payment not found.' })
+    return json(200, { ok: true, order: r.order })
   }
 
   if (urlPath === '/api/dashboard/logs' && req.method === 'GET') {

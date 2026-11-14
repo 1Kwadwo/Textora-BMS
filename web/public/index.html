@@ -416,7 +416,7 @@
         <div class="mx-auto mb-12 max-w-2xl text-center scroll-reveal">
           <div class="ks-kicker mb-3">Pricing</div>
           <h2 class="ks-h2">Simple prices. No monthly fees.</h2>
-          <p class="ks-lead mt-4">Buy credits, use them when you need them. You only pay for the messages you send.</p>
+          <p class="ks-lead mt-4">Buy a credit package, or skip it and pay as you go at GH₵ 0.06 per SMS right when you send. You only pay for the messages you send.</p>
         </div>
 
         <div class="mx-auto mb-12 grid max-w-3xl gap-4 sm:grid-cols-2">
@@ -1163,7 +1163,7 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
         <!-- Bundles -->
         <div class="dash-surface-card p-5 sm:p-6">
           <h3 class="text-lg font-extrabold text-navy-900 dark:text-white">Buy credits</h3>
-          <p class="mb-4 text-sm text-ink dark:text-slate-400">Pay with MTN MoMo, Telecel Cash, AT Money or card. Credits are added instantly.</p>
+          <p class="mb-4 text-sm text-ink dark:text-slate-400">Pay with MTN MoMo, Telecel Cash, AT Money or card. Credits are added instantly. <span id="dash-payg-note">No package? Just send, and pay for that one send at GH₵ 0.06 per SMS. Packages cost less and are needed for the API.</span></p>
           <div id="dash-plans-grid" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <!-- Populated via JS -->
           </div>
@@ -1451,6 +1451,31 @@ Authorization: Bearer ksnd_live_...
   </dialog>
 
   <!-- =========================================================================
+       MODAL: PAY AS YOU GO (a send that is short of credits; same on SMS and Email)
+       ========================================================================= -->
+  <dialog id="modal-payg" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box max-w-md rounded-t-3xl bg-white p-7 sm:rounded-3xl dark:bg-night-850">
+      <form method="dialog"><button class="btn btn-circle btn-ghost btn-sm absolute right-4 top-4" aria-label="Close">✕</button></form>
+      <h3 class="text-2xl font-black text-navy-900 dark:text-white">Pay for this send</h3>
+      <p id="payg-summary" class="mt-1 text-sm text-ink dark:text-slate-400"></p>
+      <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl bg-cream-100 px-4 py-3 dark:bg-night-900">
+        <div class="shrink-0">
+          <div class="ks-stat-label">Pay now</div>
+          <span id="payg-amount" class="whitespace-nowrap text-xl font-black text-ember-500"></span>
+        </div>
+        <div id="payg-rate" class="text-right text-xs text-ink dark:text-slate-400"></div>
+      </div>
+      <p class="mt-3 text-xs text-ink dark:text-slate-400">It sends as soon as Paystack confirms your payment. Packages cost less per message, and the API only uses package credits.</p>
+      <div id="payg-status" class="mt-4 hidden rounded-xl bg-cream-100 p-3 text-sm dark:bg-night-900"></div>
+      <div class="modal-action mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button id="payg-packages" type="button" class="btn btn-ghost">Buy a package instead</button>
+        <button id="payg-pay" type="button" class="ks-btn-primary">Pay and send</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <!-- =========================================================================
        MODAL: TOP UP
        ========================================================================= -->
   <dialog id="modal-topup" class="modal modal-bottom sm:modal-middle">
@@ -1464,6 +1489,7 @@ Authorization: Bearer ksnd_live_...
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
   </dialog>
 
-  <script src="app.js?v=13"></script>
+  <script src="payg.js?v=1"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

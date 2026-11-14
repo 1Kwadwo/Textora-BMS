@@ -699,6 +699,15 @@ async function checkPendingPayments() {
     }
   }
 
+  if (ref.startsWith('web_payg_') && window.KebPayg) {
+    window.history.replaceState(null, '', window.location.pathname + '#dashboard');
+    KebPayg.resume(ref, {
+      token: () => currentAuthToken,
+      onSent: () => { if (typeof loadDashboardData === 'function') loadDashboardData(); },
+      onFailed: () => { if (typeof loadDashboardData === 'function') loadDashboardData(); }
+    });
+  }
+
   if (ref.startsWith('sid_fee_')) {
     try {
       const res = await fetch(`/api/dashboard/sender-id/verify-payment?reference=${encodeURIComponent(ref)}`, {
@@ -973,6 +982,16 @@ function initDashboardWorkspace() {
     return { valid, dups, invalid };
   }
 
+  // Credits the composer's send will use (Ghana numbers; the server has the final say).
+  function composerCredits() {
+    const { valid } = parseAndValidateContacts(recipientsInput ? recipientsInput.value : '');
+    const msg = messageInput ? messageInput.value : '';
+    if (!msg) return 0;
+    const uni = /[^\u0000-\u007F]/.test(msg);
+    const parts = uni ? (msg.length <= 70 ? 1 : Math.ceil(msg.length / 67)) : (msg.length <= 160 ? 1 : Math.ceil(msg.length / 153));
+    return valid.length * parts;
+  }
+
   // Update Composer Live Metrics
   function updateComposerMetrics() {
     const rawRecipients = recipientsInput ? recipientsInput.value : '';
@@ -1005,6 +1024,13 @@ function initDashboardWorkspace() {
     const totalCredits = (valid.length || 0) * (parts || (msgLen > 0 ? 1 : 0));
     if (dashSmsTotalCost) {
       dashSmsTotalCost.textContent = `${totalCredits.toLocaleString()} Credits`;
+    }
+    const rateEl = document.getElementById('dash-sms-charge-rate');
+    if (rateEl) {
+      const short = currentUser ? totalCredits - Number(currentUser.balance || 0) : 0;
+      rateEl.innerHTML = short > 0
+        ? `<span class="font-semibold text-ember-700 dark:text-ember-300">${Math.ceil(short).toLocaleString()} more than your balance.</span><br>You can pay for just this send.`
+        : '1 credit per part, per person';
     }
   }
 
@@ -1113,7 +1139,9 @@ function initDashboardWorkspace() {
       }
 
       const costText = (document.getElementById('dash-sms-total-cost') || {}).textContent || '';
-      if (!confirm(`Send this message to ${valid.length} ${valid.length === 1 ? 'person' : 'people'} from ${senderId}?${costText ? `\n\nCost: ${costText}` : ''}`)) return;
+      // Short of credits? Skip this prompt: the pay-as-you-go box that follows shows the price.
+      const shortOfCredits = currentUser && composerCredits() > Number(currentUser.balance || 0);
+      if (!shortOfCredits && !confirm(`Send this message to ${valid.length} ${valid.length === 1 ? 'person' : 'people'} from ${senderId}?${costText ? `\n\nCost: ${costText}` : ''}`)) return;
 
       const originalBtnText = btnSendSms.textContent;
       btnSendSms.disabled = true;
@@ -1133,6 +1161,29 @@ function initDashboardWorkspace() {
         if (outputEl) outputEl.textContent = JSON.stringify(data, null, 2);
         if (data.ok) {
           loadDashboardData();
+        } else if (data.payg && window.KebPayg) {
+          // Not enough credits: pay for just this send.
+          const payload = { to: valid.join(', '), message, senderId };
+          KebPayg.open({
+            quote: data.payg,
+            token: () => currentAuthToken,
+            checkout: async () => {
+              const r = await fetch('/api/dashboard/payg/sms', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${currentAuthToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+              const d = await r.json();
+              if (!r.ok || !d.ok) throw new Error(d.message || 'Could not open checkout.');
+              return d;
+            },
+            onSent: order => {
+              if (outputEl) outputEl.textContent = JSON.stringify({ ok: true, message: `Paid and sent to ${order.result.recipients} ${order.result.recipients === 1 ? 'person' : 'people'}.`, units_debited: order.result.units, remaining_balance: order.result.remainingBalance }, null, 2);
+              loadDashboardData();
+            },
+            onFailed: () => loadDashboardData(),
+            onPackages: openTopupModal
+          });
         }
       } catch (err) {
         if (outputEl) outputEl.textContent = JSON.stringify({ error: err.message }, null, 2);
@@ -1293,8 +1344,12 @@ async function loadDashboardData() {
     if (cardBal) cardBal.innerHTML = `${currentUser.balance.toFixed(2)} <span class="text-base font-semibold text-blue-200">Credits</span>`;
     const composerBalEl = document.getElementById('dash-composer-balance-tag');
     if (composerBalEl) composerBalEl.textContent = `Balance: ${currentUser.balance.toFixed(2)} Credits`;
+    const composerMsg = document.getElementById('dash-sms-message');
+    if (composerMsg) composerMsg.dispatchEvent(new Event('input')); // refresh the cost note against the new balance
     const sidBalEl = document.getElementById('sid-wallet-balance');
     if (sidBalEl) sidBalEl.textContent = `₵${currentUser.balance.toFixed(2)}`;
+    const paygNote = document.getElementById('dash-payg-note');
+    if (paygNote && data.paygSmsGHS) paygNote.textContent = `No package? Just send, and pay for that one send at GH₵ ${Number(data.paygSmsGHS).toFixed(2)} per SMS. Packages cost less and are needed for the API.`;
     if (data.customSenderIdFeeGHS !== undefined) {
       currentCustomSenderIdFee = Number(data.customSenderIdFeeGHS);
       const feeBadge = document.getElementById('dash-sid-fee-badge');

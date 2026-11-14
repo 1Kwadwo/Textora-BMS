@@ -302,6 +302,7 @@
             </div>
           </div>
           <p id="cr-blurb" class="mt-2 text-sm text-ink dark:text-slate-400"></p>
+          <p id="cr-payg" class="mt-1 text-sm text-ink dark:text-slate-400"></p>
           <div id="cr-packs" class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"></div>
           <div id="cr-status" class="mt-4 hidden rounded-xl bg-cream-100 p-4 text-sm text-navy-900 dark:bg-night-900 dark:text-slate-200"></div>
         </div>
@@ -501,8 +502,34 @@
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
   </dialog>
 
+  <!-- =========================================================================
+       MODAL: PAY AS YOU GO (a send that is short of credits; same on SMS and Email)
+       ========================================================================= -->
+  <dialog id="modal-payg" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box max-w-md rounded-t-3xl bg-white p-7 sm:rounded-3xl dark:bg-night-850">
+      <form method="dialog"><button class="btn btn-circle btn-ghost btn-sm absolute right-4 top-4" aria-label="Close">✕</button></form>
+      <h3 class="text-2xl font-black text-navy-900 dark:text-white">Pay for this send</h3>
+      <p id="payg-summary" class="mt-1 text-sm text-ink dark:text-slate-400"></p>
+      <div class="mt-5 flex items-center justify-between gap-3 rounded-2xl bg-cream-100 px-4 py-3 dark:bg-night-900">
+        <div class="shrink-0">
+          <div class="ks-stat-label">Pay now</div>
+          <span id="payg-amount" class="whitespace-nowrap text-xl font-black text-ember-500"></span>
+        </div>
+        <div id="payg-rate" class="text-right text-xs text-ink dark:text-slate-400"></div>
+      </div>
+      <p class="mt-3 text-xs text-ink dark:text-slate-400">It sends as soon as Paystack confirms your payment. Packages cost less per message, and the API only uses package credits.</p>
+      <div id="payg-status" class="mt-4 hidden rounded-xl bg-cream-100 p-3 text-sm dark:bg-night-900"></div>
+      <div class="modal-action mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button id="payg-packages" type="button" class="btn btn-ghost">Buy a package instead</button>
+        <button id="payg-pay" type="button" class="ks-btn-primary">Pay and send</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
   <div id="em-toast" class="toast toast-top toast-end z-[60] hidden" role="status" aria-live="polite"><div id="em-toast-box" class="alert flex w-[22rem] max-w-[calc(100vw-2rem)] items-start whitespace-normal break-words gap-3 rounded-2xl border-0 bg-navy-900 p-4 text-left text-sm text-white shadow-chip"><span id="em-toast-icon" class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-black"></span><div class="min-w-0"><div id="em-toast-title" class="font-bold"></div><div id="em-toast-text" class="mt-0.5 text-white/80"></div></div></div></div>
 
-  <script src="email.js?v=4"></script>
+  <script src="payg.js?v=1"></script>
+  <script src="email.js?v=5"></script>
 </body>
 </html>

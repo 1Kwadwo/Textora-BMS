@@ -354,12 +354,14 @@ function emailType(input) {
   return t
 }
 
-async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempotencyKey = null, baseUrl = null } = {}) {
+// With `quoteOnly`, checks the email and returns what it would cost without sending.
+async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempotencyKey = null, baseUrl = null, quoteOnly = false } = {}) {
   const userId = uid(user)
   input = input && typeof input === 'object' ? input : {}
   const product = emailType(input)
   provider() // fail early if not configured
 
+  if (quoteOnly) idempotencyKey = null
   if (idempotencyKey) {
     idempotencyKey = String(idempotencyKey).slice(0, 200)
     if (product === 'marketing') {
@@ -448,6 +450,9 @@ async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempot
     throw new EmailError(422, 'all_suppressed', 'Every "to" address is on your suppression list (bounced, complained or unsubscribed) so nothing was sent.', { suppressed: [...suppressed] })
   }
 
+  const cost = finalTo.length + finalCc.length + finalBcc.length
+  if (quoteOnly) return { quote: { product, cost } }
+
   // Daily cap for accounts that have never bought email credits.
   const cap = U.config.dailyCapUnpaid()
   if (cap > 0 && !(await wallet.hasPaid(userId))) {
@@ -457,7 +462,6 @@ async function sendEmail(user, input, { source = 'api', apiKeyId = null, idempot
   }
 
   // Email credits only: SMS credits never pay for email. One credit per recipient.
-  const cost = finalTo.length + finalCc.length + finalBcc.length
   const debit = await wallet.debit(userId, product, cost)
   if (!debit.ok) {
     const label = product === 'marketing' ? 'marketing' : 'transactional'
