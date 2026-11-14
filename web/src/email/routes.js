@@ -10,6 +10,15 @@ const { isEmailEnabled } = require('./providers')
 const wallet = require('./wallet')
 const pricing = require('./pricing')
 const { initializePayment, verifyPayment } = require('../services/paystack')
+const payg = require('../payg')
+
+// Pay-as-you-go email: runs once the payment is confirmed.
+payg.setDispatcher('email', async (user, payload, order) => {
+  const { message, campaign } = await engine.sendEmail(user, payload, { source: 'dashboard', baseUrl: order.baseUrl })
+  return campaign
+    ? { type: 'marketing', recipients: campaign.recipients, credits: campaign.creditsCharged }
+    : { type: 'transactional', recipients: message.to.length + message.cc.length + message.bcc.length, credits: message.creditsCharged }
+})
 
 function baseUrlOf(req) {
   if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, '')
@@ -208,15 +217,43 @@ async function route(req, res, ctx) {
 
     if (urlPath === '/api/email/send' && req.method === 'POST') {
       if (limited('email-dash:' + userId, 30, 60000)) throw new EmailError(429, 'rate_limited', 'Sending too fast. Please wait a moment.')
-      const { message, campaign, balance } = await engine.sendEmail(user, await body(), { source: 'dashboard', baseUrl: baseUrlOf(req) })
+      let sent
+      try {
+        sent = await engine.sendEmail(user, await body(), { source: 'dashboard', baseUrl: baseUrlOf(req) })
+      } catch (err) {
+        // Short of credits: offer to pay for just this send.
+        if (err instanceof EmailError && err.code === 'insufficient_credits') err.extra.payg = payg.quote(err.extra.type, err.extra.required, err.extra.balance)
+        throw err
+      }
+      const { message, campaign, balance } = sent
       if (campaign) return json(202, { ok: true, type: 'marketing', campaign: { id: campaign._id, recipients: campaign.recipients, credits_charged: campaign.creditsCharged, suppressed_recipients: campaign.suppressedRecipients }, remaining_credits: balance })
       return json(202, { ok: true, type: 'transactional', message: publicMessage(message), remaining_credits: balance })
+    }
+
+    // Pay as you go: Paystack checkout for the credits this send is short of.
+    // It sends once the payment is confirmed (/api/payg/verify or the Paystack webhook).
+    if (urlPath === '/api/email/payg' && req.method === 'POST') {
+      if (limited('email-buy:' + userId, 10, 60000)) throw new EmailError(429, 'rate_limited', 'Too many checkout attempts. Please wait a minute.')
+      const input = await body()
+      const { quote: need } = await engine.sendEmail(user, input, { source: 'dashboard', quoteOnly: true })
+      const q = payg.quote(need.product, need.cost, (await wallet.balances(userId))[need.product])
+      if (!q) throw new EmailError(409, 'enough_credits', 'You have enough credits for this send. Press Send to send it.')
+      const { reference } = await payg.createOrder({ user, kind: 'email', product: need.product, quote: q, payload: input, baseUrl: baseUrlOf(req) })
+      let payment
+      try {
+        payment = await initializePayment({ email: user.email, amountGHS: q.amountGHS, reference, callbackUrl: `${baseUrlOf(req)}/email#send?ref=${reference}` })
+      } catch (e) {
+        console.error('[PAYG] Paystack init failed', e.message)
+      }
+      const checkoutUrl = payment?.data?.authorization_url
+      if (!checkoutUrl) throw new EmailError(502, 'checkout_failed', 'Could not open Paystack checkout. Please try again.')
+      return json(200, { ok: true, reference, quote: q, checkout_url: checkoutUrl })
     }
 
     // Email credits (separate from SMS credits)
     if (urlPath === '/api/email/credits' && req.method === 'GET') {
       const [balances, history] = await Promise.all([wallet.balances(userId), wallet.purchaseHistory(userId)])
-      return json(200, { ok: true, credits: balances, pricing: pricing.pricing(), history })
+      return json(200, { ok: true, credits: balances, pricing: pricing.pricing(), payg: payg.rates(), history })
     }
     if (urlPath === '/api/email/credits/checkout' && req.method === 'POST') {
       if (limited('email-buy:' + userId, 10, 60000)) throw new EmailError(429, 'rate_limited', 'Too many checkout attempts. Please wait a minute.')

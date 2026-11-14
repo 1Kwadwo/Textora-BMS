@@ -37,7 +37,7 @@
     })
     if (res.status === 401) { try { localStorage.removeItem(TOKEN_KEY) } catch (e) {} location.replace('/#login'); throw new Error('Signed out') }
     const data = await res.json().catch(() => ({}))
-    if (!res.ok || data.ok === false) throw new Error(data.message || data.error?.message || 'Request failed')
+    if (!res.ok || data.ok === false) throw Object.assign(new Error(data.message || data.error?.message || 'Request failed'), { data })
     return data
   }
 
@@ -326,7 +326,7 @@
     $('em-cost').textContent = `${fmtN(n)} credit${n === 1 ? '' : 's'}`
     const short = n > have
     $('em-cost-note').innerHTML = short
-      ? `<span class="font-semibold text-ember-700 dark:text-ember-300">You have ${fmtN(have)} ${state.sendType} credits.</span> <button type="button" data-goto="credits" data-cr-type="${state.sendType}" class="font-bold text-ember-500">Buy credits →</button>`
+      ? `<span class="font-semibold text-ember-700 dark:text-ember-300">You have ${fmtN(have)} ${state.sendType} credits.</span> You can pay for just this send, or <button type="button" data-goto="credits" data-cr-type="${state.sendType}" class="font-bold text-ember-500">buy credits →</button>`
       : `${TYPE_LABEL[state.sendType]} · ${fmtN(have)} left`
     if (!$('em-send-btn').getAttribute('aria-busy') || $('em-send-btn').getAttribute('aria-busy') === 'false') {
       $('em-send-label').textContent = mk && n > 1 ? `Send to ${fmtN(n)} people` : 'Send email'
@@ -373,6 +373,7 @@
     $$('#em-send-form input, #em-send-form textarea, #em-send-form select').forEach(el => { el.disabled = on })
   }
 
+  let sentBody = null
   $('em-send-form').addEventListener('submit', async e => {
     e.preventDefault()
     if ($('em-send-btn').disabled) return
@@ -394,6 +395,7 @@
         text: $('em-text').value || undefined
       }
       if (tplId) { body.template_id = tplId; body.variables = currentVars() }
+      sentBody = body
       const d = await api('/api/email/send', { method: 'POST', body })
       setCredits({ ...state.credits, [state.sendType]: d.remaining_credits })
       if (d.type === 'marketing') {
@@ -410,12 +412,38 @@
       $('em-bcc').value = ''
       state.overview = null
     } catch (err) {
-      toast(err.message, { title: 'Email not sent', tone: 'bad', ms: 6000 })
+      const quote = err.data?.error?.payg
+      if (quote && window.KebPayg) payForSend(quote, sentBody)
+      else toast(err.message, { title: 'Email not sent', tone: 'bad', ms: 6000 })
     } finally {
       setSending(false)
       updatePreview()
     }
   })
+
+  // Not enough credits: pay for just this send (same flow as SMS).
+  function afterPaidSend(order) {
+    const r = order.result || {}
+    toast(`Paid and sent to ${fmtN(r.recipients)} ${r.recipients === 1 ? 'person' : 'people'}.${r.type === 'marketing' ? ' Follow it in Email logs.' : ''}`, { title: r.type === 'marketing' ? 'Campaign queued' : 'Email dispatched', tone: 'ok', ms: 5000 })
+    $('em-to').value = ''
+    $('em-cc').value = ''
+    $('em-bcc').value = ''
+    state.overview = null
+    refreshCredits()
+  }
+  function refreshCredits() {
+    api('/api/email/credits').then(d => { setCredits(d.credits); updatePreview() }).catch(() => {})
+  }
+  function payForSend(quote, body) {
+    KebPayg.open({
+      quote,
+      token: () => token,
+      checkout: () => api('/api/email/payg', { method: 'POST', body }),
+      onSent: afterPaidSend,
+      onFailed: refreshCredits,
+      onPackages: () => { state.crType = quote.product; show('credits') }
+    })
+  }
 
   // ------------------------------------------------------------------ logs
   async function loadLogs() {
@@ -469,6 +497,7 @@
   async function loadCredits() {
     const d = await api('/api/email/credits')
     state.pricing = d.pricing
+    state.payg = d.payg
     setCredits(d.credits)
     renderPacks()
     $('cr-history').innerHTML = d.history.length ? d.history.map(h => `
@@ -487,6 +516,7 @@
     setSeg($$('.em-cr-tab'), $$('.em-cr-tab').find(b => b.dataset.type === type))
     const p = state.pricing[type]
     $('cr-blurb').textContent = p.blurb || ''
+    if (state.payg) $('cr-payg').textContent = `No package? Just send, and pay for that one send at GH₵ ${Number(state.payg[type]).toFixed(2)} per email. Packages cost less and are needed for the API.`
     $('cr-packs').innerHTML = p.packs.map(x => `
       <div class="relative flex flex-col justify-between rounded-2xl border-2 p-4 ${x.popular ? 'border-ember-500 bg-ember-50/60 dark:bg-ember-500/10' : 'border-transparent bg-cream-100 dark:bg-night-900'}">
         ${x.popular ? '<span class="absolute -top-2.5 left-3 rounded-full bg-ember-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Popular</span>' : ''}
@@ -882,6 +912,12 @@ $data = json_decode(curl_exec($ch), true);`
   const startHash = location.hash.slice(1)
   show(startHash || 'overview')
   if (startHash.startsWith('credits?')) { history.replaceState(null, '', '#' + startHash); returnedFromPaystack() }
+  // Back from a pay-as-you-go checkout in this tab: /email#send?ref=web_payg_...
+  if (startHash.startsWith('send?') && window.KebPayg) {
+    const ref = new URLSearchParams(startHash.split('?')[1]).get('ref') || ''
+    history.replaceState(null, '', '#send')
+    if (ref.startsWith(KebPayg.REF_PREFIX)) KebPayg.resume(ref, { token: () => token, onSent: afterPaidSend, onFailed: refreshCredits })
+  }
 
   // Keep in-flight statuses fresh while the page is open.
   setInterval(() => {

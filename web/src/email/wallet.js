@@ -66,7 +66,7 @@ async function credit(userId, product, amount) {
 // ---------------------------------------------------------------- purchases
 
 function parsePurpose(purpose) {
-  const m = String(purpose || '').match(/^email_credits:(transactional|marketing):([A-Za-z0-9_-]+)$/)
+  const m = String(purpose || '').match(/^email_(?:credits|payg):(transactional|marketing):([A-Za-z0-9_-]+)$/)
   return m ? { product: m[1], packId: m[2] } : null
 }
 

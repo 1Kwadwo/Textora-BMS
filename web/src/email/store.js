@@ -159,7 +159,9 @@ const db = {
   templates: collection('templates', 'etpl'),
   suppressions: collection('suppressions', 'esup'),
   accounts: collection('accounts', 'eacc'),
-  campaigns: collection('campaigns', 'ecmp')
+  campaigns: collection('campaigns', 'ecmp'),
+  // Pay-as-you-go orders (SMS and email) waiting on, or settled after, payment.
+  payg: collection('payg', 'epay')
 }
 
 async function ensureIndexes() {
@@ -178,6 +180,7 @@ async function ensureIndexes() {
   await db.templates.ensureIndexes([[{ userId: 1 }]])
   await db.suppressions.ensureIndexes([[{ userId: 1, address: 1 }, { unique: true }]])
   await db.accounts.ensureIndexes([[{ userId: 1 }, { unique: true }]])
+  await db.payg.ensureIndexes([[{ reference: 1 }, { unique: true }], [{ userId: 1, createdAt: -1 }]])
 }
 
 module.exports = { db, ensureIndexes, newId, _matches: matches }
