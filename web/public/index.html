@@ -416,14 +416,19 @@
         <div class="mx-auto mb-12 max-w-2xl text-center scroll-reveal">
           <div class="ks-kicker mb-3">Pricing</div>
           <h2 class="ks-h2">Simple prices. No monthly fees.</h2>
-          <p class="ks-lead mt-4">Buy a credit package, or skip it and pay as you go at GH₵ 0.06 per SMS right when you send. You only pay for the messages you send.</p>
+          <p class="ks-lead mt-4">Buy a credit package, or skip it and pay as you go: write your message, press Send, and pay for just that send.</p>
         </div>
 
-        <div class="mx-auto mb-12 grid max-w-3xl gap-4 sm:grid-cols-2">
+        <div class="mx-auto mb-12 grid max-w-5xl gap-4 sm:grid-cols-3">
           <div class="ks-card p-7 text-center">
-            <div class="text-sm font-bold uppercase tracking-wider text-ink dark:text-slate-400">Ghana (local)</div>
+            <div class="text-sm font-bold uppercase tracking-wider text-ink dark:text-slate-400">Ghana, with a package</div>
             <div class="mt-2 text-5xl font-black text-navy-900 dark:text-white">GH₵ 0.05</div>
             <div class="mt-1 font-semibold text-ink dark:text-slate-400">per SMS</div>
+          </div>
+          <div class="ks-card border-2 !border-ember-500 p-7 text-center">
+            <div class="text-sm font-bold uppercase tracking-wider text-ember-600 dark:text-ember-300">Pay as you go</div>
+            <div class="mt-2 text-5xl font-black text-navy-900 dark:text-white">GH₵ 0.06</div>
+            <div class="mt-1 font-semibold text-ink dark:text-slate-400">per SMS, no package</div>
           </div>
           <div class="ks-card p-7 text-center">
             <div class="text-sm font-bold uppercase tracking-wider text-ink dark:text-slate-400">International</div>
@@ -501,6 +506,10 @@
               </div>
             </div>
             <div class="ks-card p-6">
+              <h4 class="font-extrabold text-navy-900 dark:text-white">No package? Pay as you go</h4>
+              <p class="mt-1.5 text-sm leading-relaxed text-ink dark:text-slate-300">Write your message and press Send. We show the exact price, you pay with MoMo or card, and it goes out the moment payment is confirmed. Any credits you already have are used first. Sending through the API needs a package.</p>
+            </div>
+            <div class="ks-card p-6">
               <h4 class="font-extrabold text-navy-900 dark:text-white">What counts as one SMS?</h4>
               <p class="mt-1.5 text-sm leading-relaxed text-ink dark:text-slate-300">Up to 160 normal characters is one part. Emoji or special characters drop that to 70. Longer messages are split into parts, and each part uses one credit.</p>
             </div>
@@ -553,7 +562,7 @@
           <div class="mb-6 flex flex-col justify-between gap-1 sm:flex-row sm:items-end">
             <div>
               <h3 class="text-2xl font-extrabold text-navy-900 dark:text-white">Email prices</h3>
-              <p class="mt-1 text-sm text-ink dark:text-slate-400">One credit sends one email to one person. No monthly fee, and credits don't expire.</p>
+              <p class="mt-1 text-sm text-ink dark:text-slate-400">One credit sends one email to one person. No monthly fee, and credits don't expire. No package? Pay as you go from the dashboard; the API uses package credits.</p>
             </div>
             <span class="text-sm font-semibold text-ink dark:text-slate-400">Secured by Paystack</span>
           </div>
@@ -582,6 +591,10 @@
                 <div class="text-right"><div class="text-lg font-black text-navy-900 dark:text-white">GH₵ 1,500</div><div class="text-xs text-ink dark:text-slate-400">GH₵ 0.015 each</div></div>
               </div>
             </div>
+            <div class="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-ember-50/60 px-4 py-3 dark:bg-ember-500/10">
+              <div><span class="font-black text-navy-900 dark:text-white">Pay as you go</span> <span class="text-sm font-semibold text-ink dark:text-slate-400">no package, pay when you send</span></div>
+              <div class="text-right"><div class="text-lg font-black text-ember-600 dark:text-ember-300">GH₵ 0.04</div><div class="text-xs text-ink dark:text-slate-400">each</div></div>
+            </div>
           </div>
           <div class="ks-card p-6 sm:p-8">
             <div class="flex items-baseline justify-between gap-3">
@@ -606,6 +619,10 @@
                 <div><span class="text-lg font-black text-navy-900 dark:text-white">200,000</span> <span class="text-sm font-semibold text-ink dark:text-slate-400">emails</span></div>
                 <div class="text-right"><div class="text-lg font-black text-navy-900 dark:text-white">GH₵ 2,600</div><div class="text-xs text-ink dark:text-slate-400">GH₵ 0.013 each</div></div>
               </div>
+            </div>
+            <div class="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-ember-50/60 px-4 py-3 dark:bg-ember-500/10">
+              <div><span class="font-black text-navy-900 dark:text-white">Pay as you go</span> <span class="text-sm font-semibold text-ink dark:text-slate-400">no package, pay when you send</span></div>
+              <div class="text-right"><div class="text-lg font-black text-ember-600 dark:text-ember-300">GH₵ 0.03</div><div class="text-xs text-ink dark:text-slate-400">each</div></div>
             </div>
           </div>
           </div>
@@ -787,6 +804,10 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
             <p>Top up from your dashboard with MTN MoMo, Telecel Cash, AT Money, Visa or Mastercard. Payments are handled securely by Paystack and credits are added straight away.</p>
           </details>
           <details class="ks-faq border-[color:var(--ks-border)]">
+            <summary>Do I have to buy a package?<span class="ks-faq-icon">+</span></summary>
+            <p>No. On the dashboard you can pay as you go: write your SMS or email, press Send, and pay for just that send with MoMo or card (GH₵ 0.06 per SMS, GH₵ 0.04 per transactional email, GH₵ 0.03 per marketing email, GH₵ 1 minimum). Packages cost less per message, and sending through the API needs one.</p>
+          </details>
+          <details class="ks-faq border-[color:var(--ks-border)]">
             <summary>Can I use my SMS credits for email?<span class="ks-faq-icon">+</span></summary>
             <p>No. SMS credits and email credits are separate, and so are SMS and email API keys. You buy email credits under Email &gt; Credits with the same MoMo or card checkout. Transactional and marketing email each have their own credits and prices.</p>
           </details>
@@ -816,7 +837,7 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
         <div>
           <p class="ks-kicker">Get started</p>
           <h2 class="ks-h2 mt-2">Send your first SMS today, or talk to us first.</h2>
-          <p class="mt-4 max-w-xl text-lg text-ink dark:text-slate-300">Opening an account is free. Top up with MoMo or card and pay GH₵ 0.05 per SMS, only for what you send. Questions about sender IDs or importing your contact list? Call or WhatsApp us and we&rsquo;ll walk you through it.</p>
+          <p class="mt-4 max-w-xl text-lg text-ink dark:text-slate-300">Opening an account is free. Buy a package at GH₵ 0.05 per SMS, or pay as you go when you send. Either way you pay with MoMo or card, only for what you send. Questions about sender IDs or importing your contact list? Call or WhatsApp us and we&rsquo;ll walk you through it.</p>
           <div class="mt-8 flex flex-col gap-3 sm:flex-row">
             <button class="cta-gate-register ks-btn-primary btn-lg h-14 px-8">Create free account</button>
             <a href="#calculator" class="btn btn-lg h-14 rounded-2xl border border-navy-900/15 bg-white px-6 font-bold text-navy-900 shadow-none hover:border-navy-900/30 hover:bg-white dark:border-white/15 dark:bg-transparent dark:text-white">See pricing</a>
