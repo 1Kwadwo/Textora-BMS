@@ -62,7 +62,7 @@ Customer chat: ${session.chatId}
 Telegram user: ${session.userId}
 Contacts: ${session.contacts.length}
 SMS units: ${session.smsUnits}
-Sender ID fee: GHS ${customSenderIdFeeGHS.toFixed(2)}
+Sender ID fee: ${customSenderIdFeeGHS > 0 ? 'GHS ' + customSenderIdFeeGHS.toFixed(2) : 'Free'}
 
 Create/verify this Sender ID in the Textora dashboard. Approval can take some time. After Textora approves it, tap Approve below so Textora can continue to checkout.`,
         {

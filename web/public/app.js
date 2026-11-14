@@ -1170,7 +1170,7 @@ function initDashboardWorkspace() {
 
       const origText = btnReqSid.textContent;
       btnReqSid.disabled = true;
-      btnReqSid.textContent = Number(currentUser?.freeSenderIdRetries || 0) > 0 ? 'Submitting...' : 'Opening Paystack...';
+      btnReqSid.textContent = 'Submitting...';
 
       try {
         const res = await fetch('/api/dashboard/sender-id', {
@@ -1252,7 +1252,7 @@ function initDashboardWorkspace() {
         }
       } finally {
         btnReqSid.disabled = false;
-        btnReqSid.innerHTML = `Register (<span id="dash-sid-fee-btn">${Number(currentUser?.freeSenderIdRetries || 0) > 0 ? 'Free retry' : '₵' + currentCustomSenderIdFee.toFixed(2)}</span>)`;
+        btnReqSid.innerHTML = 'Request (<span id="dash-sid-fee-btn">free</span>)';
       }
     });
   }
@@ -1298,16 +1298,9 @@ async function loadDashboardData() {
     if (data.customSenderIdFeeGHS !== undefined) {
       currentCustomSenderIdFee = Number(data.customSenderIdFeeGHS);
       const feeBadge = document.getElementById('dash-sid-fee-badge');
-      if (feeBadge) feeBadge.textContent = `₵${currentCustomSenderIdFee.toFixed(2)}`;
+      if (feeBadge) feeBadge.textContent = currentCustomSenderIdFee > 0 ? `₵${currentCustomSenderIdFee.toFixed(2)}` : 'Free';
       const feeBtn = document.getElementById('dash-sid-fee-btn');
-      if (feeBtn) feeBtn.textContent = `₵${currentCustomSenderIdFee.toFixed(2)}`;
-    }
-    // A rejected sender ID earns one free retry; show it on the fee badge and button.
-    if (Number(currentUser.freeSenderIdRetries || 0) > 0) {
-      const feeBadge = document.getElementById('dash-sid-fee-badge');
-      if (feeBadge) feeBadge.textContent = 'Free (retry after a rejected ID)';
-      const feeBtn = document.getElementById('dash-sid-fee-btn');
-      if (feeBtn) feeBtn.textContent = 'Free retry';
+      if (feeBtn) feeBtn.textContent = currentCustomSenderIdFee > 0 ? `₵${currentCustomSenderIdFee.toFixed(2)}` : 'free';
     }
     document.getElementById('card-api-keys-count').textContent = data.apiKeys.length;
     document.getElementById('card-sender-ids-count').textContent = (currentUser.senderIds || []).length;
@@ -1391,14 +1384,14 @@ async function loadDashboardData() {
               (reviewedOn ? `<div class="mt-1 text-xs text-ink dark:text-slate-400">Active since ${escapeHtml(reviewedOn)}</div>` : '');
           } else if (req.status === 'rejected') {
             statusBadge = '<span class="badge badge-error badge-sm font-semibold">Rejected</span>' +
-              `<div class="mt-1 text-xs text-ink dark:text-slate-400">${reviewedOn ? escapeHtml(reviewedOn) + ' · ' : ''}Your next request is free</div>`;
+              `<div class="mt-1 text-xs text-ink dark:text-slate-400">${reviewedOn ? escapeHtml(reviewedOn) + ' · ' : ''}You can request another name for free</div>`;
           } else {
             statusBadge = '<span class="badge badge-warning badge-sm font-semibold">Pending</span>' +
               '<div class="mt-1 text-xs text-ink dark:text-slate-400">Under review</div>';
           }
 
-          const feeFormatted = req.paymentMethod === 'free_retry'
-            ? 'Free retry'
+          const feeFormatted = (req.paymentMethod === 'free_retry' || req.paymentMethod === 'free' || !(Number(req.feeAmountGHS) > 0))
+            ? 'Free'
             : `₵${Number(req.feeAmountGHS || 0).toFixed(2)} (${req.paymentMethod === 'paystack' ? 'Paystack' : req.paymentMethod === 'admin' ? 'Added by KebSEND' : 'Wallet'})`;
 
           return `
@@ -1650,9 +1643,9 @@ async function loadPublicPlans() {
       if (pData.pricing && pData.pricing.customSenderIdFeeGHS) {
         currentCustomSenderIdFee = Number(pData.pricing.customSenderIdFeeGHS);
         const feeBadge = document.getElementById('dash-sid-fee-badge');
-        if (feeBadge) feeBadge.textContent = `₵${currentCustomSenderIdFee.toFixed(2)}`;
+        if (feeBadge) feeBadge.textContent = currentCustomSenderIdFee > 0 ? `₵${currentCustomSenderIdFee.toFixed(2)}` : 'Free';
         const feeBtn = document.getElementById('dash-sid-fee-btn');
-        if (feeBtn) feeBtn.textContent = `₵${currentCustomSenderIdFee.toFixed(2)}`;
+        if (feeBtn) feeBtn.textContent = currentCustomSenderIdFee > 0 ? `₵${currentCustomSenderIdFee.toFixed(2)}` : 'free';
       }
     }
   } catch (e) {}

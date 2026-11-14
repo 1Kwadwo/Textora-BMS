@@ -260,7 +260,7 @@ Choose an option below:`,
 1. Paste contacts or upload .xlsx, .csv, .tsv, or .txt contacts
 2. Type message
 3. Choose free ${genericSenderId}, reuse an approved custom sender ID, or create a new one
-4. New custom sender IDs cost ₵${customSenderIdFeeGHS.toFixed(2)} once before admin approval
+4. New custom sender IDs are free and need admin approval first
 5. After sender ID approval, pay only the SMS cost
 6. SMS sends after Paystack confirms the SMS payment
 
@@ -1268,7 +1268,6 @@ You can request a refund for the sender ID fee or try another custom sender ID.`
           `• <b>User:</b> ${e(userDisplay)}\n` +
           `• <b>Status:</b> Rejected\n` +
           `• <b>Rejected At:</b> ${e(new Date().toLocaleString('en-GB', { timeZone: 'Africa/Accra' }))}\n` +
-          `• 🎟️ Customer gets 1 free retry for their next sender ID\n` +
           `• ${smsLine}`
 
       try {
@@ -1300,9 +1299,9 @@ You can request a refund for the sender ID fee or try another custom sender ID.`
     session.step = 'waiting_for_custom_sender_id'
 
     return ctx.reply(`
-Custom sender ID costs ₵${customSenderIdFeeGHS.toFixed(2)} once and can be used forever after manual verification.
+Custom sender IDs are free and can be used forever after admin approval.
 
-Manual Textora verification can take some time. After paying the sender ID fee, you can come back later and check this chat for the approval update.
+Approval can take some time. You can come back later and check this chat for the approval update.
 
 The free ${genericSenderId} sender ID has no sender ID fee.
 
@@ -1505,7 +1504,7 @@ Free:
 ${genericSenderId}
 
 Custom:
-₵${customSenderIdFeeGHS.toFixed(2)} one-time fee, usable forever after manual Textora verification.
+Free, usable forever after admin approval.
 
 Previously verified custom IDs show as extra free options.
     `,
@@ -1615,9 +1614,9 @@ Message type/use case:
 ${session.senderIdUseCase}
 
 Fee:
-₵${customSenderIdFeeGHS.toFixed(2)}
+Free
 
-You will pay this one-time fee now. Textora admin receives the approval request only after the fee is confirmed.
+Tap Confirm to send it to the KebSEND admin for approval.
 
 Approval can take some time. You can come back later and check this chat for the approval update.
     `,

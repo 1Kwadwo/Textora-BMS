@@ -27,6 +27,7 @@ function createApiLogsStore({ apiLogsPath }) {
         recipientsCount: details.recipientsCount,
         unitsDebited: details.unitsDebited,
         remainingBalance: details.remainingBalance,
+        senderId: details.senderId || null,
         status: details.status || 'success'
       }
       logs.push(newLog)

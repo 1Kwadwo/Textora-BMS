@@ -14,6 +14,38 @@ function startPaystackWebhookServer({
   paymentSessionStore
 }) {
 
+  // Sender IDs an API caller may use: a website account's approved IDs, or a
+  // Telegram developer's verified IDs (plus the generic one, which bot devs keep).
+  async function allowedSendersFor(developer) {
+    if (developer.isWebUser) {
+      const { allowedSenderIdsFor } = require('../web/src/services/senderIdRequests')
+      try {
+        const { UserRepo } = require('../web/src/models')
+        const user = await UserRepo.findById(developer.userId)
+        return allowedSenderIdsFor(user)
+      } catch (e) {
+        return []
+      }
+    }
+    let ids = getVerifiedSenderIds ? (getVerifiedSenderIds(developer.userId) || []) : []
+    try {
+      const { mongoose, getMongoStatus } = require('../web/src/db')
+      if (getMongoStatus && getMongoStatus()) {
+        const doc = await mongoose.connection.db.collection('bot_sender_ids').findOne({ userId: String(developer.userId) })
+        if (doc && Array.isArray(doc.senderIds)) ids = ids.concat(doc.senderIds)
+      }
+    } catch (e) {}
+    // Keep the stored spelling (Arkesel shows sender IDs exactly as sent).
+    const generic = String(process.env.GENERIC_SENDER_ID || 'TXTORA').trim()
+    const seen = new Set()
+    return ids.concat(generic ? [generic] : []).map(x => String(x).trim()).filter(x => {
+      const k = x.toUpperCase()
+      if (!x || seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+  }
+
   const port =
     Number(process.env.WEBHOOK_PORT || process.env.PORT || 3000)
 
@@ -80,27 +112,8 @@ function startPaystackWebhookServer({
           }
 
           if (req.method === 'GET' && requestPath === '/api/v1/sender-ids') {
-            const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
-            const targetUserId = String(urlObj.searchParams.get('userId') || developer.userId)
-            let senderIds = getVerifiedSenderIds ? getVerifiedSenderIds(targetUserId) : []
-            if ((!senderIds || senderIds.length === 0)) {
-              try {
-                const { mongoose, getMongoStatus } = require('../web/src/db')
-                if (getMongoStatus && getMongoStatus()) {
-                  const doc = await mongoose.connection.db.collection('bot_sender_ids').findOne({ userId: targetUserId })
-                  if (doc && Array.isArray(doc.senderIds) && doc.senderIds.length > 0) {
-                    senderIds = doc.senderIds
-                  } else {
-                    const { ObjectId } = require('mongodb')
-                    if (ObjectId.isValid(targetUserId)) {
-                      const userDoc = await mongoose.connection.db.collection('users').findOne({ _id: new ObjectId(targetUserId) })
-                      if (userDoc?.senderIds) senderIds = userDoc.senderIds
-                    }
-                  }
-                }
-              } catch (e) {}
-            }
-            return json(200, { ok: true, senderIds: senderIds.length > 0 ? senderIds : ['TXTORA'] })
+            // Only the caller's own approved sender IDs (no ?userId= lookups of other accounts).
+            return json(200, { ok: true, senderIds: await allowedSendersFor(developer) })
           }
 
           if (req.method === 'POST' && requestPath === '/api/v1/send-sms') {
@@ -127,6 +140,23 @@ function startPaystackWebhookServer({
               return json(400, { ok: false, message: 'No valid recipients specified in "to"' })
             }
 
+            // Only send from sender IDs approved for this account. Arkesel registers any
+            // new name the first time it's used, so an unchecked name here would skip
+            // the admin approval in Telegram entirely.
+            const allowedSenders = await allowedSendersFor(developer)
+            if (allowedSenders.length === 0) {
+              return json(403, { ok: false, message: 'No approved sender ID on this account yet. Request one (free) and wait for approval before sending.' })
+            }
+            const requestedSender = senderId ? String(senderId).trim() : allowedSenders[0]
+            const approvedSender = allowedSenders.find(a => a.toUpperCase() === requestedSender.toUpperCase())
+            if (!approvedSender) {
+              return json(403, {
+                ok: false,
+                message: `Sender ID "${requestedSender}" is not approved for your account. Approved: ${allowedSenders.join(', ')}. Request new sender IDs (free) and wait for approval.`,
+                approvedSenderIds: allowedSenders
+              })
+            }
+
             const { calculateSMSUnits, isGhanaNumber } = require('./pricing')
             const msgUnits = calculateSMSUnits(message)
             
@@ -147,7 +177,7 @@ function startPaystackWebhookServer({
 
             const sendPromises = recipients.map(async (number) => {
               try {
-                const res = await sendSMS(number, message, senderId)
+                const res = await sendSMS(number, message, approvedSender)
                 return { recipient: number, status: 'success', data: res }
               } catch (err) {
                 return { recipient: number, status: 'failed', error: err.message }
@@ -162,6 +192,7 @@ function startPaystackWebhookServer({
                 recipientsCount: recipients.length,
                 unitsDebited: totalCreditsNeeded,
                 remainingBalance: debitRes.balance,
+                senderId: approvedSender,
                 status: 'success'
               })
             } catch (logErr) {
