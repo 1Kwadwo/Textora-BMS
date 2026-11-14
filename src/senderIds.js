@@ -62,7 +62,7 @@ function buildSenderIdKeyboard({ userId, genericSenderId, customSenderIdFeeGHS, 
 
   keyboard.push([
     {
-      text: `Create custom ID - ₵${customSenderIdFeeGHS.toFixed(2)}`,
+      text: customSenderIdFeeGHS > 0 ? `Create custom ID - ₵${customSenderIdFeeGHS.toFixed(2)}` : 'Create custom ID (free)',
       callback_data: 'create_custom_sender_id'
     }
   ])

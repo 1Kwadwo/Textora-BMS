@@ -124,7 +124,7 @@ ${reference}`
 
     await bot.telegram.sendMessage(
       session.chatId,
-      `✅ Sender ID fee paid.
+      `${Number(session.senderIdFee) > 0 ? '✅ Sender ID fee paid.' : '✅ Sender ID request received (free).'}
 
 Sender ID:
 ${session.senderId}
@@ -715,6 +715,14 @@ Sender ID: ${session.senderId}
   }
 
   async function createSenderIdFeeCheckout(ctx, userId, session) {
+
+    // Free sender IDs: skip Paystack and go straight to admin approval.
+    if (!(Number(customSenderIdFeeGHS) > 0)) {
+      session.senderIdFee = 0
+      session.price = '0.00'
+      session.paymentPurpose = 'sender_id_fee'
+      return requestSenderIdApprovalAfterFee('free_sid_' + userId + '_' + Date.now(), session)
+    }
 
     session.price =
       Number(customSenderIdFeeGHS).toFixed(2)
