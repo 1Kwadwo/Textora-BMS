@@ -39,14 +39,15 @@ function request(method, urlPath, body, headers = {}) {
   })
 }
 
-test('pay as you go: quote pays only the shortfall, with a minimum charge', () => {
+test('pay as you go: SMS uses the normal GH₵ 0.05 per unit, only for the shortfall', () => {
   assert.strictEqual(payg.quote('sms', 10, 10), null, 'nothing to pay when the balance covers it')
   const q = payg.quote('sms', 120, 20)
   assert.strictEqual(q.credits, 100)
-  assert.strictEqual(q.amountGHS, 6)
-  const small = payg.quote('sms', 2, 0)
-  assert.ok(small.amountGHS >= 1, 'GH₵ 1 minimum')
-  assert.strictEqual(small.credits, 17)
+  assert.strictEqual(q.amountGHS, 5)
+  const one = payg.quote('sms', 1, 0)
+  assert.strictEqual(one.credits, 1)
+  assert.strictEqual(one.amountGHS, 0.05, 'one SMS to one person is GH₵ 0.05, no minimum')
+  assert.strictEqual(payg.quote('sms', 1.6, 0).amountGHS, 0.08, 'international part at 1.6 units')
   assert.strictEqual(payg.quote('transactional', 5, 0).rateGHS, 0.04)
   assert.strictEqual(payg.quote('marketing', 50, 0).amountGHS, 1.5)
 })
@@ -67,7 +68,7 @@ test('pay as you go on the dashboard (SMS and email); API still needs a package'
     const send = await request('POST', '/api/dashboard/send-sms', { to: numbers, message: 'Hello', senderId: 'KOJOSHOP' }, auth)
     assert.strictEqual(send.status, 400)
     assert.strictEqual(send.data.payg.credits, 29)
-    assert.strictEqual(send.data.payg.amountGHS, 1.74)
+    assert.strictEqual(send.data.payg.amountGHS, 1.45)
     assert.strictEqual(await smsBalance(), 1, 'nothing taken')
 
     const bad = await request('POST', '/api/dashboard/payg/sms', { to: numbers, message: 'Hello', senderId: 'NOTMINE' }, auth)
@@ -77,9 +78,9 @@ test('pay as you go on the dashboard (SMS and email); API still needs a package'
     assert.strictEqual(co.status, 200, JSON.stringify(co.data))
     assert.ok(co.data.reference.startsWith('web_payg_'))
     assert.ok(co.data.checkout_url)
-    assert.strictEqual(co.data.quote.amountGHS, 1.74)
+    assert.strictEqual(co.data.quote.amountGHS, 1.45)
     const tx = await TransactionRepo.findByReference(co.data.reference)
-    assert.strictEqual(tx.amountGHS, 1.74)
+    assert.strictEqual(tx.amountGHS, 1.45)
 
     const v = await request('GET', '/api/payg/verify?reference=' + co.data.reference, null, auth)
     assert.strictEqual(v.status, 200, JSON.stringify(v.data))

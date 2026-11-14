@@ -1349,7 +1349,7 @@ async function loadDashboardData() {
     const sidBalEl = document.getElementById('sid-wallet-balance');
     if (sidBalEl) sidBalEl.textContent = `₵${currentUser.balance.toFixed(2)}`;
     const paygNote = document.getElementById('dash-payg-note');
-    if (paygNote && data.paygSmsGHS) paygNote.textContent = `No package? Just send, and pay for that one send at GH₵ ${Number(data.paygSmsGHS).toFixed(2)} per SMS. Packages cost less and are needed for the API.`;
+    if (paygNote && data.paygSmsGHS) paygNote.textContent = `No package? Just send, and pay for that one send at the same GH₵ ${Number(data.paygSmsGHS).toFixed(2)} per SMS. Sending through the API needs a package.`;
     if (data.customSenderIdFeeGHS !== undefined) {
       currentCustomSenderIdFee = Number(data.customSenderIdFeeGHS);
       const feeBadge = document.getElementById('dash-sid-fee-badge');
