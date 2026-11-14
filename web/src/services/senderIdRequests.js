@@ -165,8 +165,6 @@ async function reviewSenderIdRequest(requestId, decision) {
 
   if (status === 'approved') {
     await UserRepo.addSenderId(request.userId, request.senderId)
-  } else {
-    await UserRepo.addFreeSenderIdRetry(request.userId)
   }
 
   const user = await UserRepo.findById(request.userId)
@@ -174,7 +172,7 @@ async function reviewSenderIdRequest(requestId, decision) {
   const greeting = firstName ? `Hi ${firstName}, ` : ''
   const message = status === 'approved'
     ? `${greeting}your KebSEND sender ID "${request.senderId}" has been approved. You can now pick it when sending SMS from your dashboard or the API.`
-    : `${greeting}your KebSEND sender ID "${request.senderId}" was not approved by the network. Your next sender ID request is free: log in to your dashboard and submit another name (3-11 letters or numbers).`
+    : `${greeting}your KebSEND sender ID "${request.senderId}" was not approved. You can request another name for free on your dashboard (3-11 letters or numbers).`
   const sms = await smsCustomer(user, message)
 
   return { ok: true, request, user, sms }

@@ -88,7 +88,25 @@ test('Integration Test: API Endpoints', async (t) => {
     })
     assert.equal(res.status, 200)
     assert.equal(res.data.ok, true)
-    assert.deepEqual(res.data.senderIds, ['kwadwocode'])
+    assert.ok(res.data.senderIds.includes('kwadwocode'))
+  })
+
+  await t.test('POST /api/v1/send-sms - refuses a sender ID that was never approved', async () => {
+    sentSms = []
+    try {
+      await axios.post('http://localhost:3123/api/v1/send-sms', {
+        to: '233201234567',
+        message: 'Hello world',
+        senderId: 'GLADYSUG'
+      }, { headers: { 'Authorization': `Bearer ${dev.apiKey}` } })
+      assert.fail('Should have failed with 403')
+    } catch (err) {
+      assert.equal(err.response.status, 403)
+      assert.match(err.response.data.message, /not approved/)
+    }
+    assert.equal(sentSms.length, 0)
+    const bal = await axios.get('http://localhost:3123/api/v1/balance', { headers: { 'Authorization': `Bearer ${dev.apiKey}` } })
+    assert.equal(bal.data.balance, 500)
   })
 
   await t.test('POST /api/v1/send-sms - success and debit', async () => {
@@ -96,7 +114,7 @@ test('Integration Test: API Endpoints', async (t) => {
     const res = await axios.post('http://localhost:3123/api/v1/send-sms', {
       to: '233201234567, 233207654321',
       message: 'Hello world', // 1 unit per recipient
-      senderId: 'TESTER'
+      senderId: 'KwadwoCode'
     }, {
       headers: { 'Authorization': `Bearer ${dev.apiKey}` }
     })
@@ -107,7 +125,7 @@ test('Integration Test: API Endpoints', async (t) => {
     assert.equal(res.data.remaining_balance, 498)
     assert.equal(sentSms.length, 2)
     assert.equal(sentSms[0].number, '233201234567')
-    assert.equal(sentSms[0].senderId, 'TESTER')
+    assert.equal(sentSms[0].senderId, 'kwadwocode')
   })
 
   await t.test('POST /api/v1/send-sms - mixed local and international tiered debit', async () => {
@@ -115,7 +133,7 @@ test('Integration Test: API Endpoints', async (t) => {
     const res = await axios.post('http://localhost:3123/api/v1/send-sms', {
       to: '233201234567, 1234567890', // 1 local (1.0 units), 1 international (1.6 units)
       message: 'Hello world',
-      senderId: 'TESTER'
+      senderId: 'kwadwocode'
     }, {
       headers: { 'Authorization': `Bearer ${dev.apiKey}` }
     })

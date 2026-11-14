@@ -604,7 +604,7 @@ const server = http.createServer(async (req, res) => {
     try { await reconcileUserSenderIdFees(userId) } catch (e) { console.warn('[Sender ID Reconcile]', e.message) }
     const senderIdRequests = await SenderIdRequestRepo.listByUser(userId)
 
-    const feeGHS = Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 8)
+    const feeGHS = 0
 
     return json(200, {
       ok: true,
@@ -821,7 +821,7 @@ const server = http.createServer(async (req, res) => {
 
     const userId = user._id || user.id
     const cleanSenderId = senderId.trim().toUpperCase()
-    const feeGHS = Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 8)
+    const feeGHS = 0
 
     // Check if already active or pending
     const existingReqs = await SenderIdRequestRepo.listByUser(userId)
@@ -829,61 +829,30 @@ const server = http.createServer(async (req, res) => {
     if (alreadyPending) {
       return json(400, { ok: false, message: `Sender ID "${cleanSenderId}" is already submitted and pending review.` })
     }
+    // Free requests: cap how many can wait at once so the admin chat isn't flooded.
+    if (existingReqs.filter(r => r.status === 'pending').length >= 3) {
+      return json(400, { ok: false, message: 'You already have 3 sender IDs waiting for review. Please wait for those to be approved first.' })
+    }
     if (user.senderIds && user.senderIds.includes(cleanSenderId)) {
       return json(400, { ok: false, message: `Sender ID "${cleanSenderId}" is already approved and active in your account.` })
     }
 
-    // A previously rejected sender ID earns one free retry: no payment needed.
-    if (await UserRepo.consumeFreeSenderIdRetry(userId)) {
-      const freeReq = await SenderIdRequestRepo.create({
-        userId,
-        senderId: cleanSenderId,
-        purpose: purpose || 'Web business notification',
-        feeAmountGHS: 0,
-        paymentMethod: 'free_retry'
-      })
-      await notifyAdmin({ user, request: freeReq, paymentMethod: 'Free retry (earlier ID rejected)' })
-      return json(200, {
-        ok: true,
-        feePaid: 0,
-        freeRetryUsed: true,
-        remainingBalance: user.balance,
-        message: `Sender ID "${cleanSenderId}" submitted for review using your free retry. No fee was charged.`,
-        senderIdRequest: freeReq
-      })
-    }
-
-    // The fee is real money (Paystack MoMo/card). SMS credits in the wallet are
-    // SMS units, not cedis, so they can never pay for a sender ID.
-    {
-      const reference = 'sid_fee_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex')
-      await TransactionRepo.create({
-        userId,
-        reference,
-        amountGHS: feeGHS,
-        credits: 0,
-        paymentPurpose: `sender_id_fee:${cleanSenderId}:${encodeURIComponent(purpose || 'Business Messaging')}`
-      })
-
-      const proto = req.headers['x-forwarded-proto'] || (req.connection?.encrypted ? 'https' : 'http')
-      const callbackUrl = `${proto}://${req.headers.host || 'localhost:4000'}/#dashboard-sender-ids?ref=${reference}&sid=${cleanSenderId}`
-      const payment = await initializePayment({
-        email: user.email,
-        amountGHS: feeGHS,
-        reference,
-        callbackUrl
-      })
-
-      return json(200, {
-        ok: true,
-        paymentRequired: true,
-        paymentMethod: 'paystack',
-        feeGHS,
-        checkout_url: payment.data?.authorization_url || payment.authorization_url,
-        reference
-      })
-    }
-
+    // Sender IDs are free: no Paystack, no SMS credits. The request goes straight
+    // to the admin in Telegram and can only be used after they tap Approve.
+    const reqRecord = await SenderIdRequestRepo.create({
+      userId,
+      senderId: cleanSenderId,
+      purpose: purpose || 'Web business notification',
+      feeAmountGHS: 0,
+      paymentMethod: 'free'
+    })
+    await notifyAdmin({ user, request: reqRecord, paymentMethod: 'Free' })
+    return json(200, {
+      ok: true,
+      feePaid: 0,
+      message: `Sender ID "${cleanSenderId}" submitted for review. It's free, and you'll get an SMS once it's approved.`,
+      senderIdRequest: reqRecord
+    })
   }
 
   if (urlPath === '/api/dashboard/sender-id/verify-payment' && req.method === 'GET') {
@@ -1055,7 +1024,7 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/api/plans' && req.method === 'GET') {
     return json(200, {
       ok: true,
-      pricing: { localGHS: 0.05, internationalGHS: 0.08, customSenderIdFeeGHS: Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 8), genericSenderId: 'TXTORA' },
+      pricing: { localGHS: 0.05, internationalGHS: 0.08, customSenderIdFeeGHS: 0, genericSenderId: 'TXTORA' },
       plans: API_PLANS
     })
   }

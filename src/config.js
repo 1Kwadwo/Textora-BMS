@@ -78,8 +78,9 @@ function validateRuntimeConfig() {
 const genericSenderId =
   readEnv('GENERIC_SENDER_ID')
 
-const customSenderIdFeeGHS =
-  Number(process.env.CUSTOM_SENDER_ID_FEE_GHS || 8)
+// Sender IDs are free (decided 2026-11-14): Arkesel approves new names on its
+// side, so there is no paid manual work. Admin approval in Telegram stays.
+const customSenderIdFeeGHS = 0
 
 const COST_PER_SMS =
   Number(readEnv('COST_PER_SMS'))
