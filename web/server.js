@@ -11,7 +11,7 @@ const { UserRepo, ApiKeyRepo, TransactionRepo, SmsLogRepo, SenderIdRequestRepo }
 const { hashPassword, comparePassword, generateToken, verifyToken, extractBearerToken } = require('./src/auth')
 const { isGhanaNumber, normalizeNumber, toCanonicalGhanaPhone, calculateSMSUnits, sendSMS } = require('./src/services/sms')
 const { initializePayment, verifyPayment } = require('./src/services/paystack')
-const { fulfillSenderIdFee, notifyAdmin, reconcileUserSenderIdFees, isValidWebSenderId, allowedSenderIdsFor } = require('./src/services/senderIdRequests')
+const { fulfillSenderIdFee, notifyAdmin, reconcileUserSenderIdFees, isValidWebSenderId, allowedSenderIdsFor, requestWebSenderId } = require('./src/services/senderIdRequests')
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./src/services/email')
 const { handleEmailRoutes } = require('./src/email/routes')
 const emailWallet = require('./src/email/wallet')
@@ -814,45 +814,8 @@ const server = http.createServer(async (req, res) => {
     if (!user) return json(401, { ok: false, message: 'Unauthorized' })
 
     const body = await parseBody()
-    const { senderId, purpose } = body
-    if (!senderId || !isValidWebSenderId(senderId)) {
-      return json(400, { ok: false, message: 'Sender ID must be 3 to 11 letters or numbers (no emoji, spaces or symbols), and not only numbers.' })
-    }
-
-    const userId = user._id || user.id
-    const cleanSenderId = senderId.trim().toUpperCase()
-    const feeGHS = 0
-
-    // Check if already active or pending
-    const existingReqs = await SenderIdRequestRepo.listByUser(userId)
-    const alreadyPending = existingReqs.find(r => r.senderId === cleanSenderId && r.status === 'pending')
-    if (alreadyPending) {
-      return json(400, { ok: false, message: `Sender ID "${cleanSenderId}" is already submitted and pending review.` })
-    }
-    // Free requests: cap how many can wait at once so the admin chat isn't flooded.
-    if (existingReqs.filter(r => r.status === 'pending').length >= 3) {
-      return json(400, { ok: false, message: 'You already have 3 sender IDs waiting for review. Please wait for those to be approved first.' })
-    }
-    if (user.senderIds && user.senderIds.includes(cleanSenderId)) {
-      return json(400, { ok: false, message: `Sender ID "${cleanSenderId}" is already approved and active in your account.` })
-    }
-
-    // Sender IDs are free: no Paystack, no SMS credits. The request goes straight
-    // to the admin in Telegram and can only be used after they tap Approve.
-    const reqRecord = await SenderIdRequestRepo.create({
-      userId,
-      senderId: cleanSenderId,
-      purpose: purpose || 'Web business notification',
-      feeAmountGHS: 0,
-      paymentMethod: 'free'
-    })
-    await notifyAdmin({ user, request: reqRecord, paymentMethod: 'Free' })
-    return json(200, {
-      ok: true,
-      feePaid: 0,
-      message: `Sender ID "${cleanSenderId}" submitted for review. It's free, and you'll get an SMS once it's approved.`,
-      senderIdRequest: reqRecord
-    })
+    const r = await requestWebSenderId({ user, senderId: body.senderId, purpose: body.purpose })
+    return json(r.status, r.body)
   }
 
   if (urlPath === '/api/dashboard/sender-id/verify-payment' && req.method === 'GET') {
@@ -915,8 +878,36 @@ const server = http.createServer(async (req, res) => {
       return json(200, { ok: true, logs })
     }
 
+    // List this account's sender IDs: the approved ones it can send from, plus
+    // every request with its status (pending / approved / rejected).
     if (urlPath === '/api/v1/sender-ids' && req.method === 'GET') {
-      return json(200, { ok: true, senderIds: allowedSenderIdsFor(user) })
+      const requests = user.isBotDev ? [] : await SenderIdRequestRepo.listByUser(userId)
+      return json(200, {
+        ok: true,
+        senderIds: allowedSenderIdsFor(user),
+        requests: requests.map(r => ({
+          senderId: r.senderId,
+          status: r.status,
+          purpose: r.purpose || '',
+          requestedAt: r.createdAt,
+          reviewedAt: r.reviewedAt || null
+        }))
+      })
+    }
+
+    // Request a new sender ID (free). It goes to the KebSEND admin in Telegram
+    // and can be used for sending only after it's approved.
+    if (urlPath === '/api/v1/sender-ids' && req.method === 'POST') {
+      if (user.isBotDev) {
+        return json(400, { ok: false, message: 'Telegram developer keys request sender IDs in the KebSEND Telegram bot.' })
+      }
+      const body = await parseBody()
+      const r = await requestWebSenderId({ user, senderId: body.senderId, purpose: body.purpose })
+      if (r.body.senderIdRequest) {
+        const q = r.body.senderIdRequest
+        r.body.senderIdRequest = { senderId: q.senderId, status: q.status, purpose: q.purpose, requestedAt: q.createdAt }
+      }
+      return json(r.status === 200 ? 201 : r.status, r.body)
     }
 
     if (urlPath === '/api/v1/send-sms' && req.method === 'POST') {

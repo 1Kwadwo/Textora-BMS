@@ -1190,6 +1190,15 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
           <pre class="code-dark-box mt-4 overflow-x-auto !rounded-2xl p-4 text-[13px] leading-relaxed text-blue-200"><span class="text-teal-300">POST</span> /api/v1/send-sms
 Authorization: Bearer ksnd_live_...
 { "to": "233240001234", "message": "Hello!", "senderId": "MYSHOP" }</pre>
+          <h4 class="mt-6 font-extrabold text-navy-900 dark:text-white">Sender IDs</h4>
+          <p class="mt-1 text-sm text-ink dark:text-slate-400">Request a sender ID (free). It can be used once KebSEND approves it, and we text you when it's approved. You can have up to 3 waiting at once.</p>
+          <pre class="code-dark-box mt-4 overflow-x-auto !rounded-2xl p-4 text-[13px] leading-relaxed text-blue-200"><span class="text-teal-300">POST</span> /api/v1/sender-ids
+Authorization: Bearer ksnd_live_...
+{ "senderId": "MYSHOP", "purpose": "Order alerts" }
+
+<span class="text-teal-300">GET</span> /api/v1/sender-ids
+<span class="text-slate-400">→ { "senderIds": ["MYSHOP"], "requests": [{ "senderId": "MYSHOP", "status": "approved" }] }</span></pre>
+          <p class="mt-3 text-sm text-ink dark:text-slate-400">Sender IDs are 3 to 11 letters or numbers. Sending from a name that isn't approved for your account is refused.</p>
         </div>
       </div>
 

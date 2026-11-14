@@ -278,6 +278,25 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(res.data.remaining_balance, 997) // 998 - 1 = 997 credits
   })
 
+  await t.test('10b. Public API: request a sender ID with the API key', async () => {
+    const bad = await request('POST', '/api/v1/sender-ids', { senderId: 'BAD NAME!' }, { Authorization: `Bearer ${generatedApiKey}` })
+    assert.strictEqual(bad.statusCode, 400)
+
+    const res = await request('POST', '/api/v1/sender-ids', { senderId: 'apishop', purpose: 'Order alerts' }, { Authorization: `Bearer ${generatedApiKey}` })
+    assert.strictEqual(res.statusCode, 201)
+    assert.strictEqual(res.data.senderIdRequest.senderId, 'APISHOP')
+    assert.strictEqual(res.data.senderIdRequest.status, 'pending')
+
+    const list = await request('GET', '/api/v1/sender-ids', null, { Authorization: `Bearer ${generatedApiKey}` })
+    assert.strictEqual(list.statusCode, 200)
+    assert.ok(!list.data.senderIds.includes('APISHOP'))
+    assert.ok(list.data.requests.some(r => r.senderId === 'APISHOP' && r.status === 'pending'))
+
+    // Still can't send from it until approved.
+    const early = await request('POST', '/api/v1/send-sms', { to: '233240009988', message: 'x', senderId: 'APISHOP' }, { Authorization: `Bearer ${generatedApiKey}` })
+    assert.strictEqual(early.statusCode, 403)
+  })
+
   await t.test('11. Custom Sender ID: Registers new brand name', async () => {
     const res = await request('POST', '/api/dashboard/sender-id', {
       senderId: 'MYSHOP',
@@ -301,12 +320,12 @@ test('KebSEND Web Auth, MongoDB Dashboard, API Keys & Paystack System', async (t
     assert.strictEqual(early.statusCode, 403)
 
     // At most 3 requests can wait at once.
-    for (const sid of ['SHOPTWO', 'SHOPTHREE']) {
+    for (const sid of ['SHOPTWO']) {
       const r = await request('POST', '/api/dashboard/sender-id', { senderId: sid, purpose: 'x' }, { Authorization: `Bearer ${authToken}` })
       assert.strictEqual(r.statusCode, 200)
     }
     const fourth = await request('POST', '/api/dashboard/sender-id', { senderId: 'SHOPFOUR', purpose: 'x' }, { Authorization: `Bearer ${authToken}` })
-    assert.strictEqual(fourth.statusCode, 400)
+    assert.strictEqual(fourth.statusCode, 429)
   })
 
   await t.test('12. Forgot Password: Requests password reset link', async () => {
