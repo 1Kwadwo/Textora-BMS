@@ -203,7 +203,46 @@ async function grantSenderId({ userId, senderId, purpose = 'Added by KebSEND adm
   return { ...review, linkedPayment: paidTx ? paidTx.reference : null }
 }
 
+// Creates a free sender ID request for a website account and alerts the admin.
+// Shared by the dashboard and the public API. Returns { status, body }.
+async function requestWebSenderId({ user, senderId, purpose }) {
+  if (!senderId || !isValidWebSenderId(senderId)) {
+    return { status: 400, body: { ok: false, message: 'Sender ID must be 3 to 11 letters or numbers (no emoji, spaces or symbols), and not only numbers.' } }
+  }
+  const userId = user._id || user.id
+  const clean = String(senderId).trim().toUpperCase()
+  const existing = await SenderIdRequestRepo.listByUser(userId)
+  if (existing.find(r => r.senderId === clean && r.status === 'pending')) {
+    return { status: 400, body: { ok: false, message: `Sender ID "${clean}" is already submitted and pending review.` } }
+  }
+  // Free requests: cap how many can wait at once so the admin chat isn't flooded.
+  if (existing.filter(r => r.status === 'pending').length >= 3) {
+    return { status: 429, body: { ok: false, message: 'You already have 3 sender IDs waiting for review. Please wait for those to be approved first.' } }
+  }
+  if ((user.senderIds || []).map(x => String(x).toUpperCase()).includes(clean)) {
+    return { status: 400, body: { ok: false, message: `Sender ID "${clean}" is already approved and active in your account.` } }
+  }
+  const request = await SenderIdRequestRepo.create({
+    userId,
+    senderId: clean,
+    purpose: String(purpose || 'Web business notification').slice(0, 200),
+    feeAmountGHS: 0,
+    paymentMethod: 'free'
+  })
+  await notifyAdmin({ user, request, paymentMethod: 'Free' })
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      feePaid: 0,
+      message: `Sender ID "${clean}" submitted for review. It's free, and you'll get an SMS once it's approved.`,
+      senderIdRequest: request
+    }
+  }
+}
+
 module.exports = {
+  requestWebSenderId,
   allowedSenderIdsFor,
   genericSenderId,
   genericSenderAllowedEmails,
