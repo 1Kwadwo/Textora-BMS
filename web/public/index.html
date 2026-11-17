@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>KebSEND | Bulk SMS for Ghana, made simple</title>
   <meta name="description" content="KebSEND is a bulk SMS platform for Ghana. Send promotions, alerts and reminders to thousands of people in seconds. Top up with Mobile Money or card, register your own sender ID, or integrate our REST API.">
-  <meta name="theme-color" content="#0A2A66">
+  <meta name="theme-color" content="#0F4D3A">
 
   <!-- Open Graph / link previews (WhatsApp, Telegram, Facebook) -->
   <meta property="og:type" content="website">
@@ -39,7 +39,7 @@
   <link rel="apple-touch-icon" sizes="192x192" href="favicon-192.png">
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
   <!-- Compiled Tailwind + DaisyUI + KebSEND theme (source: web/styles/input.css) -->
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body class="min-h-screen">
 
@@ -117,55 +117,51 @@
   <main id="view-landing" class="view-panel">
 
     <!-- HERO -->
-    <section id="hero" class="ks-hero-bg ks-pattern overflow-hidden">
-      <div class="ks-container grid items-center gap-10 pb-16 pt-10 sm:pb-24 sm:pt-16 lg:grid-cols-12 lg:gap-8">
-        <div class="space-y-6 lg:col-span-6">
-          <span class="ks-eyebrow"><span class="h-1.5 w-1.5 rounded-full bg-teal-400"></span>Bulk SMS made simple</span>
-
-          <h1 class="text-[2.75rem] font-black leading-[0.98] tracking-tight text-navy-900 sm:text-7xl lg:text-[5.25rem] dark:text-white">
-            Reach thousands <span class="block text-ember-500">in seconds.</span>
+    <div class="ks-stripe" aria-hidden="true"></div>
+    <section id="hero" class="ks-hero-bg overflow-hidden">
+      <div class="ks-container grid items-end gap-8 pt-10 sm:pt-14 lg:grid-cols-12 lg:gap-6">
+        <div class="space-y-6 pb-4 lg:col-span-6 lg:pb-20">
+          <h1 class="text-[3rem] font-extrabold leading-[0.95] tracking-tight text-navy-900 sm:text-7xl lg:text-[5.75rem] dark:text-cream-100">
+            Tell all your customers <span class="text-ember-500">at once.</span>
           </h1>
 
-          <p class="max-w-xl text-lg leading-relaxed text-ink sm:text-xl dark:text-slate-300">
-            Send promotions, alerts and reminders to thousands of people with one click. Fast, affordable and reliable, built for Ghana.
+          <p class="max-w-xl text-lg leading-relaxed text-[#3b342c] sm:text-xl dark:text-cream-200">
+            Promos for your shop, fee reminders for your school, programme changes for your church. Write it once and KebSEND texts everyone on your list, from your own name.
           </p>
 
           <div class="flex flex-col gap-3 pt-1 sm:flex-row">
-            <button class="cta-gate-register ks-btn-primary btn-lg h-14 rounded-2xl px-8 text-base">
-              Start sending free
+            <button class="cta-gate-register ks-btn-primary btn-lg h-14 px-8 text-base">
+              Create a free account
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5-5 5M6 12h12"/></svg>
             </button>
-            <a href="https://t.me/textorasmsbot" target="_blank" rel="noopener" class="ks-btn-ghost btn-lg h-14 rounded-2xl px-6 text-base">
+            <a href="https://t.me/textorasmsbot" target="_blank" rel="noopener" class="ks-btn-ghost btn-lg h-14 px-6 text-base">
               <svg viewBox="0 0 24 24" class="h-6 w-6" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#29A9EB"/><path d="M5.5 11.6l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-2.9 5.3-4.8c.2-.2 0-.3-.3-.1l-6.6 4.1-2.8-.9c-.6-.2-.6-.6.1-.9z" fill="#fff"/></svg>
-              Use our Telegram bot
+              Chat with our Telegram bot
             </a>
           </div>
 
-          <ul class="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-sm font-semibold text-navy-900/80 dark:text-slate-300">
-            <li class="flex items-center gap-2"><svg class="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>Fast, instant activation</li>
-            <li class="flex items-center gap-2"><svg class="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>No monthly fees</li>
-            <li class="flex items-center gap-2"><svg class="h-5 w-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l5 5L20 7"/></svg>Top up with MoMo</li>
+          <ul class="flex flex-wrap gap-2 pt-2 text-sm font-semibold text-navy-900 dark:text-cream-100">
+            <li class="rounded-full bg-cream-200 px-4 py-2 dark:bg-white/10">GH₵ 0.05 per SMS</li>
+            <li class="rounded-full bg-cream-200 px-4 py-2 dark:bg-white/10">Free sender ID</li>
+            <li class="rounded-full bg-cream-200 px-4 py-2 dark:bg-white/10">Pay with MoMo</li>
+            <li class="rounded-full bg-cream-200 px-4 py-2 dark:bg-white/10">No monthly fee</li>
           </ul>
         </div>
 
-        <!-- Hero art -->
-        <div class="relative mx-auto w-full max-w-[520px] lg:col-span-6">
-          <div class="relative aspect-square">
-            <div class="absolute inset-[6%] rounded-full bg-gradient-to-br from-ember-300 via-ember-400 to-ember-500 ring-8 ring-white/70 dark:ring-white/10"></div>
-            <img src="illustrations/hero-person.svg" alt="Smiling woman holding a phone receiving an SMS" class="absolute inset-x-0 bottom-0 mx-auto h-[100%] w-auto [clip-path:circle(47%_at_50%_50%)]" />
-
-            <div class="ks-chip ks-float absolute left-0 top-[30%] sm:-left-6">
-              <span class="ks-chip-dot bg-teal-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 12l5 5L20 7"/></svg></span>
-              <div>10,000 SMS delivered<small>Just now</small></div>
-            </div>
-            <div class="ks-chip ks-float-delay absolute right-0 top-[4%] sm:-right-4">
-              <span class="ks-chip-dot bg-blue-600"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M21 3L3 10.5l7 2.5 2.5 7L21 3z"/></svg></span>
-              <div>Sale starts today!<small>Sent to 2,450 customers</small></div>
-            </div>
-            <div class="ks-chip ks-float absolute bottom-[8%] right-0 sm:-right-2">
-              <span class="ks-chip-dot bg-ember-500"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg></span>
-              <div>GH₵ 0.05 per SMS<small>Pay only for what you send</small></div>
-            </div>
+        <!-- Hero art: arch + character + sample SMS -->
+        <div class="relative mx-auto h-[420px] w-full max-w-[560px] overflow-hidden sm:h-[560px] lg:col-span-6" aria-hidden="true">
+          <div class="absolute bottom-0 left-1/2 h-[340px] w-[340px] -translate-x-1/2 rounded-t-full bg-gold-500 sm:h-[480px] sm:w-[480px]">
+            <div class="absolute inset-x-[12%] bottom-0 top-[12%] rounded-t-full bg-ember-500"></div>
+          </div>
+          <img src="illustrations/market-ama-phone.svg" alt="" class="absolute -bottom-12 left-1/2 w-[300px] -translate-x-1/2 sm:-bottom-16 sm:w-[420px]" />
+          <div class="ks-float absolute left-0 top-[2%] max-w-[230px] sm:top-[14%] rounded-[1.25rem] rounded-bl-md bg-white px-4 py-3 text-sm leading-snug text-[#1D1A16] shadow-chip">
+            <b class="mb-1 block text-[11px] tracking-[.08em] text-navy-900">AMASHOP</b>Akwaaba! New Ankara prints just landed. Show this SMS for 10% off.
+          </div>
+          <div class="ks-float-delay absolute right-0 top-[38%] hidden max-w-[220px] sm:block rounded-[1.25rem] rounded-bl-md bg-white px-4 py-3 text-sm leading-snug text-[#1D1A16] shadow-chip">
+            <b class="mb-1 block text-[11px] tracking-[.08em] text-navy-900">ST. PAUL'S JHS</b>PTA meeting moved to Saturday, 10am in the main hall.
+          </div>
+          <div class="ks-float absolute left-[2%] top-[62%] hidden max-w-[220px] rounded-[1.25rem] rounded-bl-md bg-white px-4 py-3 text-sm leading-snug text-[#1D1A16] shadow-chip sm:block">
+            <b class="mb-1 block text-[11px] tracking-[.08em] text-navy-900">HALL SRC</b>Hall week starts Monday. Dues close Friday 5pm.
           </div>
         </div>
       </div>
@@ -420,15 +416,15 @@
         </div>
 
         <div class="mx-auto mb-12 grid max-w-3xl gap-4 sm:grid-cols-2">
-          <div class="ks-card p-7 text-center">
-            <div class="text-sm font-bold uppercase tracking-wider text-ink dark:text-slate-400">Ghana (local)</div>
-            <div class="mt-2 text-5xl font-black text-navy-900 dark:text-white">GH₵ 0.05</div>
-            <div class="mt-1 font-semibold text-ink dark:text-slate-400">per SMS, package or pay as you go</div>
+          <div class="ks-terra-band rounded-[2rem] p-8">
+            <div class="text-sm font-bold opacity-90">Every SMS in Ghana</div>
+            <div class="mt-1 whitespace-nowrap text-5xl font-extrabold tracking-tight sm:text-6xl">GH₵ 0.05</div>
+            <div class="mt-2 font-semibold opacity-90">Package or pay as you go</div>
           </div>
-          <div class="ks-card p-7 text-center">
-            <div class="text-sm font-bold uppercase tracking-wider text-ink dark:text-slate-400">International</div>
-            <div class="mt-2 text-5xl font-black text-navy-900 dark:text-white">GH₵ 0.08</div>
-            <div class="mt-1 font-semibold text-ink dark:text-slate-400">per SMS, 190+ countries</div>
+          <div class="ks-gold-band rounded-[2rem] p-8">
+            <div class="text-sm font-bold opacity-80">International</div>
+            <div class="mt-1 whitespace-nowrap text-5xl font-extrabold tracking-tight sm:text-6xl">GH₵ 0.08</div>
+            <div class="mt-2 font-semibold opacity-80">per SMS, 190+ countries</div>
           </div>
         </div>
 
@@ -489,8 +485,7 @@
 
           <!-- MoMo card -->
           <div class="space-y-6 lg:col-span-5 scroll-reveal-right">
-            <div class="ks-navy-band overflow-hidden rounded-3xl p-7 text-white shadow-chip">
-              <div class="ks-icon-tile mb-5"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+            <div class="ks-navy-band overflow-hidden rounded-[2rem] p-7 text-white">
               <h3 class="text-2xl font-extrabold">Top up in seconds</h3>
               <p class="mt-2 leading-relaxed text-blue-100">Pay with MTN MoMo, Telecel Cash, AT Money, Visa or Mastercard. Your credits are added the moment payment goes through.</p>
               <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold">
@@ -635,20 +630,26 @@
         </div>
         <div class="grid gap-5 md:grid-cols-3">
           <article class="ks-card ks-card-hover flex flex-col p-7 scroll-reveal">
-            <span class="ks-icon-tile"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></span>
-            <h3 class="mt-5 text-xl font-extrabold text-navy-900 dark:text-white">Web dashboard</h3>
+            <div class="mb-6 h-[190px] overflow-hidden rounded-2xl border border-[#E6D6BF] bg-cream-100 p-4 dark:border-white/10 dark:bg-night-900" aria-hidden="true"><div class="rounded-xl border border-[#E6D6BF] bg-white p-3 text-xs text-[#1D1A16]"><div class="text-[13px] font-extrabold text-navy-900">Send SMS</div><div class="mt-2 text-[11px] text-ink">From</div><div class="rounded-md border border-[#E6D6BF] px-2 py-1 font-bold">MYSHOP</div><div class="mt-1.5 text-[11px] text-ink">To</div><div class="rounded-md border border-[#E6D6BF] px-2 py-1 font-mono text-[11px]">0244123456, 0501234567…</div><div class="mt-2.5 flex items-center justify-between"><span class="font-extrabold text-ember-500">Cost: 1,240 credits</span><span class="rounded-full bg-ember-500 px-3 py-1 font-bold text-white">Send</span></div></div></div>
+            <h3 class="text-xl font-extrabold text-navy-900 dark:text-white">Web dashboard</h3>
             <p class="mt-2 flex-1 text-ink dark:text-slate-300">Paste numbers or upload a CSV, see the cost before you send, and track every message in your history.</p>
             <button class="cta-gate-register mt-6 self-start font-bold text-ember-600 hover:underline dark:text-ember-400">Create free account →</button>
           </article>
           <article class="ks-card ks-card-hover flex flex-col p-7 scroll-reveal delay-100">
-            <span class="grid h-12 w-12 place-items-center rounded-2xl bg-[#29A9EB] text-white"><svg viewBox="0 0 24 24" class="h-7 w-7" fill="currentColor"><path d="M5.5 11.6l11.2-4.3c.5-.2 1 .1.8.9l-1.9 9c-.1.6-.5.8-1 .5l-2.9-2.1-1.4 1.3c-.2.2-.3.3-.6.3l.2-2.9 5.3-4.8c.2-.2 0-.3-.3-.1l-6.6 4.1-2.8-.9c-.6-.2-.6-.6.1-.9z"/></svg></span>
-            <h3 class="mt-5 text-xl font-extrabold text-navy-900 dark:text-white">Telegram bot</h3>
+            <div class="mb-6 h-[190px] overflow-hidden rounded-2xl border border-[#E6D6BF] bg-cream-100 p-4 dark:border-white/10 dark:bg-night-900" aria-hidden="true"><div class="flex flex-col gap-2 text-xs"><div class="self-end rounded-xl rounded-br-sm bg-[#DCF3D0] px-3 py-1.5 text-[#1D1A16]">customers.csv</div><div class="max-w-[85%] self-start rounded-xl rounded-bl-sm bg-white px-3 py-1.5 text-[#1D1A16]">Found 1,240 numbers. Now type your message.</div><div class="max-w-[85%] self-end rounded-xl rounded-br-sm bg-[#DCF3D0] px-3 py-1.5 text-[#1D1A16]">Weekend sale! 20% off all shoes at our Osu shop.</div><div class="self-start rounded-xl rounded-bl-sm bg-white px-3 py-1.5 font-semibold text-navy-900">Sent to 1,240 people</div></div></div>
+            <h3 class="text-xl font-extrabold text-navy-900 dark:text-white">Telegram bot</h3>
             <p class="mt-2 flex-1 text-ink dark:text-slate-300">Send bulk SMS straight from a Telegram chat on your phone. Upload contacts, type your message, pay with MoMo.</p>
             <a href="https://t.me/textorasmsbot" target="_blank" rel="noopener" class="mt-6 self-start font-bold text-ember-600 hover:underline dark:text-ember-400">Open the bot →</a>
           </article>
           <article class="ks-card ks-card-hover flex flex-col p-7 scroll-reveal delay-200">
-            <span class="ks-icon-tile !from-blue-500 !to-navy-900 !shadow-none"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg></span>
-            <h3 class="mt-5 text-xl font-extrabold text-navy-900 dark:text-white">Developer API</h3>
+            <div class="mb-6 h-[190px] overflow-hidden rounded-2xl border border-[#E6D6BF] bg-cream-100 p-4 dark:border-white/10 dark:bg-night-900" aria-hidden="true"><pre class="font-mono text-[11.5px] leading-relaxed text-navy-900 dark:text-cream-100"><span class="font-bold text-ember-500">POST</span> /api/v1/send-sms
+{
+  "to": "0244123456",
+  "message": "Your code is 4821",
+  "senderId": "MYSHOP"
+}
+<span class="font-bold text-teal-600">200 OK · 1 credit used</span></pre></div>
+            <h3 class="text-xl font-extrabold text-navy-900 dark:text-white">Developer API</h3>
             <p class="mt-2 flex-1 text-ink dark:text-slate-300">Send OTPs, receipts and alerts from your own website or app with a simple REST API.</p>
             <a href="#api-docs-preview" class="mt-6 self-start font-bold text-ember-600 hover:underline dark:text-ember-400">See the API →</a>
           </article>
@@ -729,7 +730,7 @@
               <button class="copy-btn btn btn-xs shrink-0 border-white/15 bg-white/5 font-mono text-slate-200 hover:bg-white/10" data-target="code-display-curl">Copy</button>
             </div>
             <div class="px-4 pt-4 text-xs font-semibold text-slate-400 sm:px-5"><span class="rounded bg-teal-500/15 px-2 py-0.5 font-mono text-teal-300">POST</span> <span class="font-mono">/api/v1/send-sms</span></div>
-<div id="code-display-curl" class="api-code-snippet overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-blue-200 sm:p-5" data-lang="curl"><pre><span class="text-teal-300">curl</span> -X POST https://your-kebsend-host.com/api/v1/send-sms \
+<div id="code-display-curl" class="api-code-snippet overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-blue-200 sm:p-5" data-lang="curl"><pre><span class="text-teal-300">curl</span> -X POST https://kebsend.com/api/v1/send-sms \
   -H <span class="text-ember-300">"Authorization: Bearer ksnd_live_..."</span> \
   -H <span class="text-ember-300">"Content-Type: application/json"</span> \
   -d <span class="text-white">'{
@@ -737,7 +738,7 @@
     "message": "Your verification code: 9482",
     "senderId": "MYSHOP"
   }'</span></pre></div>
-<div id="code-display-js" class="api-code-snippet hidden overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-blue-200 sm:p-5" data-lang="js"><pre><span class="text-teal-300">const</span> res = <span class="text-teal-300">await</span> fetch(<span class="text-ember-300">'https://your-kebsend-host.com/api/v1/send-sms'</span>, {
+<div id="code-display-js" class="api-code-snippet hidden overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-blue-200 sm:p-5" data-lang="js"><pre><span class="text-teal-300">const</span> res = <span class="text-teal-300">await</span> fetch(<span class="text-ember-300">'https://kebsend.com/api/v1/send-sms'</span>, {
   method: <span class="text-ember-300">'POST'</span>,
   headers: {
     Authorization: <span class="text-ember-300">'Bearer ksnd_live_...'</span>,
@@ -753,7 +754,7 @@ console.log(<span class="text-teal-300">await</span> res.json())</pre></div>
 <div id="code-display-python" class="api-code-snippet hidden overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-blue-200 sm:p-5" data-lang="python"><pre><span class="text-teal-300">import</span> requests
 
 res = requests.post(
-    <span class="text-ember-300">"https://your-kebsend-host.com/api/v1/send-sms"</span>,
+    <span class="text-ember-300">"https://kebsend.com/api/v1/send-sms"</span>,
     headers={<span class="text-ember-300">"Authorization"</span>: <span class="text-ember-300">"Bearer ksnd_live_..."</span>},
     json={
         <span class="text-ember-300">"to"</span>: <span class="text-ember-300">"233240001234"</span>,
@@ -762,7 +763,7 @@ res = requests.post(
     },
 )
 print(res.json())</pre></div>
-<div id="code-display-php" class="api-code-snippet hidden overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-blue-200 sm:p-5" data-lang="php"><pre><span class="text-teal-300">$ch</span> = curl_init(<span class="text-ember-300">'https://your-kebsend-host.com/api/v1/send-sms'</span>);
+<div id="code-display-php" class="api-code-snippet hidden overflow-x-auto p-4 font-mono text-[13px] leading-relaxed text-blue-200 sm:p-5" data-lang="php"><pre><span class="text-teal-300">$ch</span> = curl_init(<span class="text-ember-300">'https://kebsend.com/api/v1/send-sms'</span>);
 curl_setopt_array(<span class="text-teal-300">$ch</span>, [
   CURLOPT_POST =&gt; <span class="text-teal-300">true</span>,
   CURLOPT_RETURNTRANSFER =&gt; <span class="text-teal-300">true</span>,
@@ -827,15 +828,15 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
     </section>
 
     <!-- FINAL CTA -->
-    <section id="docs-preview" class="border-t border-navy-900/5 bg-cream-200/60 py-16 dark:border-white/5 dark:bg-night-900 sm:py-20">
+    <section id="docs-preview" class="ks-terra-band py-16 sm:py-24">
       <div class="ks-container grid items-start gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
         <div>
-          <p class="ks-kicker">Get started</p>
-          <h2 class="ks-h2 mt-2">Send your first SMS today, or talk to us first.</h2>
-          <p class="mt-4 max-w-xl text-lg text-ink dark:text-slate-300">Opening an account is free. Buy a package at GH₵ 0.05 per SMS, or pay as you go when you send. Either way you pay with MoMo or card, only for what you send. Questions about sender IDs or importing your contact list? Call or WhatsApp us and we&rsquo;ll walk you through it.</p>
+          <p class="text-sm font-bold uppercase tracking-[0.12em] text-cream-200">Get started</p>
+          <h2 class="mt-2 text-4xl font-extrabold leading-[1] tracking-tight text-white sm:text-6xl">Questions? Call us. We pick up.</h2>
+          <p class="mt-5 max-w-xl text-lg text-cream-100">Opening an account is free. Buy a package at GH₵ 0.05 per SMS, or pay as you go when you send. Either way you pay with MoMo or card, only for what you send. Questions about sender IDs or importing your contact list? Call or WhatsApp us and we&rsquo;ll walk you through it.</p>
           <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button class="cta-gate-register ks-btn-primary btn-lg h-14 px-8">Create free account</button>
-            <a href="#calculator" class="btn btn-lg h-14 rounded-2xl border border-navy-900/15 bg-white px-6 font-bold text-navy-900 shadow-none hover:border-navy-900/30 hover:bg-white dark:border-white/15 dark:bg-transparent dark:text-white">See pricing</a>
+            <button class="cta-gate-register btn btn-lg h-14 rounded-full border-none bg-navy-900 px-8 font-bold text-white hover:bg-navy-950">Create free account</button>
+            <a href="#calculator" class="btn btn-lg h-14 rounded-full border-2 border-white bg-transparent px-6 font-bold text-white shadow-none hover:bg-white hover:text-ember-600">See pricing</a>
           </div>
         </div>
         <div class="ks-contact-card">
@@ -859,13 +860,14 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
       </div>
     </section>
 
+    <div class="ks-stripe" aria-hidden="true"></div>
     <!-- FOOTER -->
     <footer class="border-t border-navy-900/5 bg-white dark:border-white/5 dark:bg-night-950">
       <div class="ks-container grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div class="space-y-3 lg:col-span-2">
           <div class="flex items-center gap-2.5">
             <img src="kebsend-icon.svg" alt="" class="h-9 w-9" />
-            <div class="text-xl font-black tracking-tight"><span class="text-navy-900 dark:text-white">Keb</span><span class="text-teal-500">SEND</span></div>
+            <div class="text-xl font-black tracking-tight"><span class="text-navy-900 dark:text-white">Keb</span><span class="text-ember-500">SEND</span></div>
           </div>
           <p class="max-w-sm text-sm leading-relaxed text-ink dark:text-slate-400">Bulk SMS for Ghana. Send promotions, alerts and reminders to thousands of people in seconds.</p>
         </div>
@@ -1140,18 +1142,18 @@ echo curl_exec(<span class="text-teal-300">$ch</span>);</pre></div>
         </div>
 
         <!-- Wallet card -->
-        <div class="ks-navy-band relative overflow-hidden rounded-3xl p-6 text-white shadow-chip sm:p-8">
-          <img src="kebsend-icon.svg" alt="" class="pointer-events-none absolute -bottom-10 -right-8 h-48 w-48 opacity-10" />
+        <div class="ks-gold-band relative overflow-hidden rounded-[2rem] p-6 sm:p-8">
+          <img src="illustrations/market-ama-phone.svg" alt="" class="pointer-events-none absolute -bottom-28 right-2 hidden w-[230px] sm:block lg:right-10" />
           <div class="relative">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-semibold text-blue-100">Wallet balance</span>
-              <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">Prepaid</span>
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-bold uppercase tracking-[0.08em]">Your balance</span>
+              <span class="rounded-full bg-navy-950/10 px-3 py-1 text-xs font-bold">Prepaid</span>
             </div>
-            <div id="card-balance" class="mt-3 text-4xl font-black tracking-tight sm:text-5xl">0.00 <span class="text-base font-semibold text-blue-200">Credits</span></div>
-            <div class="mt-1 text-sm text-blue-200">1 credit = 1 local SMS · GH₵ 0.05</div>
+            <div id="card-balance" class="mt-3 text-5xl font-extrabold tracking-tight sm:text-7xl">0.00 <span class="text-lg font-bold">Credits</span></div>
+            <div class="mt-2 text-sm font-semibold">1 credit = 1 local SMS · GH₵ 0.05</div>
             <div class="mt-6 grid grid-cols-2 gap-3 sm:flex">
-              <button id="btn-wallet-topup" class="ks-btn-primary h-12 rounded-xl px-6">+ Top up</button>
-              <button class="quick-nav-tab btn h-12 rounded-xl border border-white/20 bg-white/10 px-6 font-bold text-white hover:bg-white/20" data-dash-tab="dash-sms-composer">Send SMS →</button>
+              <button id="btn-wallet-topup" class="btn h-12 rounded-full border-none bg-ember-500 px-6 font-bold text-white hover:bg-ember-600">+ Top up</button>
+              <button class="quick-nav-tab btn h-12 rounded-full border-none bg-navy-900 px-6 font-bold text-white hover:bg-navy-950" data-dash-tab="dash-sms-composer">Send SMS →</button>
             </div>
           </div>
         </div>

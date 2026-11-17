@@ -1,0 +1,58 @@
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" id="mama-phone" viewBox="0 0 400 470" overflow="visible" xmlns="http://www.w3.org/2000/svg">
+<defs>
+    <pattern id="mama-phone-kente" width="36" height="36" patternUnits="userSpaceOnUse" patternTransform="rotate(-12)">
+      <rect width="36" height="36" fill="#FF6A00"></rect>
+      <rect y="0" width="36" height="7" fill="#F5B700"></rect><rect y="13" width="36" height="4" fill="#0A2A66"></rect>
+      <rect y="22" width="36" height="7" fill="#12B3A1"></rect><rect x="0" width="5" height="36" fill="#0A2A66" opacity=".55"></rect>
+      <rect x="18" y="7" width="6" height="6" fill="#0A2A66"></rect><rect x="18" y="29" width="6" height="7" fill="#F5B700"></rect>
+    </pattern>
+    <pattern id="mama-phone-ankara" width="44" height="44" patternUnits="userSpaceOnUse">
+      <rect width="44" height="44" fill="#0E8F82"></rect>
+      <circle cx="11" cy="11" r="9" fill="#FF6A00"></circle><circle cx="11" cy="11" r="4" fill="#F5B700"></circle>
+      <circle cx="33" cy="33" r="9" fill="#F5B700"></circle><circle cx="33" cy="33" r="4" fill="#0A2A66"></circle>
+      <path d="M33 4 l4 7 h-8z M11 26 l4 7 h-8z" fill="#FFF4E8"></path>
+    </pattern>
+    <pattern id="mama-phone-smock" width="22" height="22" patternUnits="userSpaceOnUse">
+      <rect width="22" height="22" fill="#F4EDE1"></rect><rect width="8" height="22" fill="#1E3A8A"></rect><rect x="11" width="3" height="22" fill="#B91C1C"></rect>
+    </pattern>
+    <pattern id="mama-phone-dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="26" height="26" fill="#0E8F82"></rect><circle cx="6" cy="6" r="3" fill="#fff" opacity=".5"></circle><circle cx="19" cy="19" r="3" fill="#fff" opacity=".5"></circle>
+    </pattern></defs>
+
+<path d="M168 222 L232 222 L234 334 Q200 356 166 334 Z" fill="#6B3F26"></path>
+<path d="M168 236 Q200 270 232 236 L232 262 Q200 290 168 262Z" fill="#53311e" opacity=".7"></path>
+<path d="M38 480 C38 384 80 334 150 320 Q200 352 250 320 C320 334 362 384 362 480 Z" fill="url(#mama-phone-ankara)"></path>
+          <path d="M150 320 Q200 352 250 320" fill="none" stroke="#0A2A66" stroke-width="6"></path>
+          <circle cx="156" cy="330" r="7" fill="#FF6A00" stroke="#0A2A66" stroke-width="2"></circle><circle cx="167" cy="339.94976924149233" r="7" fill="#F5B700" stroke="#0A2A66" stroke-width="2"></circle><circle cx="178" cy="348.3847763108502" r="7" fill="#FF6A00" stroke="#0A2A66" stroke-width="2"></circle><circle cx="189" cy="354.0208678452935" r="7" fill="#F5B700" stroke="#0A2A66" stroke-width="2"></circle><circle cx="200" cy="356" r="7" fill="#FF6A00" stroke="#0A2A66" stroke-width="2"></circle><circle cx="211" cy="354.0208678452935" r="7" fill="#F5B700" stroke="#0A2A66" stroke-width="2"></circle><circle cx="222" cy="348.3847763108502" r="7" fill="#FF6A00" stroke="#0A2A66" stroke-width="2"></circle><circle cx="233" cy="339.94976924149233" r="7" fill="#F5B700" stroke="#0A2A66" stroke-width="2"></circle><circle cx="244" cy="330" r="7" fill="#FF6A00" stroke="#0A2A66" stroke-width="2"></circle>
+
+<g id="mama-phone-head" transform="translate(0 0) rotate(-4 200 250)">
+  <ellipse cx="124" cy="174" rx="14" ry="21" fill="#6B3F26"></ellipse><ellipse cx="276" cy="174" rx="14" ry="21" fill="#6B3F26"></ellipse>
+  <ellipse cx="126" cy="176" rx="6" ry="11" fill="#53311e"></ellipse><ellipse cx="274" cy="176" rx="6" ry="11" fill="#53311e"></ellipse>
+  <path d="M122 160 C122 94 160 70 200 70 C240 70 278 94 278 160 C278 222 244 260 200 260 C156 260 122 222 122 160Z" fill="#6B3F26"></path>
+  
+  <path d="M150 74 C136 24 186 -8 228 8 C272 26 274 70 252 88 C232 62 178 58 150 74Z" fill="url(#mama-phone-kente)"></path>
+          <path d="M116 166 C104 92 146 44 204 44 C266 46 300 96 284 166 C272 126 242 108 200 108 C158 108 130 124 116 166Z" fill="url(#mama-phone-kente)"></path>
+          <path d="M116 166 C130 124 158 108 200 108 C242 108 272 126 284 166" fill="none" stroke="#0A2A66" stroke-width="5" opacity=".35"></path>
+          <path d="M200 60 C190 80 192 96 204 106" fill="none" stroke="#0A2A66" stroke-width="4" opacity=".3"></path>
+  <circle cx="124" cy="214" r="16" fill="none" stroke="#F5B700" stroke-width="6"></circle><circle cx="276" cy="214" r="16" fill="none" stroke="#F5B700" stroke-width="6"></circle>
+  <g id="mama-phone-brows" transform="translate(0 0)"><path d="M158 142 Q174 132 190 139" stroke="#18100C" stroke-width="7" stroke-linecap="round" fill="none"></path><path d="M210 139 Q226 132 242 142" stroke="#18100C" stroke-width="7" stroke-linecap="round" fill="none"></path></g>
+  <g id="mama-phone-eyes" transform="translate(0 168) scale(1 1) translate(0 -168)"><ellipse cx="174" cy="168" rx="8" ry="10.5" fill="#140C09"></ellipse><ellipse cx="226" cy="168" rx="8" ry="10.5" fill="#140C09"></ellipse>
+    <circle cx="177" cy="164" r="3" fill="#fff"></circle><circle cx="229" cy="164" r="3" fill="#fff"></circle><path d="M166 162 L158 156 M168 159 L163 151 M234 162 L242 156 M232 159 L237 151" stroke="#120A08" stroke-width="3.5" stroke-linecap="round"></path></g>
+  <path d="M190 200 Q200 208 210 200" stroke="#53311e" stroke-width="5" stroke-linecap="round" fill="none"></path>
+  <path d="M193 184 Q190 196 194 199" stroke="#53311e" stroke-width="3" stroke-linecap="round" fill="none" opacity=".7"></path>
+  <ellipse cx="154" cy="204" rx="15" ry="9" fill="#F0644A" opacity=".2"></ellipse><ellipse cx="246" cy="204" rx="15" ry="9" fill="#F0644A" opacity=".2"></ellipse>
+  <path id="mama-phone-mouth" d="M177 212 Q200 250 223 212 Q200 219 177 212Z" stroke="#2A0C08" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" fill="#3A0E0E"></path>
+  <path id="mama-phone-teeth" d="M181 214 Q200 221 219 214 L217 220 Q200 226 183 220Z" fill="#fff" style=""></path>
+  
+</g>
+<g id="mama-phone-arms">
+  <path id="mama-phone-uL" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M100 372 L117.5 482.6" stroke="#0E8F82" stroke-width="48"></path>
+  <path id="mama-phone-uR" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M300 372 L275.4 481.3" stroke="#0E8F82" stroke-width="48"></path>
+  <path id="mama-phone-fL" stroke-linecap="round" fill="none" d="M117.5 482.6 L178.0 398.0" stroke="#6B3F26" stroke-width="30"></path>
+  <path id="mama-phone-fR" stroke-linecap="round" fill="none" d="M275.4 481.3 L222.0 392.0" stroke="#6B3F26" stroke-width="30"></path>
+  <g><rect x="168" y="336" width="64" height="112" rx="12" fill="#101828"></rect><rect x="173" y="344" width="54" height="96" rx="7" fill="#E8F0FF"></rect>
+      <rect x="179" y="356" width="42" height="9" rx="4" fill="#FF6A00"></rect><rect x="179" y="372" width="30" height="6" rx="3" fill="#94A3B8"></rect><rect x="179" y="384" width="38" height="6" rx="3" fill="#94A3B8"></rect></g>
+  <circle id="mama-phone-hL" r="19" fill="#6B3F26" cx="178.0" cy="398.0"></circle><circle id="mama-phone-hR" r="19" fill="#6B3F26" cx="222.0" cy="392.0"></circle>
+</g>
+
+</svg>

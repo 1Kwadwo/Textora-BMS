@@ -1341,7 +1341,7 @@ async function loadDashboardData() {
     const sideBal = document.getElementById('sidebar-balance');
     if (sideBal) sideBal.textContent = `${currentUser.balance.toFixed(2)} Credits`;
     const cardBal = document.getElementById('card-balance');
-    if (cardBal) cardBal.innerHTML = `${currentUser.balance.toFixed(2)} <span class="text-base font-semibold text-blue-200">Credits</span>`;
+    if (cardBal) cardBal.innerHTML = `${currentUser.balance.toFixed(2)} <span class="text-lg font-bold">Credits</span>`;
     const composerBalEl = document.getElementById('dash-composer-balance-tag');
     if (composerBalEl) composerBalEl.textContent = `Balance: ${currentUser.balance.toFixed(2)} Credits`;
     const composerMsg = document.getElementById('dash-sms-message');
