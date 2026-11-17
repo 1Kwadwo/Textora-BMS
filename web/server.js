@@ -80,6 +80,7 @@ const MIME_TYPES = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
   '.ico': 'image/x-icon',
   '.pdf': 'application/pdf',
   '.txt': 'text/plain; charset=utf-8'
