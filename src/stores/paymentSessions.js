@@ -32,14 +32,40 @@ function createPaymentSessionStore({ paymentSessionStorePath }) {
   async function getSession(reference) {
     return await withLock(lockName, async () => {
       const data = await readJsonFileAsync(paymentSessionStorePath, {})
-      return data[reference] || null
+      if (data[reference]) return data[reference]
+
+      try {
+        const { mongoose, getMongoStatus } = require('../../web/src/db')
+        if (getMongoStatus && getMongoStatus()) {
+          const doc = await mongoose.connection.db.collection('bot_payment_sessions').findOne({ reference })
+          if (doc && doc.session) {
+            data[reference] = doc.session
+            await writeJsonFileAsync(paymentSessionStorePath, data)
+            await syncLocalCache()
+            return doc.session
+          }
+        }
+      } catch (e) {}
+
+      return null
     })
   }
 
   async function updateSession(reference, fn) {
     return await withLock(lockName, async () => {
       const data = await readJsonFileAsync(paymentSessionStorePath, {})
-      const session = data[reference]
+      let session = data[reference]
+
+      if (!session) {
+        try {
+          const { mongoose, getMongoStatus } = require('../../web/src/db')
+          if (getMongoStatus && getMongoStatus()) {
+            const doc = await mongoose.connection.db.collection('bot_payment_sessions').findOne({ reference })
+            if (doc && doc.session) session = doc.session
+          }
+        } catch (e) {}
+      }
+
       if (session) {
         const updated = await fn(session)
         if (updated !== undefined) {
@@ -47,6 +73,17 @@ function createPaymentSessionStore({ paymentSessionStorePath }) {
         }
         await writeJsonFileAsync(paymentSessionStorePath, data)
         await syncLocalCache()
+
+        try {
+          const { mongoose, getMongoStatus } = require('../../web/src/db')
+          if (getMongoStatus && getMongoStatus()) {
+            await mongoose.connection.db.collection('bot_payment_sessions').updateOne(
+              { reference },
+              { $set: { reference, session: data[reference], updatedAt: new Date() } },
+              { upsert: true }
+            ).catch(() => {})
+          }
+        } catch (e) {}
       }
     })
   }
@@ -57,6 +94,13 @@ function createPaymentSessionStore({ paymentSessionStorePath }) {
       delete data[reference]
       await writeJsonFileAsync(paymentSessionStorePath, data)
       await syncLocalCache()
+
+      try {
+        const { mongoose, getMongoStatus } = require('../../web/src/db')
+        if (getMongoStatus && getMongoStatus()) {
+          await mongoose.connection.db.collection('bot_payment_sessions').deleteOne({ reference }).catch(() => {})
+        }
+      } catch (e) {}
     })
   }
 
@@ -69,6 +113,17 @@ function createPaymentSessionStore({ paymentSessionStorePath }) {
       data[reference] = session
       await writeJsonFileAsync(paymentSessionStorePath, data)
       await syncLocalCache()
+
+      try {
+        const { mongoose, getMongoStatus } = require('../../web/src/db')
+        if (getMongoStatus && getMongoStatus()) {
+          await mongoose.connection.db.collection('bot_payment_sessions').updateOne(
+            { reference },
+            { $set: { reference, session, updatedAt: new Date() } },
+            { upsert: true }
+          ).catch(() => {})
+        }
+      } catch (e) {}
     })
   }
 

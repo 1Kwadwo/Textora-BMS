@@ -293,6 +293,21 @@ const server = http.createServer(async (req, res) => {
             // request and alert the admin here; don't wait for the customer to return.
             const result = await fulfillSenderIdFee(reference, { verified: true })
             console.log(`[PAYSTACK WEBHOOK] Sender ID fee for ref ${reference}:`, result.created ? 'request created' : (result.reason || 'already recorded'))
+          } else if (reference) {
+            // Unrecognized reference on website webhook: forward to Telegram bot webhook server
+            const botWebhookUrl = process.env.BOT_WEBHOOK_URL || 'https://textora-bmsv2.onrender.com/paystack/webhook'
+            try {
+              await axios.post(botWebhookUrl, rawBody, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-paystack-signature': signature
+                },
+                timeout: 10000
+              })
+              console.log(`[PAYSTACK WEBHOOK] Forwarded bot reference ${reference} to bot webhook`)
+            } catch (proxyErr) {
+              console.error(`[PAYSTACK WEBHOOK] Failed forwarding ${reference} to bot webhook:`, proxyErr.message)
+            }
           }
         }
       } catch (err) {

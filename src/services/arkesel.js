@@ -17,34 +17,60 @@ function createArkeselService({ axios, apiKey, genericSenderId }) {
       return result
     }
 
+    // 1. Primary: Arkesel v2 POST API (robust handling for long multi-unit SMS, emojis, and Unicode)
     try {
-
-      const response = await axios.get(
-        'https://sms.arkesel.com/sms/api',
+      const response = await axios.post(
+        'https://sms.arkesel.com/api/v2/sms/send',
         {
-          params: {
-            action: 'send-sms',
-            api_key: apiKey,
-            to: number,
-            from,
-            sms: message,
-            response: 'json'
-          }
+          sender: from,
+          message,
+          recipients: [number]
+        },
+        {
+          headers: {
+            'api-key': apiKey,
+            'Content-Type': 'application/json'
+          },
+          timeout: 15000
         }
       )
 
-      console.log('SMS RESPONSE:', response.data)
+      console.log('SMS RESPONSE (v2):', response.data)
 
       return response.data
 
     } catch (err) {
+      console.log('SMS v2 ERROR:', err.response?.data || err.message)
 
-      console.log(
-        'SMS ERROR:',
-        err.response?.data || err.message
-      )
+      // 2. Fallback: Arkesel v1 GET API
+      try {
+        const response = await axios.get(
+          'https://sms.arkesel.com/sms/api',
+          {
+            params: {
+              action: 'send-sms',
+              api_key: apiKey,
+              to: number,
+              from,
+              sms: message,
+              response: 'json'
+            },
+            timeout: 15000
+          }
+        )
 
-      return null
+        console.log('SMS RESPONSE (v1):', response.data)
+
+        return response.data
+
+      } catch (v1Err) {
+        console.log(
+          'SMS v1 ERROR:',
+          v1Err.response?.data || v1Err.message
+        )
+
+        return v1Err.response?.data || err.response?.data || { code: 'failed', message: err.message }
+      }
     }
   }
 
@@ -59,7 +85,8 @@ function createArkeselService({ axios, apiKey, genericSenderId }) {
             action: 'check-balance',
             api_key: apiKey,
             response: 'json'
-          }
+          },
+          timeout: 15000
         }
       )
 

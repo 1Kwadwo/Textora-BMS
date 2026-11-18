@@ -321,7 +321,7 @@ ${reference}`
       const wallet_after = runningArkeselBalance - msgUnits
       runningArkeselBalance = wallet_after
 
-      const msgId = result?.id || result?.message_id || `msg_${reference}_${index}`
+      const msgId = result?.id || result?.message_id || result?.data?.[0]?.id || `msg_${reference}_${index}`
       const userCharge = (msgUnits * SELLING_PRICE_PER_SMS).toFixed(2)
       const providerCost = (msgUnits * COST_PER_SMS).toFixed(4)
 
@@ -343,7 +343,7 @@ ${reference}`
       if (code === 'ok' || code === '1000' || code === 'success') {
         await markSmsLogSent(reference, number)
         sentCount += 1
-      } else if (code === '105') {
+      } else if (code === '105' || String(result?.message || '').toLowerCase().includes('insufficient') || String(result?.message || '').toLowerCase().includes('credit ran out')) {
         await markSmsLogFailed(reference, number)
         shouldRetryAfterCreditRefill = true
         
@@ -366,7 +366,7 @@ Sent so far: ${sentCount}/${originalContactCount}`
         )
         failureReason = 'Textora SMS credit ran out while sending.'
         break
-      } else if (code === '106') {
+      } else if (code === '106' || String(result?.message || '').toLowerCase().includes('sender id') || String(result?.message || '').toLowerCase().includes('sender_id')) {
         await markSmsLogFailed(reference, number)
         shouldRetryAfterSenderIdFix = true
         
