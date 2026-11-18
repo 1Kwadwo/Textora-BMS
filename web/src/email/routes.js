@@ -78,7 +78,15 @@ function domainView(d) {
 }
 
 function isEmailRoute(urlPath) {
-  return urlPath.startsWith('/api/email/') || urlPath.startsWith('/api/v1/email/') || urlPath === '/webhooks/resend' || urlPath === '/webhooks/email' || urlPath === '/email/unsubscribe'
+  return (
+    urlPath.startsWith('/api/email/') ||
+    urlPath.startsWith('/api/v1/email/') ||
+    urlPath === '/webhooks/resend' ||
+    urlPath === '/webhooks/email' ||
+    urlPath === '/api/webhook/resend' ||
+    urlPath === '/api/webhook/email' ||
+    urlPath === '/email/unsubscribe'
+  )
 }
 
 // Returns true when the request was an email route (and has been answered).
@@ -91,7 +99,12 @@ async function handleEmailRoutes(req, res, ctx) {
 async function route(req, res, ctx) {
   const { urlPath, urlObj, json, authenticateUser, authenticateApiKey } = ctx
   const isApi = urlPath.startsWith('/api/v1/email/')
-  const isHook = urlPath === '/webhooks/resend' || urlPath === '/webhooks/email'
+  const isHook = (
+    urlPath === '/webhooks/resend' ||
+    urlPath === '/webhooks/email' ||
+    urlPath === '/api/webhook/resend' ||
+    urlPath === '/api/webhook/email'
+  )
 
   const fail = err => {
     if (err instanceof EmailError) return json(err.status, { ok: false, error: { code: err.code, message: err.message, ...err.extra }, message: err.message })
@@ -119,6 +132,7 @@ async function route(req, res, ctx) {
 
     // ------------------------------------------------------------------ webhook
     if (isHook) {
+      if (req.method === 'GET') return json(200, { ok: true, message: 'Resend webhook endpoint active' })
       if (req.method !== 'POST') return json(405, { ok: false, message: 'Method not allowed' })
       const raw = await readRaw(req)
       const result = await engine.handleWebhook(raw, req.headers)
