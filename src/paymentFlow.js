@@ -477,14 +477,17 @@ SMS sent to ${finalSession.deliveredContacts}/${finalSession.deliveredContacts +
       session = await getSession(reference)
       if (!session) {
         console.log('PAYMENT SESSION NOT FOUND:', reference)
+        if (isManualResume || isBypassVerification) {
+          throw new Error(`Transaction session not found for reference "${reference}".`)
+        }
         return false
       }
 
       // Read status from state machine
       const status = session.status || 'pending'
 
-      if (isManualResume) {
-        // Allow paused or pending status for manual resume
+      if (isManualResume || isBypassVerification) {
+        // Allow paused or pending status for manual resume or admin bypass
         if (status !== 'paused' && status !== 'pending') {
           console.log(`Manual resume skipped: Transaction status is ${status}, expected paused or pending.`)
           return false
