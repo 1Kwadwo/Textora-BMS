@@ -843,7 +843,7 @@ ${ctx.chat.id}`
         `Your account has been credited with *${amount}* SMS units by Textora Admin.\n` +
         `New Prepaid Balance: *${dev.balance}* units.\n` +
         `API Key: \`${dev.apiKey}\`\n\n` +
-        `Base URL: \`https://textora-bmsv2.onrender.com\`\n` +
+        `Base URL: \`${(process.env.PUBLIC_BASE_URL || 'https://kebsend.com').replace(/\/$/, '')}\`\n` +
         `Endpoint: \`POST /api/v1/send-sms\``,
         { parse_mode: 'Markdown' }
       )

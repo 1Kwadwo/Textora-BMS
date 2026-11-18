@@ -1,0 +1,17 @@
+# Caddy gets and renews free HTTPS certificates automatically once DNS points here.
+kebsend.com, www.kebsend.com {
+	encode gzip
+	reverse_proxy 127.0.0.1:4000
+}
+
+email.kebsend.com {
+	encode gzip
+	redir / /email 302
+	reverse_proxy 127.0.0.1:4000
+}
+
+# The bot's own endpoints (Paystack callback for bot payments, legacy /api/v1).
+# Optional: only works after you add an A record for bot.kebsend.com.
+bot.kebsend.com {
+	reverse_proxy 127.0.0.1:3000
+}
