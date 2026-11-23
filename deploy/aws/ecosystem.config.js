@@ -23,7 +23,9 @@ module.exports = {
       cwd: '/opt/kebsend',
       env: {
         NODE_ENV: 'production',
-        WEBHOOK_PORT: '3000'
+        WEBHOOK_PORT: '3000',
+        COST_PER_SMS: process.env.COST_PER_SMS || '0.0276',
+        SELLING_PRICE_PER_SMS: process.env.SELLING_PRICE_PER_SMS || '0.05'
       },
       max_memory_restart: '400M',
       restart_delay: 5000
