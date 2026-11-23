@@ -14,7 +14,7 @@ function getFromEmail() {
   return 'KebSEND <onboarding@resend.dev>'
 }
 
-const APP_URL = process.env.APP_URL || 'https://textora-bms-website.onrender.com'
+const APP_URL = process.env.APP_URL || 'https://kebsend.com'
 
 async function sendPasswordResetEmail({ to, name, resetToken }) {
   const resetUrl = `${APP_URL}/reset-password?token=${resetToken}`

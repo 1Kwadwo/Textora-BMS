@@ -295,7 +295,7 @@ const server = http.createServer(async (req, res) => {
             console.log(`[PAYSTACK WEBHOOK] Sender ID fee for ref ${reference}:`, result.created ? 'request created' : (result.reason || 'already recorded'))
           } else if (reference) {
             // Unrecognized reference on website webhook: forward to Telegram bot webhook server
-            const botWebhookUrl = process.env.BOT_WEBHOOK_URL || 'https://textora-bmsv2.onrender.com/paystack/webhook'
+            const botWebhookUrl = process.env.BOT_WEBHOOK_URL || `http://127.0.0.1:${process.env.WEBHOOK_PORT || 3000}/paystack/webhook`
             try {
               await axios.post(botWebhookUrl, rawBody, {
                 headers: {

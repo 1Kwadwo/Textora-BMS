@@ -47,7 +47,7 @@ function startPaystackWebhookServer({
   }
 
   const port =
-    Number(process.env.WEBHOOK_PORT || process.env.PORT || 3000)
+    Number(process.env.WEBHOOK_PORT || (process.env.PORT && process.env.PORT !== (process.env.WEB_PORT || '4000') ? process.env.PORT : 3000))
 
   const server = http.createServer(async (req, res) => {
 
